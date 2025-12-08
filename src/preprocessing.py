@@ -103,10 +103,9 @@ def filter_high_mito_cells(data, percentile=95) -> pd.DataFrame:
             "[Filter Mito] No mitochondrial genes found (starting with 'MT-' or 'mt-'). Skipping filtering.")
         return data
 
-    # 2. Calculate Expression Manually (Robust)
-    # Formula: (Sum of Mito Counts in cell) / (Total Counts in cell)
+    # 2. Calculate expression
+    # Formula: (sum of mito counts in cell) / (total counts in cell)
 
-    # .sum(axis=1) works reliably on both Sparse and Dense DataFrames
     mito_counts = data[mt_genes].sum(axis=1)
     total_counts = data.sum(axis=1)
 
