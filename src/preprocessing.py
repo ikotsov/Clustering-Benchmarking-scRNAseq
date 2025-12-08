@@ -113,7 +113,7 @@ def filter_high_mito_cells(data, percentile=95) -> pd.DataFrame:
     # Avoid division by zero
     mito_expression = mito_counts / total_counts.replace(0, 1)
 
-    # 3. Filter using Pandas
+    # 3. Filter cells
     cutoff = np.percentile(mito_expression, percentile)
 
     # Keep cells where mito_expression is LESS than the cutoff
