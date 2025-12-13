@@ -3,6 +3,7 @@ import pandas as pd
 from typing import cast
 import warnings
 import numpy as np
+from apoptosis_genes import APOPTOSIS_GENES
 
 
 def preprocess_sc_data(raw_data, min_cells=1, mito_percentile=95) -> pd.DataFrame:
@@ -233,5 +234,50 @@ def filter_low_variance_and_mean_genes(data, percentile_variance=75, percentile_
         f"[Filter HVG] Mean Expression Cutoff (P{percentile_mean}): {mean_cutoff:.4f}")
     print(
         f"[Filter HVG] Dropped {dropped} genes (low variance AND low mean expression).")
+
+    return data_filtered
+
+
+def filter_apoptosis_genes(data: pd.DataFrame) -> pd.DataFrame:
+    """Removes apoptosis-related genes from the data."""
+    print("[Filter Apoptosis] Starting apoptosis gene removal...")
+    return filter_genes_by_name(data, genes_to_remove=APOPTOSIS_GENES)
+
+
+def filter_genes_by_name(data: pd.DataFrame, genes_to_remove: list[str]) -> pd.DataFrame:
+    """
+    Removes genes from the data based on a provided set of gene names.
+
+    Parameters
+    ----------
+    data : pd.DataFrame, shape=[n_samples, n_features]
+        The input single-cell data.
+    genes_to_remove : set
+        A set of gene names (columns) to be removed.
+
+    Returns
+    -------
+    data_filtered : pd.DataFrame
+        The data with the specified genes removed.
+    """
+    initial_genes = data.shape[1]
+
+    # Convert the input list to a set ---
+    genes_to_remove_set = set(genes_to_remove)
+
+    # Identify genes to keep
+    all_genes = set(data.columns)
+    # Use the set for difference
+    genes_to_keep = list(all_genes - genes_to_remove_set)
+
+    # Filter the DataFrame
+    data_filtered = data[genes_to_keep]
+
+    dropped_count = initial_genes - data_filtered.shape[1]
+    removed_count = len(genes_to_remove)
+
+    print(
+        f"[Filter Custom] Requested to remove {removed_count} genes. Found and dropped {dropped_count} genes."
+    )
 
     return data_filtered
