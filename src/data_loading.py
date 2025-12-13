@@ -22,6 +22,7 @@ def load_10x_data(data_path: str = "../data/") -> pd.DataFrame:
     raw_data = scprep.io.load_10X(
         data_path,
         # sparse dataframes take up less memory than regular dataframes
+        # if changed to False, downstream processing steps may need to be adjusted
         sparse=True,
         # we know that gene symbols are unique in this dataset, so we can use them as labels
         gene_labels='symbol',
