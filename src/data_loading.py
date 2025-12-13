@@ -1,6 +1,7 @@
 import scprep
 import pandas as pd
 from typing import cast
+from src.constants import SEED
 
 TARGET_CELLS = 5000
 
@@ -26,7 +27,8 @@ def load_10x_data(data_path: str = "../data/") -> pd.DataFrame:
         gene_labels='symbol',
     )
 
-    downsampled_data = scprep.select.subsample(raw_data, n=TARGET_CELLS)
+    downsampled_data = scprep.select.subsample(
+        raw_data, n=TARGET_CELLS, seed=SEED)
 
     # Silence the error because we know that scprep returns a pd.DataFrame in this case.
     return cast(pd.DataFrame, downsampled_data)
