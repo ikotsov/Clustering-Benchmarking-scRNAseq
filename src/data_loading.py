@@ -1,7 +1,7 @@
 import scprep
 import pandas as pd
 from typing import cast
-from src.constants import SEED
+from constants import SEED
 
 TARGET_CELLS = 5000
 
