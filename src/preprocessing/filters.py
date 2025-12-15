@@ -4,6 +4,7 @@ from typing import cast
 import warnings
 import numpy as np
 from .apoptosis_genes import APOPTOSIS_GENES
+from .rrna_genes import RRNA_GENES
 
 
 def filter_rare_genes(data, min_cells=1) -> pd.DataFrame:
@@ -161,6 +162,12 @@ def filter_apoptosis_genes(data: pd.DataFrame) -> pd.DataFrame:
     """Removes apoptosis-related genes from the data."""
     print("[Filter Apoptosis] Starting apoptosis gene removal...")
     return filter_genes_by_name(data, genes_to_remove=APOPTOSIS_GENES)
+
+
+def filter_rrna_genes(data: pd.DataFrame) -> pd.DataFrame:
+    """Removes rRNA-related genes from the data."""
+    print("[Filter rRNA] Starting rRNA gene removal...")
+    return filter_genes_by_name(data, genes_to_remove=RRNA_GENES)
 
 
 def filter_genes_by_name(data: pd.DataFrame, genes_to_remove: list[str]) -> pd.DataFrame:
