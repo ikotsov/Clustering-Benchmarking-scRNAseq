@@ -181,22 +181,25 @@ def filter_genes_by_name(data: pd.DataFrame, genes_to_remove: list[str]) -> pd.D
     """
     initial_genes = data.shape[1]
 
-    # Convert the input list to a set ---
+    # Convert the input list to a set for fast O(1) membership checking.
     genes_to_remove_set = set(genes_to_remove)
 
-    # Identify genes to keep
-    all_genes = set(data.columns)
-    # Use the set for difference
-    genes_to_keep = list(all_genes - genes_to_remove_set)
+    # Iterate through the original column names (which are ordered)
+    # and only keep a gene if it is NOT in the fast lookup set.
+    genes_to_keep = [
+        gene for gene in data.columns
+        if gene not in genes_to_remove_set
+    ]
 
-    # Filter the DataFrame
+    # Filter the DataFrame using the newly created, ordered list of genes to keep.
     data_filtered = data[genes_to_keep]
 
     dropped_count = initial_genes - data_filtered.shape[1]
     removed_count = len(genes_to_remove)
 
     print(
-        f"[Filter Custom] Requested to remove {removed_count} genes. Found and dropped {dropped_count} genes."
+        f"[Filter Custom] Requested to remove {removed_count} genes. "
+        f"Found and dropped {dropped_count} genes."
     )
 
     return data_filtered
