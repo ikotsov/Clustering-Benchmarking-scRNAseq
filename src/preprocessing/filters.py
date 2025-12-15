@@ -3,23 +3,7 @@ import pandas as pd
 from typing import cast
 import warnings
 import numpy as np
-from apoptosis_genes import APOPTOSIS_GENES
-
-
-def preprocess_sc_data(raw_data, min_cells=1, mito_percentile=95) -> pd.DataFrame:
-    """
-    Runs the full preprocessing pipeline.
-    """
-    print(f"--- Starting Preprocessing: Input Shape {raw_data.shape} ---")
-
-    data = filter_rare_genes(raw_data, min_cells=min_cells)
-    # First remove dead cells, because dead cells distort the library size normalization for the healthy cells.
-    data = filter_high_mito_cells(data, percentile=mito_percentile)
-    data = normalize_by_library_size(data)
-    data = log_transform(data)
-
-    print(f"--- Finished Preprocessing: Final Shape {data.shape} ---")
-    return data
+from .apoptosis_genes import APOPTOSIS_GENES
 
 
 def filter_rare_genes(data, min_cells=1) -> pd.DataFrame:
@@ -125,71 +109,6 @@ def filter_high_mito_cells(data, percentile=95) -> pd.DataFrame:
         f"[Filter Mito]  Dropped {dropped} cells (Top {100-percentile}% mitochondrial expr).")
 
     return cast(pd.DataFrame, data_filtered)
-
-
-def normalize_by_library_size(data, rescale=1_000_000) -> pd.DataFrame:
-    """
-    Normalizes counts per cell to sum to `rescale` (default CPM).
-
-    If data is sparse, pseudocount must be 1 such that log(0 + pseudocount) = 0
-
-    Parameters
-    ----------
-    data : array-like
-    rescale : int, default=1_000_000
-
-    Returns
-    -------
-    data_norm : array-like
-
-    Examples
-    --------
-    >>> data (Total counts: S1=1000, S2=2000)
-              Gene_A  Gene_B
-    Sample_1     500     500
-    Sample_2    1000    1000
-
-    >>> normalize_library_size(data, rescale=1_000_000)
-    # Both samples normalized to same depth
-                 Gene_A     Gene_B
-    Sample_1   500000.0   500000.0
-    Sample_2   500000.0   500000.0
-    """
-    print(
-        f"[Normalize]   Normalizing library size (CPM) with rescale={rescale:.0e}...")
-    return scprep.normalize.library_size_normalize(data, rescale=rescale)
-
-
-def log_transform(data, pseudocount=1) -> pd.DataFrame:
-    """
-    Applies log transformation: log(x + pseudocount).
-
-    Parameters
-    ----------
-    data : array-like
-    pseudocount : int, default=1
-
-    Returns
-    -------
-    data_log : array-like
-
-    Examples
-    --------
-    >>> data (CPM)
-              Gene_A     Gene_B
-    Sample_1   100.0        0.0
-
-    >>> log_transform(data, pseudocount=1)
-    # log(100 + 1) ~= 4.61, log(0 + 1) = 0
-                Gene_A     Gene_B
-    Sample_1  4.615121        0.0
-    """
-    print(f"[Transform]   Applying log transform (log{pseudocount}+x)...")
-
-    data_log = scprep.transform.log(data, pseudocount=pseudocount)
-
-    # Cast to DataFrame since scprep returns a generic array-like
-    return cast(pd.DataFrame, data_log)
 
 
 def filter_low_variance_and_mean_genes(data, percentile_variance=75, percentile_mean=75) -> pd.DataFrame:
