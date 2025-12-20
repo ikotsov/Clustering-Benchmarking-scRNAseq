@@ -62,7 +62,7 @@ def log_transform(data, pseudocount=1) -> pd.DataFrame:
     """
     print(f"[Transform]   Applying log transform (log{pseudocount}+x)...")
 
-    data_log = scprep.transform.log(data, pseudocount=pseudocount)
+    data_log = scprep.transform.log(data, pseudocount=pseudocount, base=10)
 
     # Cast to DataFrame since scprep returns a generic array-like
     return cast(pd.DataFrame, data_log)
