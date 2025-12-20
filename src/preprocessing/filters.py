@@ -1,3 +1,4 @@
+from typing import Union, List
 import scprep
 import pandas as pd
 from typing import cast
@@ -51,119 +52,77 @@ def filter_low_magnitude_genes(data, min_count=2) -> pd.DataFrame:
     return data_filtered
 
 
-def filter_high_mito_cells(data, percentile=95) -> pd.DataFrame:
+def filter_high_mito_cells(data: pd.DataFrame, percentile: int) -> pd.DataFrame:
     """
-    Identifies mitochondrial genes and removes cells with high mitochondrial expression.
-
-    Mitochondrial genes usually start with "MT-" in humans or "mt-" in mice.
-
-    Parameters
-    ----------
-    data : array-like
-    percentile : int, default=95
-        The percentile cutoff above which cells are removed.
-
-    Returns
-    -------
-    data_filtered : array-like
-
-    Example
-    --------
-    >>> data
-              Gene_1  MT-Gene
-    Sample_1    100       5   # Low Mito
-    Sample_2     10     500   # High Mito (likely dead cell)
-    Sample_3    100       5   # Low Mito
-
-    >>> filter_high_mito_cells(data, percentile=95)
-    # Sample_2 is removed
-              Gene_1  MT-Gene
-    Sample_1    100       5
-    Sample_3    100       5
+    Removes cells with high mitochondrial expression (indicative of broken cells).
     """
-    initial_cells = data.shape[0]
-
-    # 1. Identify MT genes
     mt_genes = scprep.select.get_gene_set(data, starts_with="MT-")
 
-    # STOP if still no genes found
-    if len(mt_genes) == 0:
-        warnings.warn(
-            "[Filter Mito] No mitochondrial genes found (starting with 'MT-'). Skipping filtering.")
-        return data
+    print("[Filter Mito] Starting mitochondrial gene removal...")
 
-    # 2. Calculate expression
-    # Formula: (sum of mito counts in cell) / (total counts in cell)
-
-    mito_counts = data[mt_genes].sum(axis=1)
-    total_counts = data.sum(axis=1)
-
-    # Avoid division by zero
-    mito_expression = mito_counts / total_counts.replace(0, 1)
-
-    # 3. Filter cells
-    cutoff = np.percentile(mito_expression, percentile)
-
-    # Keep cells where mito_expression is LESS than the cutoff
-    data_filtered = data.loc[mito_expression < cutoff]
-
-    dropped = initial_cells - data_filtered.shape[0]
-    print(f"[Filter Mito]  Cutoff: {cutoff:.4f}")
-    print(
-        f"[Filter Mito]  Dropped {dropped} cells (Top {100-percentile}% mitochondrial expr).")
-
-    return cast(pd.DataFrame, data_filtered)
-
-
-def filter_apoptosis_genes(data: pd.DataFrame) -> pd.DataFrame:
-    """Removes apoptosis-related genes from the data."""
-    print("[Filter Apoptosis] Starting apoptosis gene removal...")
-    return filter_genes_by_name(data, genes_to_remove=APOPTOSIS_GENES)
-
-
-def filter_rrna_genes(data: pd.DataFrame) -> pd.DataFrame:
-    """Removes rRNA-related genes from the data."""
-    print("[Filter rRNA] Starting rRNA gene removal...")
-    return filter_genes_by_name(data, genes_to_remove=RRNA_GENES)
-
-
-def filter_genes_by_name(data: pd.DataFrame, genes_to_remove: list[str]) -> pd.DataFrame:
-    """
-    Removes genes from the data based on a provided set of gene names.
-
-    Parameters
-    ----------
-    data : pd.DataFrame, shape=[n_samples, n_features]
-        The input single-cell data.
-    genes_to_remove : set
-        A set of gene names (columns) to be removed.
-
-    Returns
-    -------
-    data_filtered : pd.DataFrame
-        The data with the specified genes removed.
-    """
-    initial_genes = data.shape[1]
-
-    # Convert the input list to a set for fast O(1) membership checking.
-    genes_to_remove_set = set(genes_to_remove)
-
-    # Iterate through the original column names (which are ordered)
-    # and only keep a gene if it is NOT in the fast lookup set.
-    genes_to_keep = [
-        gene for gene in data.columns
-        if gene not in genes_to_remove_set
-    ]
-
-    # Filter the DataFrame using the newly created, ordered list of genes to keep.
-    data_filtered = data[genes_to_keep]
-
-    dropped_count = initial_genes - data_filtered.shape[1]
-    removed_count = len(genes_to_remove)
-
-    print(
-        f"[Filter Custom] Requested to remove {removed_count} genes. "
-        f"Found and dropped {dropped_count} genes."
+    return filter_cells_by_fraction(
+        data,
+        gene_list=mt_genes,
+        percentile=percentile,
     )
 
-    return data_filtered
+
+def filter_high_apoptosis_cells(data: pd.DataFrame, percentile: int) -> pd.DataFrame:
+    """
+    Removes cells with high expression of apoptosis-related genes (indicative of cell stress).
+    """
+
+    print("[Filter Apoptosis] Starting apoptosis gene removal...")
+
+    return filter_cells_by_fraction(
+        data,
+        gene_list=APOPTOSIS_GENES,
+        percentile=percentile,
+    )
+
+
+def filter_high_rrna_cells(data: pd.DataFrame, percentile: int) -> pd.DataFrame:
+    """
+    Removes cells with high rRNA expression (indicative of technical noise).
+    """
+
+    print("[Filter rRNA] Starting rRNA gene removal...")
+
+    return filter_cells_by_fraction(
+        data,
+        gene_list=RRNA_GENES,
+        percentile=percentile,
+    )
+
+
+def filter_cells_by_fraction(data: pd.DataFrame, gene_list: Union[List[str], np.ndarray], percentile=95) -> pd.DataFrame:
+    """
+    Removes cells with high expression of a specific gene set.
+    """
+    valid_genes = [gene for gene in gene_list if gene in data.columns]
+
+    if len(valid_genes) == 0:
+        warnings.warn(f"No genes found in dataset. Skipping.")
+        return data
+
+    # Calculate fraction: (sum of subset counts) / (total counts)
+    subset_counts = data[valid_genes].sum(axis=1)
+    total_counts = data.sum(axis=1)
+
+    # Avoid division by zero by replacing 0 total counts with 1 (these cells will be dropped anyway or have 0 fraction)
+    expression_ratio = subset_counts / total_counts.replace(0, 1)
+
+    # Determine Cutoff
+    cutoff = np.percentile(expression_ratio, percentile)
+
+    # Keep cells where the ratio is LESS than the cutoff
+    data_filtered = data.loc[expression_ratio < cutoff]
+
+    initial_cells = data.shape[0]
+    dropped = initial_cells - data_filtered.shape[0]
+
+    print(f"Cutoff: {cutoff:.4f} (Ratio)")
+    print(
+        f"Dropped {dropped} cells (Top {100-percentile}% expression).")
+
+    return cast(pd.DataFrame, data_filtered)
