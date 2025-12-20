@@ -1,9 +1,10 @@
 import scprep
 import pandas as pd
 from typing import cast
+from ..constants import CPM_RESCALE
 
 
-def normalize_by_library_size(data, rescale=1_000_000) -> pd.DataFrame:
+def normalize_by_library_size(data, rescale=CPM_RESCALE) -> pd.DataFrame:
     """
     Normalizes counts per cell to sum to `rescale` (default CPM).
 
