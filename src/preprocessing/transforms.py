@@ -1,7 +1,9 @@
 import scprep
 import pandas as pd
 from typing import cast
-from ..constants import CPM_RESCALE
+
+
+CPM_RESCALE = 1_000_000
 
 
 def normalize_by_library_size(data, rescale=CPM_RESCALE) -> pd.DataFrame:

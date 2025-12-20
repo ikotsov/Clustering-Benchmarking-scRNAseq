@@ -52,7 +52,7 @@ def filter_low_magnitude_genes(data, min_count=2) -> pd.DataFrame:
     return data_filtered
 
 
-def filter_high_mito_cells(data: pd.DataFrame, percentile: int) -> pd.DataFrame:
+def filter_high_mito_cells(data: pd.DataFrame, percentile=95) -> pd.DataFrame:
     """
     Removes cells with high mitochondrial expression (indicative of broken cells).
     """
@@ -67,7 +67,7 @@ def filter_high_mito_cells(data: pd.DataFrame, percentile: int) -> pd.DataFrame:
     )
 
 
-def filter_high_apoptosis_cells(data: pd.DataFrame, percentile: int) -> pd.DataFrame:
+def filter_high_apoptosis_cells(data: pd.DataFrame, percentile=95) -> pd.DataFrame:
     """
     Removes cells with high expression of apoptosis-related genes (indicative of cell stress).
     """
@@ -81,7 +81,7 @@ def filter_high_apoptosis_cells(data: pd.DataFrame, percentile: int) -> pd.DataF
     )
 
 
-def filter_high_rrna_cells(data: pd.DataFrame, percentile: int) -> pd.DataFrame:
+def filter_high_rrna_cells(data: pd.DataFrame, percentile=95) -> pd.DataFrame:
     """
     Removes cells with high rRNA expression (indicative of technical noise).
     """
@@ -95,7 +95,7 @@ def filter_high_rrna_cells(data: pd.DataFrame, percentile: int) -> pd.DataFrame:
     )
 
 
-def filter_cells_by_fraction(data: pd.DataFrame, gene_list: Union[List[str], np.ndarray], percentile=95) -> pd.DataFrame:
+def filter_cells_by_fraction(data: pd.DataFrame, gene_list: Union[List[str], np.ndarray], percentile: int) -> pd.DataFrame:
     """
     Removes cells with high expression of a specific gene set.
     """
