@@ -89,7 +89,7 @@ def filter_high_mito_cells(data, percentile=95) -> pd.DataFrame:
     # STOP if still no genes found
     if len(mt_genes) == 0:
         warnings.warn(
-            "[Filter Mito] No mitochondrial genes found (starting with 'MT-' or 'mt-'). Skipping filtering.")
+            "[Filter Mito] No mitochondrial genes found (starting with 'MT-'). Skipping filtering.")
         return data
 
     # 2. Calculate expression
@@ -113,52 +113,6 @@ def filter_high_mito_cells(data, percentile=95) -> pd.DataFrame:
         f"[Filter Mito]  Dropped {dropped} cells (Top {100-percentile}% mitochondrial expr).")
 
     return cast(pd.DataFrame, data_filtered)
-
-
-def filter_low_variance_and_mean_genes(data, percentile_variance=75, percentile_mean=75) -> pd.DataFrame:
-    """
-    Removes genes with low variance AND low mean expression (on non-zero cells).
-    """
-    initial_genes = data.shape[1]
-
-    # --- 1. Calculate Metrics on Non-Zero Cells ---
-    # Create a mask for non-zero values
-    non_zero_mask = data > 0
-
-    # Calculate variance and mean only where the gene is expressed
-    # This replaces all original zeros with NaN
-    non_zero_data = data.mask(~non_zero_mask)
-
-    # Convert the masked DataFrame to a standard NumPy array
-    data_array = non_zero_data.values
-
-    # Use numpy.nanvar and numpy.nanmean to calculate statistics, which handles NaNs
-    # Wrap results in a pandas Series to keep the gene names (columns)
-    gene_variance = pd.Series(
-        np.nanvar(data_array, axis=0), index=data.columns).fillna(0)
-    gene_mean = pd.Series(np.nanmean(data_array, axis=0),
-                          index=data.columns).fillna(0)
-
-    # --- 2. Determine Cutoffs ---
-    # We filter genes that are *BELOW* the specified percentile for *BOTH* metrics.
-    var_cutoff = np.percentile(gene_variance, percentile_variance)
-    mean_cutoff = np.percentile(gene_mean, percentile_mean)
-
-    # --- 3. Identify and Apply Filter ---
-    # Keep genes if: (variance >= cutoff) OR (mean >= cutoff)
-    genes_to_keep = (gene_variance >= var_cutoff) | (gene_mean >= mean_cutoff)
-
-    data_filtered = data.loc[:, genes_to_keep]
-
-    dropped = initial_genes - data_filtered.shape[1]
-    print(
-        f"[Filter HVG] Variance Cutoff (P{percentile_variance}): {var_cutoff:.4f}")
-    print(
-        f"[Filter HVG] Mean Expression Cutoff (P{percentile_mean}): {mean_cutoff:.4f}")
-    print(
-        f"[Filter HVG] Dropped {dropped} genes (low variance AND low mean expression).")
-
-    return data_filtered
 
 
 def filter_apoptosis_genes(data: pd.DataFrame) -> pd.DataFrame:
