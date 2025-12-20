@@ -3,8 +3,7 @@ import pandas as pd
 from typing import cast
 import warnings
 import numpy as np
-from .apoptosis_genes import APOPTOSIS_GENES
-from .rrna_genes import RRNA_GENES
+from .genes import APOPTOSIS_GENES, RRNA_GENES
 
 
 def filter_rare_genes(data, min_cells=1) -> pd.DataFrame:
