@@ -6,47 +6,6 @@ import numpy as np
 from .genes import APOPTOSIS_GENES, RRNA_GENES
 
 
-def filter_rare_genes(data, min_cells=1) -> pd.DataFrame:
-    """
-    Removes genes expressed in fewer than `min_cells` cells (drops zero-expression genes).
-
-    Parameters
-    ----------
-    data : array-like, shape=[n_samples, n_features]
-    min_cells : int, default=1
-
-    Returns
-    -------
-    data_filtered : array-like
-
-    Example
-    --------
-    >>> data
-              Gene_1  Gene_2  Gene_Zero
-    Sample_1     10      20         0
-    Sample_2     10      20         0
-    Sample_3     10      20         0
-
-    >>> filter_rare_genes(data, min_cells=1)
-    # Gene_Zero is removed because it is detected in 0 cells
-              Gene_1  Gene_2
-    Sample_1     10      20
-    Sample_2     10      20
-    Sample_3     10      20
-    """
-    initial_genes = data.shape[1]
-
-    data_filtered = scprep.filter.filter_rare_genes(
-        data, cutoff=0, min_cells=min_cells
-    )
-
-    dropped = initial_genes - data_filtered.shape[1]
-    print(
-        f"[Filter Genes] Dropped {dropped} genes expressed in < {min_cells} cells.")
-
-    return data_filtered
-
-
 def filter_low_magnitude_genes(data, min_count=2) -> pd.DataFrame:
     """
     Removes genes that never exceed a specific count threshold.
