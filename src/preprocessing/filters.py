@@ -19,7 +19,7 @@ def filter_rare_genes(data, min_cells=1) -> pd.DataFrame:
     -------
     data_filtered : array-like
 
-    Examples
+    Example
     --------
     >>> data
               Gene_1  Gene_2  Gene_Zero
@@ -47,6 +47,51 @@ def filter_rare_genes(data, min_cells=1) -> pd.DataFrame:
     return data_filtered
 
 
+def filter_low_magnitude_genes(data, min_count=2) -> pd.DataFrame:
+    """
+    Removes genes that never exceed a specific count threshold.
+    (removes genes containing only 0s and 1s).
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+    min_count : int, default=2
+        A gene is kept only if at least one cell has a count >= min_count.
+
+    Returns
+    -------
+    data_filtered : pd.DataFrame
+
+    Example
+    --------
+    >>> data
+              Gene_A  Gene_Binary  Gene_Zero
+    Sample_1     10        1           0
+    Sample_2      5        0           0
+    Sample_3      2        1           0
+
+    >>> filter_low_magnitude_genes(data, min_count=2)
+    # Gene_Binary is removed (max value is 1)
+    # Gene_Zero is removed (max value is 0)
+              Gene_A
+    Sample_1     10
+    Sample_2      5
+    Sample_3      2
+    """
+
+    # Check the max value of each column (gene)
+    # If max value < 2, it implies the gene only has 0s and 1s.
+    mask = data.max(axis=0) >= min_count
+
+    data_filtered = data.loc[:, mask]
+
+    dropped = data.shape[1] - data_filtered.shape[1]
+    print(
+        f"[Filter Magnitude] Dropped {dropped} genes with max count < {min_count} (only 0s and 1s).")
+
+    return data_filtered
+
+
 def filter_high_mito_cells(data, percentile=95) -> pd.DataFrame:
     """
     Identifies mitochondrial genes and removes cells with high mitochondrial expression.
@@ -63,7 +108,7 @@ def filter_high_mito_cells(data, percentile=95) -> pd.DataFrame:
     -------
     data_filtered : array-like
 
-    Examples
+    Example
     --------
     >>> data
               Gene_1  MT-Gene

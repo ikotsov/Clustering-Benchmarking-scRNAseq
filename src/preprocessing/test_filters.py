@@ -1,7 +1,34 @@
 import pandas as pd
 import numpy as np
 import pytest
-from .filters import filter_genes_by_name
+from .filters import filter_genes_by_name, filter_low_magnitude_genes
+
+
+def test_filter_low_magnitude_genes():
+    data = pd.DataFrame({
+        'High_Expr': [10, 20, 0],   # Keep: Max is 20
+        'Low_Expr':  [1,  1,  1],   # Drop: Only 1s (popular, but low signal)
+        'Binary':    [0,  1,  0],   # Drop: Only 0s and 1s
+        'Zero':      [0,  0,  0]    # Drop: Only 0s
+    }, index=['C1', 'C2', 'C3'])
+
+    filtered = filter_low_magnitude_genes(data)
+
+    # Only 'High_Expr' should remain
+    assert list(filtered.columns) == ['High_Expr']
+    assert filtered.shape == (3, 1)
+
+
+def test_filter_keeps_rare_but_high_genes():
+    data = pd.DataFrame({
+        # Present in only 1 cell, but count is 100
+        'Rare_But_Strong': [100, 0, 0],
+    }, index=['C1', 'C2', 'C3'])
+
+    filtered = filter_low_magnitude_genes(data)
+
+    # Should stay because 100 > 1
+    assert 'Rare_But_Strong' in filtered.columns
 
 
 @pytest.fixture
