@@ -1,5 +1,4 @@
 import pandas as pd
-import numpy as np
 import pytest
 from .filters import filter_low_magnitude_genes, filter_cells_by_fraction, filter_high_mito_cells
 
