@@ -1,15 +1,14 @@
-from typing import Union, List
+from typing import List
 import pandas as pd
-from typing import cast
 import warnings
 import numpy as np
 from .genes import APOPTOSIS_GENES, RRNA_GENES
 
 
-def filter_low_magnitude_genes(data, min_count=2) -> pd.DataFrame:
+def filter_low_magnitude_genes(data: pd.DataFrame, min_count: int = 2) -> pd.DataFrame:
     """
     Removes genes that never exceed a specific count threshold.
-    (removes genes containing only 0s and 1s).
+    (by default removes genes containing only 0s and 1s).
 
     Parameters
     ----------
@@ -37,7 +36,6 @@ def filter_low_magnitude_genes(data, min_count=2) -> pd.DataFrame:
     Sample_2      5
     Sample_3      2
     """
-
     # Check the max value of each column (gene)
     # If max value < 2, it implies the gene only has 0s and 1s.
     mask = data.max(axis=0) >= min_count
@@ -51,7 +49,7 @@ def filter_low_magnitude_genes(data, min_count=2) -> pd.DataFrame:
     return data_filtered
 
 
-def filter_high_mito_cells(data: pd.DataFrame, percentile=95) -> pd.DataFrame:
+def filter_high_mito_cells(data: pd.DataFrame, percentile: int = 95) -> pd.DataFrame:
     """
     Removes cells with high mitochondrial expression (indicative of broken cells).
     """
@@ -66,7 +64,7 @@ def filter_high_mito_cells(data: pd.DataFrame, percentile=95) -> pd.DataFrame:
     )
 
 
-def filter_high_apoptosis_cells(data: pd.DataFrame, percentile=95) -> pd.DataFrame:
+def filter_high_apoptosis_cells(data: pd.DataFrame, percentile: int = 95) -> pd.DataFrame:
     """
     Removes cells with high expression of apoptosis-related genes (indicative of cell stress).
     """
@@ -79,7 +77,7 @@ def filter_high_apoptosis_cells(data: pd.DataFrame, percentile=95) -> pd.DataFra
     )
 
 
-def filter_high_rrna_cells(data: pd.DataFrame, percentile=95) -> pd.DataFrame:
+def filter_high_rrna_cells(data: pd.DataFrame, percentile: int = 95) -> pd.DataFrame:
     """
     Removes cells with high rRNA expression (indicative of technical noise).
     """
@@ -92,7 +90,7 @@ def filter_high_rrna_cells(data: pd.DataFrame, percentile=95) -> pd.DataFrame:
     )
 
 
-def filter_cells_by_fraction(data: pd.DataFrame, gene_list: Union[List[str], np.ndarray], percentile: int) -> pd.DataFrame:
+def filter_cells_by_fraction(data: pd.DataFrame, gene_list: List[str], percentile: int) -> pd.DataFrame:
     """
     Removes cells with high expression of a specific gene set.
     """
@@ -102,24 +100,21 @@ def filter_cells_by_fraction(data: pd.DataFrame, gene_list: Union[List[str], np.
         warnings.warn(f"No genes found in dataset. Skipping.")
         return data
 
-    # Calculate fraction: (sum of subset counts) / (total counts)
     subset_counts = data[valid_genes].sum(axis=1)
     total_counts = data.sum(axis=1)
 
     # Avoid division by zero by replacing 0 total counts with 1 (these cells will be dropped anyway or have 0 fraction)
     expression_ratio = subset_counts / total_counts.replace(0, 1)
 
-    # Determine Cutoff
     cutoff = np.percentile(expression_ratio, percentile)
 
     # Keep cells where the ratio is LESS than the cutoff
     data_filtered = data.loc[expression_ratio < cutoff]
 
-    initial_cells = data.shape[0]
-    dropped = initial_cells - data_filtered.shape[0]
+    dropped = data.shape[0] - data_filtered.shape[0]
 
     print(f"Cutoff: {cutoff:.4f} (Ratio)")
     print(
         f"Dropped {dropped} cells (Top {100-percentile}% expression).")
 
-    return cast(pd.DataFrame, data_filtered)
+    return data_filtered
