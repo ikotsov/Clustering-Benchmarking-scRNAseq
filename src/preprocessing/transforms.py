@@ -1,4 +1,4 @@
-import scprep
+import numpy as np
 import pandas as pd
 from typing import cast
 
@@ -6,20 +6,18 @@ from typing import cast
 CPM_RESCALE = 1_000_000
 
 
-def normalize_by_library_size(data, rescale=CPM_RESCALE) -> pd.DataFrame:
+def normalize_by_library_size(data: pd.DataFrame, rescale: int = CPM_RESCALE) -> pd.DataFrame:
     """
     Normalizes counts per cell to sum to `rescale` (default CPM).
 
-    If data is sparse, pseudocount must be 1 such that log(0 + pseudocount) = 0
-
     Parameters
     ----------
-    data : array-like
+    data : pd.DataFrame
     rescale : int, default=1_000_000
 
     Returns
     -------
-    data_norm : array-like
+    data_norm : pd.DataFrame
 
     Examples
     --------
@@ -35,22 +33,29 @@ def normalize_by_library_size(data, rescale=CPM_RESCALE) -> pd.DataFrame:
     Sample_2   500000.0   500000.0
     """
     print(
-        f"[Normalize]   Normalizing library size (CPM) with rescale={rescale:.0e}...")
-    return scprep.normalize.library_size_normalize(data, rescale=rescale)
+        f"[Normalize] Normalizing library size (CPM) with rescale={rescale:.0e}...")
+
+    # Calculate the sum of counts for each cell (row)
+    library_size = data.sum(axis=1)
+    # Divide each row by its sum and multiply by the rescale factor
+    data_norm = data.div(library_size, axis=0) * rescale
+
+    # Fill NaNs with 0 in case a cell had 0 total counts
+    return data_norm.fillna(0)
 
 
-def log_transform(data, pseudocount=1) -> pd.DataFrame:
+def log_transform(data: pd.DataFrame, pseudocount: int = 1) -> pd.DataFrame:
     """
     Applies log transformation: log(x + pseudocount).
 
     Parameters
     ----------
-    data : array-like
+    data : pd.DataFrame
     pseudocount : int, default=1
 
     Returns
     -------
-    data_log : array-like
+    data_log : pd.DataFrame
 
     Examples
     --------
@@ -63,9 +68,10 @@ def log_transform(data, pseudocount=1) -> pd.DataFrame:
                 Gene_A     Gene_B
     Sample_1  4.615121        0.0
     """
-    print(f"[Transform]   Applying log transform (log{pseudocount}+x)...")
+    print(f"[Transform] Applying log transform (log{pseudocount}+x)...")
 
-    data_log = scprep.transform.log(data, pseudocount=pseudocount, base=10)
+    data_log = np.log10(data + pseudocount)
 
-    # Cast to DataFrame since scprep returns a generic array-like
+    # Cast because np.log10 is typed to return an ndarray,
+    # but it returns a DataFrame when the input is a DataFrame.
     return cast(pd.DataFrame, data_log)
