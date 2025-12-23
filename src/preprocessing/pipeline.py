@@ -3,7 +3,7 @@ from .filters import filter_high_mito_cells, filter_high_rrna_cells, filter_high
 from .transforms import normalize_by_library_size, log_transform
 
 
-def preprocess_data(raw_data: pd.DataFrame) -> dict:
+def preprocess_data(raw_data: pd.DataFrame) -> dict[str, pd.DataFrame]:
     """
     Runs the full preprocessing pipeline, including filtering and normalization.
     """
@@ -23,7 +23,7 @@ def preprocess_data(raw_data: pd.DataFrame) -> dict:
     }
 
 
-def normalize_data_with_log_cpm(filtered_data) -> pd.DataFrame:
+def normalize_data_with_log_cpm(filtered_data: pd.DataFrame) -> pd.DataFrame:
 
     data = normalize_by_library_size(filtered_data)
     data = log_transform(data)
@@ -31,7 +31,7 @@ def normalize_data_with_log_cpm(filtered_data) -> pd.DataFrame:
     return data
 
 
-def filter_data(raw_data) -> pd.DataFrame:
+def filter_data(raw_data: pd.DataFrame) -> pd.DataFrame:
     """
     Runs the full filtering pipeline.
     """
