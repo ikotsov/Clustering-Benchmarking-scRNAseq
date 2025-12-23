@@ -1,5 +1,4 @@
 from typing import Union, List
-import scprep
 import pandas as pd
 from typing import cast
 import warnings
@@ -42,10 +41,10 @@ def filter_low_magnitude_genes(data, min_count=2) -> pd.DataFrame:
     # Check the max value of each column (gene)
     # If max value < 2, it implies the gene only has 0s and 1s.
     mask = data.max(axis=0) >= min_count
-
     data_filtered = data.loc[:, mask]
 
     dropped = data.shape[1] - data_filtered.shape[1]
+
     print(
         f"[Filter Magnitude] Dropped {dropped} genes with max count < {min_count} (only 0s and 1s).")
 
@@ -56,7 +55,7 @@ def filter_high_mito_cells(data: pd.DataFrame, percentile=95) -> pd.DataFrame:
     """
     Removes cells with high mitochondrial expression (indicative of broken cells).
     """
-    mt_genes = scprep.select.get_gene_set(data, starts_with="MT-")
+    mt_genes = [gene for gene in data.columns if gene.upper().startswith("MT-")]
 
     print("[Filter Mito] Starting mitochondrial gene removal...")
 
@@ -71,7 +70,6 @@ def filter_high_apoptosis_cells(data: pd.DataFrame, percentile=95) -> pd.DataFra
     """
     Removes cells with high expression of apoptosis-related genes (indicative of cell stress).
     """
-
     print("[Filter Apoptosis] Starting apoptosis gene removal...")
 
     return filter_cells_by_fraction(
@@ -85,7 +83,6 @@ def filter_high_rrna_cells(data: pd.DataFrame, percentile=95) -> pd.DataFrame:
     """
     Removes cells with high rRNA expression (indicative of technical noise).
     """
-
     print("[Filter rRNA] Starting rRNA gene removal...")
 
     return filter_cells_by_fraction(
