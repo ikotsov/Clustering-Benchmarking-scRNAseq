@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from typing import cast
+import scanpy as sc
 
 
 CPM_RESCALE = 1_000_000
@@ -75,3 +76,39 @@ def log_transform(data: pd.DataFrame, pseudocount: int = 1) -> pd.DataFrame:
     # Cast because np.log10 is typed to return an ndarray,
     # but it returns a DataFrame when the input is a DataFrame.
     return cast(pd.DataFrame, data_log)
+
+
+def normalize_data_with_pearson(filtered_data: pd.DataFrame, n_hvg: int = 3000) -> pd.DataFrame:
+    """
+    Computes analytic Pearson Residuals (SCTransform equivalent) using Scanpy.
+    """
+    print(
+        f"[Residuals] Computing Pearson residuals for {filtered_data.shape[0]} cells using Scanpy...")
+
+    # Setup AnnData
+    adata = sc.AnnData(filtered_data)
+
+    # Select Highly Variable Genes (HVGs)
+    # Reference: https://scanpy.readthedocs.io/en/stable/generated/scanpy.pp.highly_variable_genes.html
+    print(f"Selecting top {n_hvg} variable genes...")
+    sc.experimental.pp.highly_variable_genes(
+        adata,
+        flavor="pearson_residuals",
+        n_top_genes=n_hvg
+    )
+
+    # Compute Pearson Residuals
+    # Reference: https://scanpy.readthedocs.io/en/stable/generated/scanpy.experimental.pp.normalize_pearson_residuals.html
+    # This updates adata.X in-place with the residuals.
+    print("Calculating residuals...")
+    sc.experimental.pp.normalize_pearson_residuals(adata)
+
+    # Subset to HVGs and Export
+    # We filter the AnnData object to only keep the genes we selected previously.
+    adata_hvg = adata[:, adata.var["highly_variable"]]
+
+    # Convert to DataFrame
+    # Scanpy's .to_df() handles the conversion from sparse matrix to DataFrame automatically.
+    pearson_df = adata_hvg.to_df()
+
+    return pearson_df
