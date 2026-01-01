@@ -78,7 +78,11 @@ def log_transform(data: pd.DataFrame, pseudocount: int = 1) -> pd.DataFrame:
     return cast(pd.DataFrame, data_log)
 
 
-def normalize_data_with_pearson(filtered_data: pd.DataFrame, n_hvg: int = 3000) -> pd.DataFrame:
+# In Seurat, 3,000 HVGs is default.
+N_HVG = 3_000
+
+
+def normalize_data_with_pearson(filtered_data: pd.DataFrame, n_hvg: int = N_HVG) -> pd.DataFrame:
     """
     Computes analytic Pearson Residuals (SCTransform equivalent) using Scanpy.
     Follows: https://scanpy.readthedocs.io/en/latest/tutorials/experimental/pearson_residuals.html 
