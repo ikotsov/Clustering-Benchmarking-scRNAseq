@@ -81,6 +81,7 @@ def log_transform(data: pd.DataFrame, pseudocount: int = 1) -> pd.DataFrame:
 def normalize_data_with_pearson(filtered_data: pd.DataFrame, n_hvg: int = 3000) -> pd.DataFrame:
     """
     Computes analytic Pearson Residuals (SCTransform equivalent) using Scanpy.
+    Follows: https://scanpy.readthedocs.io/en/latest/tutorials/experimental/pearson_residuals.html 
     """
     print(
         f"[Residuals] Computing Pearson residuals for {filtered_data.shape[0]} cells using Scanpy...")
@@ -97,15 +98,15 @@ def normalize_data_with_pearson(filtered_data: pd.DataFrame, n_hvg: int = 3000) 
         n_top_genes=n_hvg
     )
 
+    # Subset to HVGs and Export
+    # We filter the AnnData object to only keep the genes we selected previously.
+    adata_hvg = adata[:, adata.var["highly_variable"]].copy()
+
     # Compute Pearson Residuals
     # Reference: https://scanpy.readthedocs.io/en/stable/generated/scanpy.experimental.pp.normalize_pearson_residuals.html
     # This updates adata.X in-place with the residuals.
     print("Calculating residuals...")
-    sc.experimental.pp.normalize_pearson_residuals(adata)
-
-    # Subset to HVGs and Export
-    # We filter the AnnData object to only keep the genes we selected previously.
-    adata_hvg = adata[:, adata.var["highly_variable"]]
+    sc.experimental.pp.normalize_pearson_residuals(adata_hvg)
 
     # Convert to DataFrame
     # Scanpy's .to_df() handles the conversion from sparse matrix to DataFrame automatically.
