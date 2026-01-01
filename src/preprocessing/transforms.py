@@ -3,7 +3,7 @@ import pandas as pd
 from typing import cast
 import scanpy as sc
 
-
+# Adjust as needed. Seurat uses 10_000 for normalization by default.
 CPM_RESCALE = 1_000_000
 
 
