@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from typing import cast, List
 
 # To show cleanr and ready to use data - Blue is associated with stability.
 BLUE = '#3498db'
@@ -117,6 +118,69 @@ def plot_filtering_effect(data_before: pd.DataFrame, data_after: pd.DataFrame, g
     stats_after = f"Max={np.max(values_after):.4f}\nMean={np.mean(values_after):.4f}"
     axes[1].text(0.95, 0.95, stats_after, transform=axes[1].transAxes,
                  va='top', ha='right', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_filtering_effect_violin(data_before: pd.DataFrame, data_after: pd.DataFrame, gene_list: list, metric_name: str):
+    """
+    Plots violin plots side-by-side to compare the distribution density before and after filtering.
+    """
+    # Identify valid genes
+    valid_genes = [g for g in gene_list if g in data_before.columns]
+    if not valid_genes:
+        print(f"Warning: No valid genes found for {metric_name}")
+        return
+
+    # Calculate metrics (Fractions)
+    values_before = data_before[valid_genes].sum(
+        axis=1) / data_before.sum(axis=1)
+    values_after = data_after[valid_genes].sum(axis=1) / data_after.sum(axis=1)
+
+    # Plotting
+    fig, ax = plt.subplots(figsize=(8, 6))
+
+    # Create the violin plot
+    parts = ax.violinplot([values_before, values_after],
+                          showmeans=True, showextrema=True)
+
+    bodies = cast(List, parts['bodies'])
+
+    # The 'bodies' key contains the colored area of the violin
+    bodies[0].set_facecolor(GREY)
+    bodies[0].set_edgecolor('black')
+    bodies[0].set_alpha(0.7)
+
+    bodies[1].set_facecolor(GREEN)
+    bodies[1].set_edgecolor('black')
+    bodies[1].set_alpha(0.7)
+
+    # Style the lines (min/max/mean) to be standard black
+    for partname in ('cbars', 'cmins', 'cmaxes', 'cmeans'):
+        vp = parts[partname]
+        vp.set_edgecolor('black')
+        vp.set_linewidth(1)
+
+    # Labels and titles
+    ax.set_xticks([1, 2])
+    ax.set_xticklabels([f'Before\n(n={len(values_before)})',
+                       f'After\n(n={len(values_after)})'], fontweight='bold')
+    ax.set_ylabel(metric_name)
+    ax.set_title(f"Distribution shift: {metric_name}", fontweight='bold')
+
+    # Add a horizontal grid for easier readability
+    ax.yaxis.grid(True, linestyle='--', alpha=0.3)
+
+    # Add Stat Annotations (Optional but helpful)
+    max_before = np.max(values_before)
+    max_after = np.max(values_after)
+
+    # Place text just above the max value of each violin
+    ax.text(1, max_before, f"Max: {max_before:.4f}",
+            ha='center', va='bottom', fontsize=9, fontweight='bold')
+    ax.text(2, max_after, f"Max: {max_after:.4f}",
+            ha='center', va='bottom', fontsize=9, fontweight='bold')
 
     plt.tight_layout()
     plt.show()
