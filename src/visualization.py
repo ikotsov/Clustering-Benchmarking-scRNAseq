@@ -3,6 +3,61 @@ import numpy as np
 import pandas as pd
 
 
+import matplotlib.pyplot as plt
+import numpy as np
+
+
+def plot_gene_magnitude_distribution(data_before, data_after, x_limit=20):
+    """
+    Plots the distribution of MAXIMUM expression counts per gene to show
+    the effect of filtering out low-magnitude genes.
+    """
+    # Calculate the MAX count for every gene (Column-wise max)
+    max_counts_before = data_before.max(axis=0)
+    max_counts_after = data_after.max(axis=0)
+
+    # Setup Plot
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+
+    # Set bins to align with integers (0, 1, 2...) for clarity
+    bins = np.arange(0, x_limit + 1) - 0.5
+
+    # --- Plot "Before" ---
+    axes[0].hist(max_counts_before, bins=bins,
+                 color='#e74c3c', edgecolor='black', alpha=0.7)
+    axes[0].set_title(
+        f"Before Filtering\n(Total Genes={len(data_before.columns)})", fontweight='bold')
+    axes[0].set_xlabel("Max Count per Gene")
+    axes[0].set_ylabel("Number of Genes")
+    axes[0].set_xticks(range(0, x_limit, 2))  # Ticks every 2 units
+    axes[0].set_xlim(-0.5, x_limit)
+    axes[0].grid(axis='y', linestyle='--', alpha=0.3)
+
+    # Annotate genes (Max <= 1)
+    bad_genes_count = (max_counts_before < 2).sum()
+    axes[0].text(0.5, 0.9, f"Genes with max < 2:\n{bad_genes_count}",
+                 transform=axes[0].transAxes, ha='center', color='red', fontweight='bold',
+                 bbox=dict(facecolor='white', alpha=0.8, edgecolor='red'))
+
+    # --- Plot "After" ---
+    axes[1].hist(max_counts_after, bins=bins, color='#3498db',
+                 edgecolor='black', alpha=0.7)
+    axes[1].set_title(
+        f"After Filtering\n(Total Genes={len(data_after.columns)})", fontweight='bold')
+    axes[1].set_xlabel("Max count per gene")
+    axes[1].set_xticks(range(0, x_limit, 2))
+    axes[1].set_xlim(-0.5, x_limit)
+    axes[1].grid(axis='y', linestyle='--', alpha=0.3)
+
+    # Add a line to show the cutoff
+    axes[1].axvline(1.5, color='black', linestyle='--',
+                    linewidth=2, label='Cutoff (2)')
+    axes[1].legend()
+
+    plt.tight_layout()
+    plt.show()
+
+
 def plot_filtering_effect(data_before: pd.DataFrame, data_after: pd.DataFrame, gene_list: list, metric_name: str, bins=50):
     """
     Calculates a specific metric (fraction of counts) for a set of genes 
