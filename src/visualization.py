@@ -2,6 +2,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+# To show cleanr and ready to use data - Blue is associated with stability.
+BLUE = '#3498db'
+# To warn about dirty or noisy data - Red is associated with attention.
+RED = '#e74c3c'
+
 
 def plot_gene_magnitude_distribution(data_before, data_after, x_limit=20):
     """
@@ -20,11 +25,11 @@ def plot_gene_magnitude_distribution(data_before, data_after, x_limit=20):
 
     # --- Plot "Before" ---
     axes[0].hist(max_counts_before, bins=bins,
-                 color='#e74c3c', edgecolor='black', alpha=0.7)
+                 color=RED, edgecolor='black', alpha=0.7)
     axes[0].set_title(
         f"Before Filtering\n(Total Genes={len(data_before.columns)})", fontweight='bold')
-    axes[0].set_xlabel("Max Count per Gene")
-    axes[0].set_ylabel("Number of Genes")
+    axes[0].set_xlabel("Max count per gene")
+    axes[0].set_ylabel("Number of genes")
     axes[0].set_xticks(range(0, x_limit, 2))  # Ticks every 2 units
     axes[0].set_xlim(-0.5, x_limit)
     axes[0].grid(axis='y', linestyle='--', alpha=0.3)
@@ -36,7 +41,7 @@ def plot_gene_magnitude_distribution(data_before, data_after, x_limit=20):
                  bbox=dict(facecolor='white', alpha=0.8, edgecolor='red'))
 
     # --- Plot "After" ---
-    axes[1].hist(max_counts_after, bins=bins, color='#3498db',
+    axes[1].hist(max_counts_after, bins=bins, color=BLUE,
                  edgecolor='black', alpha=0.7)
     axes[1].set_title(
         f"After Filtering\n(Total Genes={len(data_after.columns)})", fontweight='bold')
@@ -52,6 +57,12 @@ def plot_gene_magnitude_distribution(data_before, data_after, x_limit=20):
 
     plt.tight_layout()
     plt.show()
+
+
+# For neutral, unprocessed or dirty data - Grey is used to represent the baseline of the background.
+GREY = '#95a5a6'
+# For clean, processed, or filtered data - Green is associated with "pass" or "good".
+GREEN = '#2ecc71'
 
 
 def plot_filtering_effect(data_before: pd.DataFrame, data_after: pd.DataFrame, gene_list: list, metric_name: str, bins=50):
@@ -83,7 +94,7 @@ def plot_filtering_effect(data_before: pd.DataFrame, data_after: pd.DataFrame, g
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
     # --- Plot "Before" (Left) ---
-    axes[0].hist(values_before, bins=bins, color='#95a5a6',
+    axes[0].hist(values_before, bins=bins, color=GREY,
                  edgecolor='black', alpha=0.7)
     axes[0].set_title(
         f"Before Filtering\n(n={len(values_before)})", fontweight='bold')
@@ -96,7 +107,7 @@ def plot_filtering_effect(data_before: pd.DataFrame, data_after: pd.DataFrame, g
                  va='top', ha='right', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
 
     # --- Plot "After" (Right) ---
-    axes[1].hist(values_after, bins=bins, color='#2ecc71',
+    axes[1].hist(values_after, bins=bins, color=GREEN,
                  edgecolor='black', alpha=0.7)
     axes[1].set_title(
         f"After Filtering\n(n={len(values_after)})", fontweight='bold')
