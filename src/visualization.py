@@ -3,10 +3,6 @@ import numpy as np
 import pandas as pd
 
 
-import matplotlib.pyplot as plt
-import numpy as np
-
-
 def plot_gene_magnitude_distribution(data_before, data_after, x_limit=20):
     """
     Plots the distribution of MAXIMUM expression counts per gene to show
