@@ -84,7 +84,7 @@ N_HVG = 3_000
 
 def normalize_data_with_pearson(filtered_data: pd.DataFrame, n_hvg: int = N_HVG) -> pd.DataFrame:
     """
-    Computes analytic Pearson Residuals (SCTransform equivalent) using Scanpy.
+    Computes analytic Pearson Residuals (sctransform equivalent) using Scanpy.
     Follows: https://scanpy.readthedocs.io/en/latest/tutorials/experimental/pearson_residuals.html 
     """
     print(
