@@ -94,7 +94,7 @@ def normalize_data_with_pearson(filtered_data: pd.DataFrame, n_hvg: int = N_HVG)
     adata = sc.AnnData(filtered_data)
 
     # Select Highly Variable Genes (HVGs)
-    # Reference: https://scanpy.readthedocs.io/en/stable/generated/scanpy.pp.highly_variable_genes.html
+    # Reference: https://scanpy.readthedocs.io/en/stable/generated/scanpy.experimental.pp.highly_variable_genes.html
     print(f"Selecting top {n_hvg} variable genes...")
     sc.experimental.pp.highly_variable_genes(
         adata,
