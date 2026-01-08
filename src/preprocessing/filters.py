@@ -49,7 +49,7 @@ def filter_low_magnitude_genes(data: pd.DataFrame, min_count: int = 2) -> pd.Dat
     return data_filtered
 
 
-def filter_high_mito_cells(data: pd.DataFrame, percentile: int = 95) -> pd.DataFrame:
+def filter_high_mito_cells(data: pd.DataFrame, threshold: float = 0.05) -> pd.DataFrame:
     """
     Removes cells with high mitochondrial expression (indicative of broken cells).
     """
@@ -60,11 +60,11 @@ def filter_high_mito_cells(data: pd.DataFrame, percentile: int = 95) -> pd.DataF
     return filter_cells_by_fraction(
         data,
         gene_list=mt_genes,
-        percentile=percentile,
+        threshold=threshold,
     )
 
 
-def filter_high_apoptosis_cells(data: pd.DataFrame, percentile: int = 95) -> pd.DataFrame:
+def filter_high_apoptosis_cells(data: pd.DataFrame, threshold: float = 0.05) -> pd.DataFrame:
     """
     Removes cells with high expression of apoptosis-related genes (indicative of cell stress).
     """
@@ -73,11 +73,11 @@ def filter_high_apoptosis_cells(data: pd.DataFrame, percentile: int = 95) -> pd.
     return filter_cells_by_fraction(
         data,
         gene_list=APOPTOSIS_GENES,
-        percentile=percentile,
+        threshold=threshold,
     )
 
 
-def filter_high_rrna_cells(data: pd.DataFrame, percentile: int = 95) -> pd.DataFrame:
+def filter_high_rrna_cells(data: pd.DataFrame, threshold: float = 0.05) -> pd.DataFrame:
     """
     Removes cells with high rRNA expression (indicative of technical noise).
     """
@@ -86,11 +86,11 @@ def filter_high_rrna_cells(data: pd.DataFrame, percentile: int = 95) -> pd.DataF
     return filter_cells_by_fraction(
         data,
         gene_list=RRNA_GENES,
-        percentile=percentile,
+        threshold=threshold,
     )
 
 
-def filter_cells_by_fraction(data: pd.DataFrame, gene_list: List[str], percentile: int) -> pd.DataFrame:
+def filter_cells_by_fraction(data: pd.DataFrame, gene_list: List[str], threshold: float) -> pd.DataFrame:
     """
     Removes cells with high expression of a specific gene set.
     """
@@ -106,15 +106,11 @@ def filter_cells_by_fraction(data: pd.DataFrame, gene_list: List[str], percentil
     # Avoid division by zero by replacing 0 total counts with 1 (these cells will be dropped anyway or have 0 fraction)
     expression_ratio = subset_counts / total_counts.replace(0, 1)
 
-    cutoff = np.percentile(expression_ratio, percentile)
-
-    # Keep cells where the ratio is LESS than the cutoff
-    data_filtered = data.loc[expression_ratio < cutoff]
+    # Keep cells where ratio is less than or equal to the threshold
+    data_filtered = data.loc[expression_ratio <= threshold]
 
     dropped = data.shape[0] - data_filtered.shape[0]
 
-    print(f"Cutoff: {cutoff:.4f} (Ratio)")
-    print(
-        f"Dropped {dropped} cells (Top {100-percentile}% expression).")
+    print(f"Dropped {dropped} cells (Expression > {threshold*100}%).")
 
     return data_filtered
