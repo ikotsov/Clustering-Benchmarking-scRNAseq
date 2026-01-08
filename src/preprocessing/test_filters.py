@@ -49,7 +49,7 @@ def test_fraction_filtering_math(fraction_data):
     filtered = filter_cells_by_fraction(
         fraction_data,
         gene_list=['Target_1'],
-        percentile=67  # Cutoff roughly at 67%, should drop Cell_Bad (100%)
+        threshold=0.5
     )
 
     assert 'Cell_Bad' not in filtered.index
@@ -61,7 +61,7 @@ def test_fraction_handles_missing_genes(fraction_data):
     filtered = filter_cells_by_fraction(
         fraction_data,
         gene_list=['Target_1', 'Ghost_Gene'],
-        percentile=67
+        threshold=0.5
     )
 
     assert 'Cell_Bad' not in filtered.index
@@ -74,11 +74,12 @@ def test_fraction_handles_zero_total_counts():
         'Gene_B': [0, 10]
     }, index=['Zero_Cell', 'Normal_Cell'])
 
-    # Should not crash
     filtered = filter_cells_by_fraction(
-        df_zero, gene_list=['Gene_A'], percentile=50)
+        df_zero,
+        gene_list=['Gene_A'],
+        threshold=0.1
+    )
 
-    # Zero cell has 0/1 fraction = 0.0, so it is usually kept (unless cutoff is 0)
     assert 'Zero_Cell' in filtered.index
 
 
@@ -88,8 +89,7 @@ def test_mito_wrapper_finds_mt_genes():
         'ACTB':   [0, 100]   # 0% Mito in Cell 2
     }, index=['High_Mito', 'Low_Mito'])
 
-    # Filter top 50% (should drop the High_Mito cell)
-    filtered = filter_high_mito_cells(df_mito, percentile=50)
+    filtered = filter_high_mito_cells(df_mito, threshold=0.05)
 
     assert 'High_Mito' not in filtered.index
     assert 'Low_Mito' in filtered.index
