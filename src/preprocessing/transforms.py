@@ -102,7 +102,6 @@ def normalize_data_with_pearson(filtered_data: pd.DataFrame, n_hvg: int = N_HVG)
         n_top_genes=n_hvg
     )
 
-    # Subset to HVGs and Export
     # We filter the AnnData object to only keep the genes we selected previously.
     adata_hvg = adata[:, adata.var["highly_variable"]].copy()
 
