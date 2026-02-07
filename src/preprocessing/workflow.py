@@ -3,24 +3,24 @@ from .filters import filter_high_mito_cells, filter_high_rrna_cells, filter_high
 from .transforms import normalize_by_library_size, log_transform, normalize_data_with_pearson
 
 
-def preprocess_data(raw_data: pd.DataFrame) -> dict[str, pd.DataFrame]:
+def preprocess_data(raw_data: pd.DataFrame, branch: str = "pearson") -> pd.DataFrame:
     """
-    Runs the full preprocessing pipeline, including filtering and normalization.
+    Runs filtering, then only the requested normalization branch.
     """
+    # Always filter first
     clean_data = filter_data(raw_data)
 
-    # BRANCH A: LogCPM
-    print("--- Branch A: Running LogCPM ---")
-    log_cpm_data = normalize_data_with_log_cpm(clean_data)
+    # Selective normalization
+    if branch == "log_cpm":
+        print("--- Running LogCPM normalization ---")
+        return normalize_data_with_log_cpm(clean_data)
 
-    # BRANCH B: NB Fitting (Pearson)
-    print("--- Branch B: Running NB Pearson Residuals ---")
-    pearson_data = normalize_data_with_pearson(clean_data)
+    elif branch == "pearson":
+        print("--- Running NB Pearson Residuals ---")
+        return normalize_data_with_pearson(clean_data)
 
-    return {
-        "log_cpm": log_cpm_data,
-        "pearson": pearson_data
-    }
+    else:
+        raise ValueError(f"Unknown preprocessing branch: {branch}")
 
 
 def normalize_data_with_log_cpm(filtered_data: pd.DataFrame) -> pd.DataFrame:
