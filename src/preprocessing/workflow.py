@@ -1,32 +1,6 @@
-import os
 import pandas as pd
-from ..data_loading import load_10x_data
 from .filters import filter_high_mito_cells, filter_high_rrna_cells, filter_high_apoptosis_cells, filter_low_magnitude_genes
 from .transforms import normalize_by_library_size, log_transform, normalize_data_with_pearson
-
-
-def run_preprocessing_pipeline():
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    project_root = os.path.dirname(os.path.dirname(script_dir))
-
-    data_path = os.path.join(project_root, "data", "10x")
-    output_dir = os.path.join(project_root, "data")
-
-    raw_data = load_10x_data(data_path)
-    preprocessed_data = preprocess_data(raw_data)
-
-    os.makedirs(output_dir, exist_ok=True)
-
-    print("Saving pearson_data.csv...")
-    # index=True is usually good for 10x data to keep cell barcodes (if they are the index)
-    preprocessed_data["pearson"].to_csv(os.path.join(
-        output_dir, "pearson_data.csv"), index=True)
-
-    print("Saving log_cpm_data.csv...")
-    preprocessed_data["log_cpm"].to_csv(os.path.join(
-        output_dir, "log_cpm_data.csv"), index=True)
-
-    print(f"Done! Files saved.")
 
 
 def preprocess_data(raw_data: pd.DataFrame) -> dict[str, pd.DataFrame]:
