@@ -5,7 +5,7 @@ from .filters import filter_high_mito_cells, filter_high_rrna_cells, filter_high
 from .transforms import normalize_by_library_size, log_transform, normalize_data_with_pearson
 
 
-def run_pipeline():
+def run_preprocessing_pipeline():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(os.path.dirname(script_dir))
 
