@@ -1,37 +1,40 @@
 import os
-from src.data_loading import load_10x_data
+from src.data_loading import load_csv_data
 from src.preprocessing import preprocess_data
 from src.clustering.registry import get_clustering_strategy
 
 
-def run_experiment(algo_name: str, data_branch: str = "pearson", **algo_params):
+def run_experiment(accession: str, algo_name: str, data_branch: str = "pearson", **algo_params):
     """
     Orchestrates the full flow: Load -> Preprocess -> Cluster -> Save.
     """
+    # 1. Dynamic path resolution
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    data_path = os.path.join(project_root, "data", "10x")
-    output_dir = os.path.join(project_root, "data")
+    dataset_dir = os.path.join(project_root, "data", accession)
 
-    raw_data = load_10x_data(data_path)
-    # preprocess_data returns: {"pearson": df, "log_cpm": df}
-    processed_dict = preprocess_data(raw_data)
+    raw_file_path = os.path.join(dataset_dir, "raw", f"{accession}.csv.gz")
+    output_dir = os.path.join(dataset_dir, "results")
 
-    if data_branch not in processed_dict:
-        raise ValueError(
-            f"Branch {data_branch} not found. Options: {list(processed_dict.keys())}")
+    if not os.path.exists(raw_file_path):
+        raise FileNotFoundError(f"Expected file not found: {raw_file_path}")
 
-    target_data = processed_dict[data_branch]
+    # 2. Load & preprocess
+    print(f"--- Processing Dataset: {accession} ---")
+    raw_data = load_csv_data(raw_file_path)
+    target_data = preprocess_data(raw_data, branch=data_branch)
 
+    # 3. Clustering
     cluster_func = get_clustering_strategy(algo_name)
     labels = cluster_func(target_data, **algo_params)
+
+    # 4. Save
+    os.makedirs(output_dir, exist_ok=True)
 
     final_df = target_data.copy()
     final_df["cluster"] = labels
 
-    os.makedirs(output_dir, exist_ok=True)
-    file_name = f"results_{algo_name}_{data_branch}.csv"
-    final_df.to_csv(os.path.join(output_dir, file_name))
+    filename = f"{data_branch}_{algo_name}.csv.gz"
+    save_path = os.path.join(output_dir, filename)
 
-    print(f"--- Experiment Finished ---")
-    print(
-        f"Algorithm: {algo_name} | Branch: {data_branch} | Saved: {file_name}")
+    final_df.to_csv(save_path, compression='gzip')
+    print(f"Successfully saved {accession} results to: {save_path}")
