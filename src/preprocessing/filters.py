@@ -2,7 +2,7 @@ from typing import List
 import pandas as pd
 import warnings
 import numpy as np
-from .genes import APOPTOSIS_GENES, RRNA_GENES
+from .genes import HUMAN_APOPTOSIS_GENES, HUMAN_RRNA_GENES
 
 
 def filter_low_magnitude_genes(data: pd.DataFrame, min_count: int = 2) -> pd.DataFrame:
@@ -72,7 +72,7 @@ def filter_high_apoptosis_cells(data: pd.DataFrame, threshold: float = 0.05) -> 
 
     return filter_cells_by_fraction(
         data,
-        gene_list=APOPTOSIS_GENES,
+        gene_list=HUMAN_APOPTOSIS_GENES,
         threshold=threshold,
     )
 
@@ -85,7 +85,7 @@ def filter_high_rrna_cells(data: pd.DataFrame, threshold: float = 0.05) -> pd.Da
 
     return filter_cells_by_fraction(
         data,
-        gene_list=RRNA_GENES,
+        gene_list=HUMAN_RRNA_GENES,
         threshold=threshold,
     )
 
