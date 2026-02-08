@@ -3,6 +3,10 @@ import pandas as pd
 from typing import cast
 
 
+def load_csv_data(file_path: str) -> pd.DataFrame:
+    return pd.read_csv(file_path, compression='gzip', index_col=0)
+
+
 def load_10x_data(data_path: str = "../data/") -> pd.DataFrame:
     """Load 10x data.
 
