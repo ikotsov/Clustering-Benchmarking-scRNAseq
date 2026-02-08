@@ -55,7 +55,7 @@ def filter_high_mito_cells(data: pd.DataFrame, threshold: float = 0.05) -> pd.Da
     # By transforming gene names to uppercase, we can catch both "MT-" and "mt-" prefixes. "mt-" is common in mouse datasets.
     mt_genes = [gene for gene in data.columns if gene.upper().startswith("MT-")]
 
-    print("[Filter Mito] Starting mitochondrial gene removal...")
+    print("[Filter Mito] Starting cell removal based on mitochondrial gene expression...")
 
     return filter_cells_by_fraction(
         data,
@@ -71,7 +71,7 @@ def filter_high_apoptosis_cells(data: pd.DataFrame, threshold: float = 0.05, spe
     """
     Removes cells with high expression of apoptosis-related genes (indicative of cell stress).
     """
-    print("[Filter Apoptosis] Starting apoptosis gene removal...")
+    print("[Filter Apoptosis] Starting cell removal based on apoptosis gene expression...")
 
     return filter_cells_by_fraction(
         data,
@@ -84,7 +84,7 @@ def filter_high_rrna_cells(data: pd.DataFrame, threshold: float = 0.05, species:
     """
     Removes cells with high rRNA expression (indicative of technical noise).
     """
-    print("[Filter rRNA] Starting rRNA gene removal...")
+    print("[Filter rRNA] Starting cell removal based on rRNA gene expression...")
 
     return filter_cells_by_fraction(
         data,
@@ -100,7 +100,7 @@ def filter_cells_by_fraction(data: pd.DataFrame, gene_list: List[str], threshold
     valid_genes = [gene for gene in gene_list if gene.upper() in data.columns]
 
     if len(valid_genes) == 0:
-        warnings.warn(f"No genes found in dataset. Skipping.")
+        print(f"No genes found. Skipping this filter.")
         return data
 
     subset_counts = data[valid_genes].sum(axis=1)
