@@ -2,9 +2,10 @@ import os
 from src.data_loading import load_csv_data
 from src.preprocessing import preprocess_data
 from src.clustering.registry import get_clustering_strategy
+from src.preprocessing.filters import Species
 
 
-def run_experiment(accession: str, algo_name: str, data_branch: str = "pearson", **algo_params):
+def run_experiment(accession: str, algo_name: str, data_branch: str = "pearson", species: Species = "human", **algo_params):
     """
     Orchestrates the full flow: Load -> Preprocess -> Cluster -> Save.
     """
@@ -21,7 +22,8 @@ def run_experiment(accession: str, algo_name: str, data_branch: str = "pearson",
     # 2. Load & preprocess
     print(f"--- Processing Dataset: {accession} ---")
     raw_data = load_csv_data(raw_file_path)
-    target_data = preprocess_data(raw_data, branch=data_branch)
+    target_data = preprocess_data(
+        raw_data, branch=data_branch, species=species)
 
     # 3. Clustering
     cluster_func = get_clustering_strategy(algo_name)

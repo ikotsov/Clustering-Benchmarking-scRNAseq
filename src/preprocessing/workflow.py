@@ -1,14 +1,14 @@
 import pandas as pd
-from .filters import filter_high_mito_cells, filter_high_rrna_cells, filter_high_apoptosis_cells, filter_low_magnitude_genes
+from .filters import Species, filter_high_mito_cells, filter_high_rrna_cells, filter_high_apoptosis_cells, filter_low_magnitude_genes
 from .transforms import normalize_by_library_size, log_transform, normalize_data_with_pearson
 
 
-def preprocess_data(raw_data: pd.DataFrame, branch: str = "pearson") -> pd.DataFrame:
+def preprocess_data(raw_data: pd.DataFrame, branch: str = "pearson", species: Species = "human") -> pd.DataFrame:
     """
     Runs filtering, then only the requested normalization branch.
     """
     # Always filter first
-    clean_data = filter_data(raw_data)
+    clean_data = filter_data(raw_data, species=species)
 
     # Selective normalization
     if branch == "log_cpm":
@@ -31,15 +31,15 @@ def normalize_data_with_log_cpm(filtered_data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
-def filter_data(raw_data: pd.DataFrame) -> pd.DataFrame:
+def filter_data(raw_data: pd.DataFrame, species: Species = "human") -> pd.DataFrame:
     """
     Runs the full filtering pipeline.
     """
     print(f"--- Starting Filtering: Input Shape {raw_data.shape} ---")
 
     data = filter_low_magnitude_genes(raw_data)
-    data = filter_high_apoptosis_cells(data)
-    data = filter_high_rrna_cells(data)
+    data = filter_high_apoptosis_cells(data, species=species)
+    data = filter_high_rrna_cells(data, species=species)
     data = filter_high_mito_cells(data)
 
     print(f"--- Finished Filtering: Final Shape {data.shape} ---")
