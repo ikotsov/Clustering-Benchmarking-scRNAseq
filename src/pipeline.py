@@ -2,9 +2,10 @@ import os
 from src.data_loading import load_csv_data, load_dataset_config
 from src.preprocessing import preprocess_data
 from src.clustering.registry import get_clustering_strategy
+from src.preprocessing.workflow import Branch
 
 
-def run_experiment(accession: str, algo_name: str, data_branch: str = "pearson"):
+def run_experiment(accession: str, algo_name: str, data_branch: Branch = "pearson"):
     """
     Orchestrates the full flow: Load -> Preprocess -> Cluster -> Save.
     """
