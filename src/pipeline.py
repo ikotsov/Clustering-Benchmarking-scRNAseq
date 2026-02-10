@@ -22,7 +22,8 @@ def run_preprocessing(accession: str, data_branch: Branch = "pearson"):
     species = config.get("species")
 
     # Load & preprocess
-    print(f"--- Preprocessing Dataset: {accession} ---")
+    print(f"\n=== PREPROCESSING: {accession} ===")
+    print()
     raw_data = load_csv_data(raw_file_path)
     preprocessed_data = preprocess_data(
         raw_data, branch=data_branch, species=species if species else "human")
@@ -35,8 +36,8 @@ def run_preprocessing(accession: str, data_branch: Branch = "pearson"):
     save_path = os.path.join(output_dir, filename)
 
     preprocessed_data.to_csv(save_path, compression='gzip')
-    print(f"Successfully saved preprocessed data to: {save_path}")
-    print(f"Output shape: {preprocessed_data.shape}")
+    print()
+    print(f"✓ Saved to: {filename} ({preprocessed_data.shape[0]} × {preprocessed_data.shape[1]} genes)")
 
 
 def run_experiment(accession: str, algo_name: str, data_branch: Branch = "pearson"):
@@ -56,12 +57,15 @@ def run_experiment(accession: str, algo_name: str, data_branch: Branch = "pearso
     species = config.get("species")
 
     # 2. Load & preprocess
-    print(f"--- Processing Dataset: {accession} ---")
+    print(f"\n=== EXPERIMENT: {accession} + {algo_name.upper()} ===")
+    print()
     raw_data = load_csv_data(raw_file_path)
     target_data = preprocess_data(
         raw_data, branch=data_branch, species=species if species else "human")
 
     # 3. Clustering
+    print()
+    print(f"Clustering ({algo_name})...")
     cluster_func = get_clustering_strategy(algo_name)
 
     n_clusters = config.get("n_clusters")
@@ -78,4 +82,5 @@ def run_experiment(accession: str, algo_name: str, data_branch: Branch = "pearso
     save_path = os.path.join(output_dir, filename)
 
     target_data.to_csv(save_path, compression='gzip')
-    print(f"Successfully saved {accession} results to: {save_path}")
+    print()
+    print(f"✓ Saved to: {filename} ({target_data.shape[0]} × {target_data.shape[1]} genes + clusters)")

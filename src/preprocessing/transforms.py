@@ -33,8 +33,7 @@ def normalize_by_library_size(data: pd.DataFrame, rescale: int = CPM_RESCALE) ->
     Sample_1   500000.0   500000.0
     Sample_2   500000.0   500000.0
     """
-    print(
-        f"[Normalize] Normalizing library size (CPM) with rescale={rescale:.0e}...")
+    print(f"  • Normalizing library size (rescale={rescale:.0e})")
 
     # Calculate the sum of counts for each cell (row)
     library_size = data.sum(axis=1)
@@ -69,7 +68,7 @@ def log_transform(data: pd.DataFrame, pseudocount: int = 1) -> pd.DataFrame:
                 Gene_A     Gene_B
     Sample_1  4.615121        0.0
     """
-    print(f"[Transform] Applying log transform (log{pseudocount}+x)...")
+    print(f"  • Applying log transform (log{pseudocount}+x)")
 
     data_log = np.log10(data + pseudocount)
 
@@ -87,15 +86,14 @@ def normalize_data_with_pearson(filtered_data: pd.DataFrame, n_hvg: int = N_HVG)
     Computes analytic Pearson Residuals (sctransform equivalent) using Scanpy.
     Follows: https://scanpy.readthedocs.io/en/latest/tutorials/experimental/pearson_residuals.html 
     """
-    print(
-        f"[Residuals] Computing Pearson residuals for {filtered_data.shape[0]} cells using Scanpy...")
+    print(f"  • Computing residuals for {filtered_data.shape[0]} cells")
+    print(f"  • Selecting top {n_hvg} variable genes")
 
     # Setup AnnData
     adata = sc.AnnData(filtered_data)
 
     # Select Highly Variable Genes (HVGs)
     # Reference: https://scanpy.readthedocs.io/en/stable/generated/scanpy.experimental.pp.highly_variable_genes.html
-    print(f"Selecting top {n_hvg} variable genes...")
     sc.experimental.pp.highly_variable_genes(
         adata,
         flavor="pearson_residuals",
@@ -108,7 +106,6 @@ def normalize_data_with_pearson(filtered_data: pd.DataFrame, n_hvg: int = N_HVG)
     # Compute Pearson Residuals
     # Reference: https://scanpy.readthedocs.io/en/stable/generated/scanpy.experimental.pp.normalize_pearson_residuals.html
     # This updates adata.X in-place with the residuals.
-    print("Calculating residuals...")
     sc.experimental.pp.normalize_pearson_residuals(adata_hvg)
 
     # Convert to DataFrame

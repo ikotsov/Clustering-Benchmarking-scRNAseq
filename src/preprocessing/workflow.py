@@ -15,11 +15,13 @@ def preprocess_data(raw_data: pd.DataFrame, branch: Branch = "pearson", species:
 
     # Selective normalization
     if branch == "log_cpm":
-        print("--- Running LogCPM normalization ---")
+        print()
+        print("Normalization (LogCPM)...")
         return normalize_data_with_log_cpm(clean_data)
 
     elif branch == "pearson":
-        print("--- Running NB Pearson Residuals ---")
+        print()
+        print("Normalization (Pearson Residuals)...")
         return normalize_data_with_pearson(clean_data)
 
     else:
@@ -38,12 +40,13 @@ def filter_data(raw_data: pd.DataFrame, species: Species = "human") -> pd.DataFr
     """
     Runs the full filtering pipeline.
     """
-    print(f"--- Starting Filtering: Input Shape {raw_data.shape} ---")
+    print(f"Filtering...")
+    print(f"  Input: {raw_data.shape[0]} cells × {raw_data.shape[1]} genes")
 
     data = filter_low_magnitude_genes(raw_data)
     data = filter_high_apoptosis_cells(data, species=species)
     data = filter_high_rrna_cells(data, species=species)
     data = filter_high_mito_cells(data)
 
-    print(f"--- Finished Filtering: Final Shape {data.shape} ---")
+    print(f"  Output: {data.shape[0]} cells × {data.shape[1]} genes")
     return data

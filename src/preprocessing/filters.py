@@ -41,8 +41,7 @@ def filter_low_magnitude_genes(data: pd.DataFrame, min_count: int = 2) -> pd.Dat
 
     dropped = data.shape[1] - data_filtered.shape[1]
 
-    print(
-        f"[Filter Magnitude] Dropped {dropped} genes with max count < {min_count} (only 0s and 1s).")
+    print(f"  • Dropped {dropped} low-magnitude genes")
 
     return data_filtered
 
@@ -54,12 +53,11 @@ def filter_high_mito_cells(data: pd.DataFrame, threshold: float = 0.05) -> pd.Da
     # By transforming gene names to uppercase, we can catch both "MT-" and "mt-" prefixes. "mt-" is common in mouse datasets.
     mt_genes = [gene for gene in data.columns if gene.upper().startswith("MT-")]
 
-    print("[Filter Mito] Starting cell removal based on mitochondrial gene expression...")
-
     return filter_cells_by_fraction(
         data,
         gene_list=mt_genes,
         threshold=threshold,
+        filter_name="mitochondrial"
     )
 
 
@@ -70,12 +68,11 @@ def filter_high_apoptosis_cells(data: pd.DataFrame, threshold: float = 0.05, spe
     """
     Removes cells with high expression of apoptosis-related genes (indicative of cell stress).
     """
-    print("[Filter Apoptosis] Starting cell removal based on apoptosis gene expression...")
-
     return filter_cells_by_fraction(
         data,
         gene_list=HUMAN_APOPTOSIS_GENES if species == "human" else MOUSE_APOPTOSIS_GENES,
         threshold=threshold,
+        filter_name="apoptosis"
     )
 
 
@@ -83,23 +80,21 @@ def filter_high_rrna_cells(data: pd.DataFrame, threshold: float = 0.05, species:
     """
     Removes cells with high rRNA expression (indicative of technical noise).
     """
-    print("[Filter rRNA] Starting cell removal based on rRNA gene expression...")
-
     return filter_cells_by_fraction(
         data,
         gene_list=HUMAN_RRNA_GENES if species == "human" else MOUSE_RRNA_GENES,
         threshold=threshold,
+        filter_name="rRNA"
     )
 
 
-def filter_cells_by_fraction(data: pd.DataFrame, gene_list: List[str], threshold: float) -> pd.DataFrame:
+def filter_cells_by_fraction(data: pd.DataFrame, gene_list: List[str], threshold: float, filter_name: str = "generic") -> pd.DataFrame:
     """
     Removes cells with high expression of a specific gene set.
     """
     valid_genes = [gene for gene in gene_list if gene.upper() in data.columns]
 
     if len(valid_genes) == 0:
-        print(f"No genes found. Skipping this filter.")
         return data
 
     subset_counts = data[valid_genes].sum(axis=1)
@@ -112,7 +107,8 @@ def filter_cells_by_fraction(data: pd.DataFrame, gene_list: List[str], threshold
     data_filtered = data.loc[expression_ratio <= threshold]
 
     dropped = data.shape[0] - data_filtered.shape[0]
-
-    print(f"Dropped {dropped} cells (Expression > {threshold*100}%).")
+    if dropped > 0:
+        print(
+            f"  • Dropped {dropped} cells (high {filter_name}: >{threshold*100}%)")
 
     return data_filtered
