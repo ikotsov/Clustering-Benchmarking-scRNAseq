@@ -1,6 +1,5 @@
 from typing import List, Literal
 import pandas as pd
-import warnings
 from .genes import HUMAN_APOPTOSIS_GENES, HUMAN_RRNA_GENES, MOUSE_APOPTOSIS_GENES, MOUSE_RRNA_GENES
 
 
