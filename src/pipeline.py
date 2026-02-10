@@ -37,33 +37,37 @@ def run_preprocessing(accession: str, data_branch: Branch = "pearson"):
 
     preprocessed_data.to_csv(save_path, compression='gzip')
     print()
-    print(f"✓ Saved to: {filename} ({preprocessed_data.shape[0]} × {preprocessed_data.shape[1]} genes)")
+    print(
+        f"✓ Saved to: {filename} ({preprocessed_data.shape[0]} × {preprocessed_data.shape[1]} genes)")
 
 
 def run_experiment(accession: str, algo_name: str, data_branch: Branch = "pearson"):
     """
-    Orchestrates the full flow: Load -> Preprocess -> Cluster -> Save.
+    Orchestrates the clustering flow: Load preprocessed data -> Cluster -> Save.
+    Expects preprocessed data to already exist (use run_preprocessing first).
     """
     # 1. Dynamic path resolution
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     dataset_dir = os.path.join(project_root, "data", accession)
 
-    raw_file_path = os.path.join(dataset_dir, "raw", f"{accession}.csv.gz")
-
-    if not os.path.exists(raw_file_path):
-        raise FileNotFoundError(f"Expected file not found: {raw_file_path}")
-
-    config = load_dataset_config(dataset_dir)
-    species = config.get("species")
-
-    # 2. Load & preprocess
     print(f"\n=== EXPERIMENT: {accession} + {algo_name.upper()} ===")
     print()
-    raw_data = load_csv_data(raw_file_path)
-    target_data = preprocess_data(
-        raw_data, branch=data_branch, species=species if species else "human")
+
+    # 2. Load preprocessed data
+    preprocessed_file = os.path.join(
+        dataset_dir, "results", f"{data_branch}_preprocessed.csv.gz")
+
+    if not os.path.exists(preprocessed_file):
+        raise FileNotFoundError(
+            f"Preprocessed file not found: {data_branch}_preprocessed.csv.gz\n"
+            f"Run preprocessing first with: run_preprocessing('{accession}', '{data_branch}')"
+        )
+
+    print(f"Loading preprocessed data: {data_branch}_preprocessed.csv.gz")
+    target_data = load_csv_data(preprocessed_file)
 
     # 3. Clustering
+    config = load_dataset_config(dataset_dir)
     print()
     print(f"Clustering ({algo_name})...")
     cluster_func = get_clustering_strategy(algo_name)
@@ -83,4 +87,5 @@ def run_experiment(accession: str, algo_name: str, data_branch: Branch = "pearso
 
     target_data.to_csv(save_path, compression='gzip')
     print()
-    print(f"✓ Saved to: {filename} ({target_data.shape[0]} × {target_data.shape[1]} genes + clusters)")
+    print(
+        f"✓ Saved to: {filename} ({target_data.shape[0]} × {target_data.shape[1]} genes + clusters)")
