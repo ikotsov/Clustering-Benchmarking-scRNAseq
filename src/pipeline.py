@@ -37,11 +37,10 @@ def run_experiment(accession: str, algo_name: str, data_branch: str = "pearson")
     output_dir = os.path.join(dataset_dir, "results")
     os.makedirs(output_dir, exist_ok=True)
 
-    final_df = target_data.copy()
-    final_df["cluster"] = labels
+    target_data["cluster"] = labels
 
     filename = f"{data_branch}_{algo_name}.csv.gz"
     save_path = os.path.join(output_dir, filename)
 
-    final_df.to_csv(save_path, compression='gzip')
+    target_data.to_csv(save_path, compression='gzip')
     print(f"Successfully saved {accession} results to: {save_path}")
