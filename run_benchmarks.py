@@ -1,5 +1,4 @@
-# run_benchmarks.py
-from src.pipeline import run_experiment
+from src.scripts import run_experiment
 
 if __name__ == "__main__":
     # Experiment 1: Standard K-Means on Pearson
