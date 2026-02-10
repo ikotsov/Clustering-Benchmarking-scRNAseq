@@ -2,7 +2,7 @@ import os
 from src.data_loading import load_csv_data, load_dataset_config
 from src.preprocessing import preprocess_data
 from src.clustering.registry import get_clustering_strategy
-from src.preprocessing.workflow import Branch
+from src.preprocessing.types import Branch
 
 
 def run_preprocessing(accession: str, data_branch: Branch = "pearson"):

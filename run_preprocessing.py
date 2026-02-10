@@ -1,4 +1,4 @@
-from src.pipeline import run_preprocessing
+from src.scripts import run_preprocessing
 
 
 if __name__ == "__main__":

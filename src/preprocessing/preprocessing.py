@@ -1,9 +1,7 @@
 import pandas as pd
-from typing import Literal
+from .types import Branch
 from .filters import Species, filter_high_mito_cells, filter_high_rrna_cells, filter_high_apoptosis_cells, filter_low_magnitude_genes
 from .transforms import normalize_by_library_size, log_transform, normalize_data_with_pearson
-
-Branch = Literal["pearson", "log_cpm"]
 
 
 def preprocess_data(raw_data: pd.DataFrame, branch: Branch = "pearson", species: Species = "human") -> pd.DataFrame:
