@@ -5,6 +5,40 @@ from src.clustering.registry import get_clustering_strategy
 from src.preprocessing.workflow import Branch
 
 
+def run_preprocessing(accession: str, data_branch: Branch = "pearson"):
+    """
+    Runs only the preprocessing step and saves the result.
+    Useful for exploring preprocessing outputs or running multiple preprocessing strategies for all datasets at once.
+    """
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    dataset_dir = os.path.join(project_root, "data", accession)
+
+    raw_file_path = os.path.join(dataset_dir, "raw", f"{accession}.csv.gz")
+
+    if not os.path.exists(raw_file_path):
+        raise FileNotFoundError(f"Expected file not found: {raw_file_path}")
+
+    config = load_dataset_config(dataset_dir)
+    species = config.get("species")
+
+    # Load & preprocess
+    print(f"--- Preprocessing Dataset: {accession} ---")
+    raw_data = load_csv_data(raw_file_path)
+    preprocessed_data = preprocess_data(
+        raw_data, branch=data_branch, species=species if species else "human")
+
+    # Save
+    output_dir = os.path.join(dataset_dir, "results")
+    os.makedirs(output_dir, exist_ok=True)
+
+    filename = f"{data_branch}_preprocessed.csv.gz"
+    save_path = os.path.join(output_dir, filename)
+
+    preprocessed_data.to_csv(save_path, compression='gzip')
+    print(f"Successfully saved preprocessed data to: {save_path}")
+    print(f"Output shape: {preprocessed_data.shape}")
+
+
 def run_experiment(accession: str, algo_name: str, data_branch: Branch = "pearson"):
     """
     Orchestrates the full flow: Load -> Preprocess -> Cluster -> Save.
