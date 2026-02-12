@@ -1,10 +1,10 @@
 import pandas as pd
 from sklearn.decomposition import PCA
 
-from src.constants import SEED
+from src.constants import SEED, N_PCA_COMPONENTS
 
 
-def apply_pca(data: pd.DataFrame, n_components: int = 50) -> pd.DataFrame:
+def apply_pca(data: pd.DataFrame, n_components: int = N_PCA_COMPONENTS) -> pd.DataFrame:
     """
     Apply PCA dimensionality reduction using scikit-learn.
 
