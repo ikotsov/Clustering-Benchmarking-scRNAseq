@@ -1,3 +1,3 @@
 from typing import Literal
 
-Branch = Literal["pearson", "log_cpm"]
+NormMethod = Literal["pearson", "log_cpm"]

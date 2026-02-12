@@ -1,5 +1,5 @@
 import pandas as pd
-from .types import Branch
+from .types import NormMethod
 from .filters import Species, filter_high_mito_cells, filter_high_rrna_cells, filter_high_apoptosis_cells, filter_low_magnitude_genes
 from .transforms import normalize_by_library_size, log_transform, normalize_data_with_pearson
 from .dimensionality import apply_pca
@@ -8,7 +8,7 @@ from src.constants import N_PCA_COMPONENTS
 
 def preprocess_data(
     raw_data: pd.DataFrame, 
-    branch: Branch = "pearson", 
+    norm_method: NormMethod = "pearson", 
     species: Species = "human",
     n_pca_components: int = N_PCA_COMPONENTS
 ) -> pd.DataFrame:
@@ -19,7 +19,7 @@ def preprocess_data(
     ----------
     raw_data : pd.DataFrame
         Raw gene expression data (cells × genes)
-    branch : Branch, default="pearson"
+    norm_method : NormMethod, default="pearson"
         Normalization method to use ("log_cpm" or "pearson")
     species : Species, default="human"
         Species for filtering (affects mitochondrial, ribosomal, apoptosis genes)
@@ -35,18 +35,18 @@ def preprocess_data(
     clean_data = filter_data(raw_data, species=species)
 
     # Selective normalization
-    if branch == "log_cpm":
+    if norm_method == "log_cpm":
         print()
         print("Normalization (LogCPM)...")
         normalized_data = normalize_data_with_log_cpm(clean_data)
 
-    elif branch == "pearson":
+    elif norm_method == "pearson":
         print()
         print("Normalization (Pearson Residuals)...")
         normalized_data = normalize_data_with_pearson(clean_data)
 
     else:
-        raise ValueError(f"Unknown preprocessing branch: {branch}")
+        raise ValueError(f"Unknown normalization method: {norm_method}")
     
     # Apply PCA
     print()
