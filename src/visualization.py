@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 from typing import cast, List
 
+from src.constants import SEED
+
 # To show cleanr and ready to use data - Blue is associated with stability.
 BLUE = '#3498db'
 # To warn about dirty or noisy data - Red is associated with attention.
@@ -184,3 +186,149 @@ def plot_filtering_effect_violin(data_before: pd.DataFrame, data_after: pd.DataF
 
     plt.tight_layout()
     plt.show()
+
+
+def plot_normalization_comparison(clean_data, normalized_data, n_cells=100):
+    """
+    Plots a side-by-side comparison of total transcripts per cell 
+    before and after normalization.
+    """
+    # Take a subset (e.g., first 500 cells) to make the bars distinct and readable.
+    indices = np.arange(n_cells)
+
+    # Get values for the first N cells
+    counts_before = clean_data.sum(axis=1).values[:n_cells]
+    counts_after = normalized_data.sum(axis=1).values[:n_cells]
+
+    # Plotting
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+    # --- Plot "Before" ---
+    axes[0].bar(indices, counts_before, width=1.0, alpha=0.9)
+    axes[0].set_title(
+        "Before normalization\n(variable sequencing depth)", fontweight='bold')
+    axes[0].set_xlabel("Cell index")
+    axes[0].set_ylabel("Total transcripts detected")
+    axes[0].set_xlim(0, n_cells)
+    axes[0].grid(axis='y', linestyle='--', alpha=0.3)
+
+    # Add a text annotation to explain the jaggedness
+    axes[0].text(0.5, 0.9, "Raw counts", transform=axes[0].transAxes,
+                 ha='center', va='top', fontweight='bold', color='white',
+                 bbox=dict(facecolor='black', alpha=0.3))
+
+    # --- Plot "After" ---
+    axes[1].bar(indices, counts_after, width=1.0, alpha=0.9)
+    axes[1].set_title(
+        f"After normalization\n(Scaled to CPM 1e6)", fontweight='bold')
+    axes[1].set_xlabel("Cell index")
+    axes[1].set_xlim(0, n_cells)
+    # We match the Y-axis limit to show scale, or let it autoscale to show the flat line
+    # (Autoscale is usually better here to see the line clearly)
+    axes[1].grid(axis='y', linestyle='--', alpha=0.3)
+
+    # Add annotation
+    axes[1].text(0.5, 0.9, "Scaled counts", transform=axes[1].transAxes,
+                 ha='center', va='top', fontweight='bold', color='white',
+                 bbox=dict(facecolor='black', alpha=0.3))
+
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_log_transform_comparison(normalized_data, logged_data, sample_size=100000):
+    """
+    Plots a side-by-side histogram comparison of gene expression 
+    before and after log transformation.
+    """
+    # --- 1. Data Preparation ---
+    # We flatten the matrix to treat all gene counts as a single pool of numbers.
+    # We sample 100,000 values to make plotting fast and avoid crashing.
+    np.random.seed(SEED)  # For reproducibility
+    # sample_size is passed as an argument
+
+    # Flatten and sample "Before" (Normalized Data)
+    flat_norm = normalized_data.values.flatten()
+    if len(flat_norm) > sample_size:
+        values_before = np.random.choice(flat_norm, sample_size, replace=False)
+    else:
+        values_before = flat_norm
+
+    # Flatten and sample "After" (Logged Data)
+    flat_log = logged_data.values.flatten()
+    if len(flat_log) > sample_size:
+        values_after = np.random.choice(flat_log, sample_size, replace=False)
+    else:
+        values_after = flat_log
+
+    # Filter out pure zeros for a clearer view of the expression distribution
+    # (Comment these out to see the zero-spike)
+    values_before = values_before[values_before > 0]
+    values_after = values_after[values_after > 0]
+
+    # --- 2. Plotting ---
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+    # Plot "Before" (Linear Scale)
+    axes[0].hist(values_before, bins=50, color=RED,
+                 edgecolor='black', alpha=0.7)
+    axes[0].set_title(
+        f"Before Log Transform\n(Normalized CPM)", fontweight='bold')
+    axes[0].set_xlabel("Expression Level (Counts)")
+    axes[0].set_ylabel("Frequency")
+    axes[0].grid(axis='y', linestyle='--', alpha=0.3)
+
+    # Plot "After" (Log Scale)
+    axes[1].hist(values_after, bins=50, color=BLUE,
+                 edgecolor='black', alpha=0.7)
+    axes[1].set_title(f"After Log Transform\n(Log1p CPM)", fontweight='bold')
+    axes[1].set_xlabel("Log Expression Level")
+    axes[1].grid(axis='y', linestyle='--', alpha=0.3)
+
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_pearson_diagnostic(pearsons_data):
+    """
+    Plots the mean-variance relationship of Pearson residuals to 
+    verify variance stabilization.
+    """
+    # Calculate Mean and Variance
+    gene_means = pearsons_data.mean(axis=0)
+    gene_vars = pearsons_data.var(axis=0)
+
+    # Plotting
+    plt.figure(figsize=(8, 6))
+
+    # Scatter plot of genes
+    plt.scatter(
+        gene_means,
+        gene_vars,
+        alpha=0.4,    # Make points semi-transparent to see density
+        s=15,         # Small marker size
+        color=BLUE,
+        label='HVGs (Top 3000)'
+    )
+
+    # Add a reference line at Variance - 1.0
+    # This is the theoretical target for Pearson residuals
+    plt.axhline(y=1.0, color='red', linestyle='--',
+                linewidth=2, label="Target variance (1.0)")
+
+    # 4. Formatting/Styling
+    plt.title("Mean-Variance relationship (Pearson residuals)")
+    plt.xlabel("Mean residual expression")
+    plt.ylabel("Variance of residuals")
+    plt.legend()
+    plt.grid(True, which='both', linestyle='--', linewidth=0.5, alpha=0.7)
+
+    # Ensure y-axis starts at 0 for clarity
+    plt.ylim(bottom=0)
+
+    plt.tight_layout()
+    plt.show()
+
+    # Health check
+    print(f"Mean variance: {gene_vars.mean():.2f}")
+    print(f"Max variance:  {gene_vars.max():.2f}")
