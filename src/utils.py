@@ -38,3 +38,26 @@ def select_hvg_by_variance(data: pd.DataFrame, n_top_genes: int | None = None, p
 
     # Return the subsetted DataFrame
     return data[top_genes]
+
+
+def extract_gene_subset(df, gene_list, subset_name="Subset"):
+    """
+    Intersects a dataframe's columns with a provided gene list 
+    and returns the filtered dataframe with a summary.
+    """
+    # Convert the list of genes to a pandas Index for easy intersection
+    gene_index = pd.Index(gene_list)
+    # This creates a new Index containing ONLY the common gene names.
+    overlapping = df.columns.intersection(gene_index)
+
+    # Extract Data
+    subset_df = df[overlapping]
+
+    # Print Summary
+    print(f"--- {subset_name} Summary ---")
+    print(f"Total genes in dataset: {len(df.columns)}")
+    print(f"Genes in target list:   {len(gene_list)}")
+    print(f"Intersection found:     {len(overlapping)}")
+    print("-" * (len(subset_name) + 12))
+
+    return subset_df
