@@ -1,5 +1,7 @@
 from typing import List, Literal
 import pandas as pd
+
+from .types import Species
 from .genes import HUMAN_APOPTOSIS_GENES, HUMAN_RRNA_GENES, MOUSE_APOPTOSIS_GENES, MOUSE_RRNA_GENES
 
 
@@ -59,9 +61,6 @@ def filter_high_mito_cells(data: pd.DataFrame, threshold: float = 0.05) -> pd.Da
         threshold=threshold,
         filter_name="mitochondrial"
     )
-
-
-Species = Literal["human", "mouse"]
 
 
 def filter_high_apoptosis_cells(data: pd.DataFrame, threshold: float = 0.05, species: Species = "human") -> pd.DataFrame:
