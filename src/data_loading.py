@@ -49,3 +49,35 @@ def load_10x_data(data_path: str = "../data/") -> pd.DataFrame:
 
     # Silence the error because we know that scprep returns a pd.DataFrame in this case.
     return cast(pd.DataFrame, raw_data)
+
+
+def load_ground_truth_labels(dataset_dir: str) -> pd.Series:
+    """
+    Load ground truth labels from saved CSV file.
+
+    Parameters
+    ----------
+    dataset_dir : str
+        Path to the dataset directory
+
+    Returns
+    -------
+    labels : pd.Series
+        Series with cell identifiers as index and true labels as values
+    """
+    labels_path = os.path.join(dataset_dir, "raw", "ground_truth_labels.csv")
+
+    if not os.path.exists(labels_path):
+        raise FileNotFoundError(
+            f"Ground truth labels not found: {labels_path}\n"
+            "Please extract labels from metadata first using the exploration notebook."
+        )
+
+    labels = pd.read_csv(labels_path, index_col=0)
+
+    # Reads both DataFrames and Series, but we only want the first column if it's a DataFrame
+    if isinstance(labels, pd.DataFrame):
+        labels = labels.iloc[:, 0]  # all rows, first column
+
+    labels.name = "true_label"
+    return labels
