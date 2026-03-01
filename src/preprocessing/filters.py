@@ -1,5 +1,6 @@
 from typing import List, Literal
 import pandas as pd
+import scanpy as sc
 
 from .types import Species
 from .genes import HUMAN_APOPTOSIS_GENES, HUMAN_RRNA_GENES, MOUSE_APOPTOSIS_GENES, MOUSE_RRNA_GENES
@@ -109,5 +110,51 @@ def filter_cells_by_fraction(data: pd.DataFrame, gene_list: List[str], threshold
     if dropped > 0:
         print(
             f"  • Dropped {dropped} cells (high {filter_name}: >{threshold*100}%)")
+
+    return data_filtered
+
+
+def filter_doublets(data: pd.DataFrame, expected_doublet_rate: float = 0.05) -> pd.DataFrame:
+    """
+    Detects and removes doublets (cells that are actually two or more cells captured together).
+
+    Uses Scrublet via scanpy to identify likely doublet events.
+    Doublets are artifacts that can confound clustering and downstream analysis.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Expression matrix with cells as rows and genes as columns.
+    expected_doublet_rate : float, default=0.05
+        Expected doublet rate of the dataset (typically 0.05-0.1 for 10x genomics).
+        Can be estimated as: (number_of_cells_captured / number_of_cells_expected) - 1
+
+    Returns
+    -------
+    data_filtered : pd.DataFrame
+        DataFrame with doublets removed.
+
+    Notes
+    -----
+    This function temporarily converts the DataFrame to an AnnData object for processing
+    with scanpy, then converts back to a DataFrame.
+    """
+    # Convert DataFrame to AnnData for scanpy processing
+    adata = sc.AnnData(data)
+
+    # Run Scrublet doublet detection
+    sc.pp.scrublet(adata, expected_doublet_rate=expected_doublet_rate)
+
+    # Extract doublet predictions (cells marked as doublets have True in 'predicted_doublet' column)
+    is_doublet = adata.obs["predicted_doublet"].values
+
+    # Filter to keep only singlets (non-doublets)
+    data_filtered = data.loc[~pd.Series(is_doublet, index=data.index)]
+
+    dropped = data.shape[0] - data_filtered.shape[0]
+    if dropped > 0:
+        print(f"  • Dropped {dropped} doublets")
+    else:
+        print(f"  • No doublets detected")
 
     return data_filtered
