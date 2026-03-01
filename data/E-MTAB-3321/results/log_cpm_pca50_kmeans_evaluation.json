@@ -1,0 +1,11 @@
+{
+  "dataset": "E-MTAB-3321",
+  "algorithm": "kmeans",
+  "preprocessing": "log_cpm",
+  "n_pca_components": 50,
+  "metrics": {
+    "ari": 0.859880543794165,
+    "nmi": 0.8321571289366386
+  },
+  "timestamp": "2026-03-01T12:16:04.615223"
+}
