@@ -4,9 +4,10 @@ import scanpy as sc
 
 from .types import Species
 from .genes import HUMAN_APOPTOSIS_GENES, HUMAN_RRNA_GENES, MOUSE_APOPTOSIS_GENES, MOUSE_RRNA_GENES
+from ..constants import GENE_MAGNITUDE_THRESHOLD
 
 
-def filter_low_magnitude_genes(data: pd.DataFrame, min_count: int = 2) -> pd.DataFrame:
+def filter_low_magnitude_genes(data: pd.DataFrame, min_count: int = GENE_MAGNITUDE_THRESHOLD) -> pd.DataFrame:
     """
     Removes genes that never exceed a specific count threshold.
     (by default removes genes containing only 0s and 1s).

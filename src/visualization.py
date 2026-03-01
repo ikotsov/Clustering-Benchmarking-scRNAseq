@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from typing import cast, List
 
-from src.constants import SEED
+from src.constants import SEED, GENE_MAGNITUDE_THRESHOLD
 
 # To show cleanr and ready to use data - Blue is associated with stability.
 BLUE = '#3498db'
@@ -37,9 +37,9 @@ def plot_gene_magnitude_distribution(data_before, data_after, x_limit=20):
     axes[0].set_xlim(-0.5, x_limit)
     axes[0].grid(axis='y', linestyle='--', alpha=0.3)
 
-    # Annotate genes (Max <= 1)
-    bad_genes_count = (max_counts_before < 2).sum()
-    axes[0].text(0.5, 0.9, f"Genes with max < 2:\n{bad_genes_count}",
+    # Annotate genes (Max < threshold)
+    bad_genes_count = (max_counts_before < GENE_MAGNITUDE_THRESHOLD).sum()
+    axes[0].text(0.5, 0.9, f"Genes with max < {GENE_MAGNITUDE_THRESHOLD}:\n{bad_genes_count}",
                  transform=axes[0].transAxes, ha='center', color='red', fontweight='bold',
                  bbox=dict(facecolor='white', alpha=0.8, edgecolor='red'))
 
@@ -54,8 +54,8 @@ def plot_gene_magnitude_distribution(data_before, data_after, x_limit=20):
     axes[1].grid(axis='y', linestyle='--', alpha=0.3)
 
     # Add a line to show the cutoff
-    axes[1].axvline(1.5, color='black', linestyle='--',
-                    linewidth=2, label='Cutoff (2)')
+    axes[1].axvline(GENE_MAGNITUDE_THRESHOLD - 0.5, color='black', linestyle='--',
+                    linewidth=2, label=f'Cutoff ({GENE_MAGNITUDE_THRESHOLD})')
     axes[1].legend()
 
     plt.tight_layout()
