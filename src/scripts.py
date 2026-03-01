@@ -1,6 +1,8 @@
+import seaborn as sns
+import matplotlib.pyplot as plt
 import os
 import pandas as pd
-from src.data_loading import load_csv_data, load_dataset_config
+from src.data_loading import load_csv_data, load_dataset_config, load_ground_truth_labels
 from src.preprocessing import preprocess_data
 from src.clustering.registry import get_clustering_strategy
 from src.preprocessing.types import NormMethod
@@ -118,22 +120,35 @@ def run_experiment(accession: str, algo_name: str, norm_method: NormMethod = "pe
     print(
         f"✓ Saved to: {filename} ({target_data.shape[0]} × {target_data.shape[1]} features + clusters)")
 
-    # TODO: Get ground truth labels and provide to evaluation function
-    # 5. Evaluate and save results
-    # print()
-    # print("Evaluation...")
-    # labels_series = pd.Series(
-    #     labels, index=target_data.index, name="cluster")
-    # metrics = evaluate_clustering(labels_series, ground_truth)
+    # 5. Load ground truth labels
+    print()
+    print("Loading ground truth labels...")
+    try:
+        ground_truth = load_ground_truth_labels(dataset_dir)
+        print(f"  ✓ Loaded {len(ground_truth)} ground truth labels")
+    except FileNotFoundError as e:
+        print(f"  ⚠ Warning: {e}")
+        print("  Skipping evaluation.")
+        return
 
-    # print(f"  • ARI: {metrics['ari']:.3f}")
-    # print(f"  • NMI: {metrics['nmi']:.3f}")
+    # 6. Evaluate and save results
+    print()
+    print("Evaluation...")
+    # Here we align the predicted labels with the ground truth labels based on the index (cell IDs).
+    # The alignment is done based on the order of the indices in the target_data.
+    # Wew rely on the fact that the clustering algorithm returns labels in the same order as the input data.
+    labels_series = pd.Series(
+        labels, index=target_data.index, name="cluster")
+    metrics = evaluate_clustering(labels_series, ground_truth)
 
-    # save_evaluation_results(
-    #     dataset=accession,
-    #     algorithm=algo_name,
-    #     preprocessing=data_branch,
-    #     n_pca_components=n_pca_components,
-    #     metrics=metrics,
-    #     output_dir=output_dir
-    # )
+    print(f"  • ARI: {metrics['ari']:.3f}")
+    print(f"  • NMI: {metrics['nmi']:.3f}")
+
+    save_evaluation_results(
+        dataset=accession,
+        algorithm=algo_name,
+        preprocessing=norm_method,
+        n_pca_components=N_PCA_COMPONENTS,
+        metrics=metrics,
+        output_dir=output_dir
+    )
