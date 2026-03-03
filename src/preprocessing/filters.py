@@ -93,7 +93,9 @@ def filter_cells_by_fraction(data: pd.DataFrame, gene_list: List[str], threshold
     """
     Removes cells with high expression of a specific gene set.
     """
-    valid_genes = [gene for gene in gene_list if gene.upper() in data.columns]
+    uppercase_columns = {col.upper() for col in data.columns}
+    valid_genes = [gene for gene in gene_list if gene.upper()
+                   in uppercase_columns]
 
     if len(valid_genes) == 0:
         return data
