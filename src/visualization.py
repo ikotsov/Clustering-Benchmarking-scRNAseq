@@ -101,7 +101,7 @@ def plot_filtering_effect(data_before: pd.DataFrame, data_after: pd.DataFrame, g
                  edgecolor='black', alpha=0.7)
     axes[0].set_title(
         f"Before Filtering\n(n={len(values_before)})", fontweight='bold')
-    axes[0].set_ylabel("Number of Cells")
+    axes[0].set_ylabel("Number of cells")
     axes[0].set_xlabel(metric_name)
     axes[0].grid(axis='y', linestyle='--', alpha=0.3)
 
