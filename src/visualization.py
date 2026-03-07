@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from typing import cast, List
+from typing import cast, List, Optional
 
 from src.constants import SEED, GENE_MAGNITUDE_THRESHOLD
 
@@ -68,61 +68,66 @@ GREY = '#95a5a6'
 GREEN = '#2ecc71'
 
 
-def plot_filtering_effect(data_before: pd.DataFrame, data_after: pd.DataFrame, gene_list: list, metric_name: str, bins=50):
-    """
-    Calculates a specific metric (fraction of counts) for a set of genes 
-    and plots the distribution before and after filtering.
+def plot_filtering_effect(data_before, data_after, gene_list, metric_name):
+    # Calculate values
+    vals_before = calculate_gene_fraction(data_before, gene_list)
+    vals_after = calculate_gene_fraction(data_after, gene_list)
 
-    Args:
-        data_before (pd.DataFrame): Dataframe before filtering.
-        data_after (pd.DataFrame): Dataframe after filtering.
-        gene_list (list): List of gene names to calculate the fraction for.
-        metric_name (str): Label for the plot (e.g., 'Mitochondrial Fraction').
-    """
-    # Identify valid genes present in the dataset
-    valid_genes = [g for g in gene_list if g in data_before.columns]
-
-    if not valid_genes:
-        print(
-            f"Warning: No valid genes found for {metric_name} in the dataset.")
-        return
-
-    # Prepare the genes: calculate the fractions
-    # Formula: Sum of specific genes / Total sum of all genes per cell
-    values_before = data_before[valid_genes].sum(
-        axis=1) / data_before.sum(axis=1)
-    values_after = data_after[valid_genes].sum(axis=1) / data_after.sum(axis=1)
-
-    # Plotting Logic
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
-    # --- Plot "Before" (Left) ---
-    axes[0].hist(values_before, bins=bins, color=GREY,
-                 edgecolor='black', alpha=0.7)
-    axes[0].set_title(
-        f"Before Filtering\n(n={len(values_before)})", fontweight='bold')
-    axes[0].set_ylabel("Number of cells")
-    axes[0].set_xlabel(metric_name)
-    axes[0].grid(axis='y', linestyle='--', alpha=0.3)
-
-    stats_before = f"Max={np.max(values_before):.4f}\nMean={np.mean(values_before):.4f}"
-    axes[0].text(0.95, 0.95, stats_before, transform=axes[0].transAxes,
-                 va='top', ha='right', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
-
-    # --- Plot "After" (Right) ---
-    axes[1].hist(values_after, bins=bins, color=GREEN,
-                 edgecolor='black', alpha=0.7)
-    axes[1].set_title(
-        f"After Filtering\n(n={len(values_after)})", fontweight='bold')
-    axes[1].set_xlabel(metric_name)
-    axes[1].grid(axis='y', linestyle='--', alpha=0.3)
-
-    stats_after = f"Max={np.max(values_after):.4f}\nMean={np.mean(values_after):.4f}"
-    axes[1].text(0.95, 0.95, stats_after, transform=axes[1].transAxes,
-                 va='top', ha='right', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+    # Reuse the generic plotter
+    plot_metric_distribution(
+        vals_before, f"Before: {metric_name}", color=GREY, ax=axes[0])
+    plot_metric_distribution(
+        vals_after, f"After: {metric_name}", color=GREEN, ax=axes[1])
 
     plt.tight_layout()
     plt.show()
+
+
+def calculate_gene_fraction(df: pd.DataFrame, gene_list: list) -> pd.Series:
+    """Helper to calculate the fraction of total counts for a gene set."""
+    valid_genes = [g for g in gene_list if g in df.columns]
+    if not valid_genes:
+        return pd.Series(0, index=df.index)
+    return df[valid_genes].sum(axis=1) / df.sum(axis=1).replace(0, 1)
+
+
+def plot_metric_distribution(values: pd.Series, title: str, cutoff: Optional[float] = None, color: str = BLUE, ax=None, label="Fraction of counts", bins=50):
+    """
+    Plots a single histogram for any numerical series.
+    Does not require a gene list—just the final calculated values.
+    """
+    is_standalone = ax is None
+
+    if is_standalone:
+        fig, ax = plt.subplots(figsize=(7, 4))
+
+    ax.hist(values, bins=bins, color=color, edgecolor='black', alpha=0.7)
+
+    # Titles and Labels
+    ax.set_title(f"{title}\n(n={len(values)})", fontweight='bold')
+    ax.set_xlabel(label)
+    ax.set_ylabel("Number of cells")
+    ax.grid(axis='y', linestyle='--', alpha=0.3)
+
+    # Optional Cutoff Line
+    if cutoff is not None:
+        ax.axvline(cutoff, color=RED, linestyle='--',
+                   linewidth=2, label=f'Cutoff: {cutoff}')
+        ax.legend()
+
+    # Annotations
+    stats_text = f"Max={values.max():.4f}\nMean={values.mean():.4f}"
+    ax.text(0.95, 0.95, stats_text, transform=ax.transAxes,
+            va='top', ha='right', bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+
+    if is_standalone:
+        plt.tight_layout()
+        plt.show()
+        return None
+
+    return ax
 
 
 def plot_filtering_effect_violin(data_before: pd.DataFrame, data_after: pd.DataFrame, gene_list: list, metric_name: str):
