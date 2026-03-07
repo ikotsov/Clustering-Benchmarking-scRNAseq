@@ -1,0 +1,8 @@
+[project]
+name = "clustering_benchmarkingscrnaseq_project"
+version = "0.1.0"
+description = "Clustering and Benchmarking for scRNA-seq"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
