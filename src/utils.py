@@ -50,14 +50,13 @@ def extract_gene_subset(df, gene_list, subset_name="Subset"):
     # This creates a new Index containing ONLY the common gene names.
     overlapping = df.columns.intersection(gene_index)
 
-    # Extract Data
-    subset_df = df[overlapping]
+    count = len(overlapping)
+    total_target = len(gene_list)
 
     # Print Summary
-    print(f"--- {subset_name} Summary ---")
-    print(f"Total genes in dataset: {len(df.columns)}")
-    print(f"Genes in target list:   {len(gene_list)}")
-    print(f"Intersection found:     {len(overlapping)}")
-    print("-" * (len(subset_name) + 12))
+    print(f"{subset_name}: Matched {count} of {total_target} reference genes.")
+
+    # Extract Data
+    subset_df = df[overlapping]
 
     return subset_df
