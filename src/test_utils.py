@@ -1,6 +1,6 @@
 import pandas as pd
 
-from .utils import count_human_mt_genes, count_mouse_mt_genes
+from .utils import count_human_mt_genes, count_mouse_mt_genes, get_human_mt_genes, get_mouse_mt_genes
 
 
 def test_count_mouse_mt_genes():
@@ -13,3 +13,17 @@ def test_count_human_mt_genes():
     df = pd.DataFrame(columns=["MT-CO1", "MT-ND2", "mt-Nd1", "ACTB"])
 
     assert count_human_mt_genes(df) == 2
+
+
+def test_get_mouse_mt_genes():
+    df = pd.DataFrame(columns=["mt-Nd1", "mt-Co1", "MT-CO1", "Actb"])
+
+    result = get_mouse_mt_genes(df)
+    assert result == ["mt-Nd1", "mt-Co1"]
+
+
+def test_get_human_mt_genes():
+    df = pd.DataFrame(columns=["MT-CO1", "MT-ND2", "mt-Nd1", "ACTB"])
+
+    result = get_human_mt_genes(df)
+    assert result == ["MT-CO1", "MT-ND2"]

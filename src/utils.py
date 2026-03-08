@@ -23,15 +23,33 @@ def extract_gene_subset(df, gene_list, subset_name="Subset"):
     return subset_df
 
 
+HUMAN_MITOCHONDRIAL_PREFIX = "MT-"
+MOUSE_MITOCHONDRIAL_PREFIX = "mt-"
+
+
 def count_mouse_mt_genes(data: pd.DataFrame) -> int:
     """
     Counts genes whose names start with 'mt-' (common mouse mitochondrial prefix).
     """
-    return int(data.columns.str.startswith("mt-").sum())
+    return int(data.columns.str.startswith(MOUSE_MITOCHONDRIAL_PREFIX).sum())
 
 
 def count_human_mt_genes(data: pd.DataFrame) -> int:
     """
     Counts genes whose names start with 'MT-' (common human mitochondrial prefix).
     """
-    return int(data.columns.str.startswith("MT-").sum())
+    return int(data.columns.str.startswith(HUMAN_MITOCHONDRIAL_PREFIX).sum())
+
+
+def get_mouse_mt_genes(data: pd.DataFrame) -> list:
+    """
+    Returns a list of genes whose names start with 'mt-' (common mouse mitochondrial prefix).
+    """
+    return data.columns[data.columns.str.startswith(MOUSE_MITOCHONDRIAL_PREFIX)].tolist()
+
+
+def get_human_mt_genes(data: pd.DataFrame) -> list:
+    """
+    Returns a list of genes whose names start with 'MT-' (common human mitochondrial prefix).
+    """
+    return data.columns[data.columns.str.startswith(HUMAN_MITOCHONDRIAL_PREFIX)].tolist()
