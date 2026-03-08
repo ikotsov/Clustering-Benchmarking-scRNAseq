@@ -21,3 +21,17 @@ def extract_gene_subset(df, gene_list, subset_name="Subset"):
     subset_df = df[overlapping]
 
     return subset_df
+
+
+def count_mouse_mt_genes(data: pd.DataFrame) -> int:
+    """
+    Counts genes whose names start with 'mt-' (common mouse mitochondrial prefix).
+    """
+    return int(data.columns.str.startswith("mt-").sum())
+
+
+def count_human_mt_genes(data: pd.DataFrame) -> int:
+    """
+    Counts genes whose names start with 'MT-' (common human mitochondrial prefix).
+    """
+    return int(data.columns.str.startswith("MT-").sum())
