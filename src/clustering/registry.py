@@ -1,12 +1,20 @@
 import pandas as pd
 from typing import Callable, Dict
-from .strategies import kmeans_strategy, spectral_strategy
+from .strategies import (
+    birch_strategy,
+    kmeans_strategy,
+    optics_strategy,
+    spectral_strategy,
+)
 
 ClusteringFunc = Callable[..., pd.Series]
 
 STRATEGY_REGISTRY: Dict[str, ClusteringFunc] = {
+    "birch": birch_strategy,
     "kmeans": kmeans_strategy,
+    "optics": optics_strategy,
     "spectral": spectral_strategy,
+    "spectral_clustering": spectral_strategy,
 }
 
 
