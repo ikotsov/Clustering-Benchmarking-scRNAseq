@@ -18,21 +18,26 @@ class DatasetConfig(TypedDict):
     preprocessing: NotRequired[dict[str, float | int]]
 
 
-def load_dataset_config(dataset_dir: str) -> DatasetConfig | dict[str, object]:
+def load_dataset_config(dataset_dir: str) -> DatasetConfig:
+    default_config: DatasetConfig = {
+        "species": "human",
+        "n_clusters": 0,
+    }
+
     config_path = os.path.join(dataset_dir, "config.yaml")
     if not os.path.exists(config_path):
-        return {}
+        return default_config
 
     with open(config_path, "r") as f:
         loaded = yaml.safe_load(f)
 
     if not isinstance(loaded, dict):
-        return {}
+        return default_config
 
-    return cast(DatasetConfig | dict[str, object], loaded)
+    return cast(DatasetConfig, loaded)
 
 
-def parse_preprocessing_config(config: DatasetConfig | dict[str, object]) -> PreprocessingConfig:
+def parse_preprocessing_config(config: DatasetConfig) -> PreprocessingConfig:
     defaults = PreprocessingConfig()
 
     raw_preprocessing = config.get("preprocessing")

@@ -1,5 +1,3 @@
-import seaborn as sns
-import matplotlib.pyplot as plt
 import os
 import pandas as pd
 from src.data_loading import load_csv_data, load_dataset_config, load_ground_truth_labels, parse_preprocessing_config
@@ -8,6 +6,7 @@ from src.clustering.registry import get_clustering_strategy
 from src.preprocessing.types import NormMethod
 from src.evaluation import evaluate_clustering, save_evaluation_results
 from src.constants import N_PCA_COMPONENTS
+from src.types import Species
 
 
 def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", n_pca_components: int = N_PCA_COMPONENTS):
@@ -34,7 +33,7 @@ def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", n_pca
 
     config = load_dataset_config(dataset_dir)
     species_value = config.get("species")
-    species = species_value if species_value in ("human", "mouse") else "human"
+    species = species_value if species_value in Species else "human"
     preprocessing_config = parse_preprocessing_config(config)
 
     # Load & preprocess
