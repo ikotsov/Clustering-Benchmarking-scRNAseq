@@ -4,7 +4,7 @@ import os
 import pandas as pd
 from typing import cast, NotRequired, TypedDict
 
-from src.preprocessing.filters import Species
+from src.types import Species
 from src.preprocessing.types import PreprocessingConfig
 
 

@@ -3,7 +3,6 @@ from typing import Literal
 
 from src.constants import GENE_MAGNITUDE_THRESHOLD, RRNA_THRESHOLD, APOPTOSIS_THRESHOLD, MITO_THRESHOLD
 
-Species = Literal["human", "mouse"]
 NormMethod = Literal["pearson", "log_cpm"]
 
 

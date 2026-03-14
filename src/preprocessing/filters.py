@@ -2,7 +2,7 @@ from typing import List, Optional
 import pandas as pd
 import scanpy as sc
 
-from .types import Species
+from ..types import Species
 from .genes import HUMAN_APOPTOSIS_GENES, HUMAN_RRNA_GENES, MOUSE_APOPTOSIS_GENES, MOUSE_RRNA_GENES
 from ..constants import GENE_MAGNITUDE_THRESHOLD
 
