@@ -9,6 +9,9 @@ from src.constants import N_PCA_COMPONENTS
 from src.types import Species
 
 
+VALID_SPECIES: tuple[Species, Species] = ("human", "mouse")
+
+
 def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", n_pca_components: int = N_PCA_COMPONENTS):
     """
     Runs only the preprocessing step and saves the result.
@@ -33,7 +36,7 @@ def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", n_pca
 
     config = load_dataset_config(dataset_dir)
     species_value = config.get("species")
-    species = species_value if species_value in ["human", "mouse"] else "human"
+    species = species_value if species_value in VALID_SPECIES else "human"
     preprocessing_config = parse_preprocessing_config(config)
 
     # Load & preprocess
