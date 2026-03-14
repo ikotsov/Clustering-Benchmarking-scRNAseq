@@ -15,7 +15,7 @@ def preprocess_data(
 ) -> pd.DataFrame:
     """
     Runs filtering, normalization, and PCA dimensionality reduction.
-    
+
     Parameters
     ----------
     raw_data : pd.DataFrame
@@ -26,14 +26,15 @@ def preprocess_data(
         Species for filtering (affects mitochondrial, ribosomal, apoptosis genes)
     n_pca_components : int, default=N_PCA_COMPONENTS
         Number of principal components to retain
-    
+
     Returns
     -------
     pd.DataFrame
         Processed data ready for clustering
     """
     # Always filter first
-    clean_data = filter_data(raw_data, config=preprocessing_config, species=species)
+    clean_data = filter_data(
+        raw_data, config=preprocessing_config, species=species)
 
     # Selective normalization
     if norm_method == "log_cpm":
@@ -48,7 +49,7 @@ def preprocess_data(
 
     else:
         raise ValueError(f"Unknown normalization method: {norm_method}")
-    
+
     # Apply PCA
     print()
     print("Dimensionality Reduction (PCA)...")
@@ -70,9 +71,12 @@ def filter_data(raw_data: pd.DataFrame, config: PreprocessingConfig, species: Sp
     print(f"Filtering...")
     print(f"  Input: {raw_data.shape[0]} cells × {raw_data.shape[1]} genes")
 
-    data = filter_low_magnitude_genes(raw_data, min_count=config.gene_magnitude_threshold)
-    data = filter_high_apoptosis_cells(data, species=species, threshold=config.apoptosis_threshold)
-    data = filter_high_rrna_cells(data, species=species, threshold=config.rrna_threshold)
+    data = filter_low_magnitude_genes(
+        raw_data, min_count=config.gene_magnitude_threshold)
+    data = filter_high_apoptosis_cells(
+        data, species=species, threshold=config.apoptosis_threshold)
+    data = filter_high_rrna_cells(
+        data, species=species, threshold=config.rrna_threshold)
     data = filter_high_mito_cells(data, threshold=config.mito_threshold)
 
     print(f"  Output: {data.shape[0]} cells × {data.shape[1]} genes")
