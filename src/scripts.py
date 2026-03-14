@@ -2,7 +2,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import os
 import pandas as pd
-from src.data_loading import load_csv_data, load_dataset_config, load_ground_truth_labels
+from src.data_loading import load_csv_data, load_dataset_config, load_ground_truth_labels, parse_preprocessing_config
 from src.preprocessing import preprocess_data
 from src.clustering.registry import get_clustering_strategy
 from src.preprocessing.types import NormMethod
@@ -33,7 +33,9 @@ def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", n_pca
         raise FileNotFoundError(f"Expected file not found: {raw_file_path}")
 
     config = load_dataset_config(dataset_dir)
-    species = config.get("species")
+    species_value = config.get("species")
+    species = species_value if species_value in ("human", "mouse") else "human"
+    preprocessing_config = parse_preprocessing_config(config)
 
     # Load & preprocess
     print(
@@ -43,8 +45,9 @@ def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", n_pca
     preprocessed_data = preprocess_data(
         raw_data,
         norm_method=norm_method,
-        species=species if species else "human",
-        n_pca_components=n_pca_components
+        species=species,
+        n_pca_components=n_pca_components,
+        preprocessing_config=preprocessing_config,
     )
 
     # Save

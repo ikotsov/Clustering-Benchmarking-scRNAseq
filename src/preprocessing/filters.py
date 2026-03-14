@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 import pandas as pd
 import scanpy as sc
 
@@ -117,7 +117,7 @@ def filter_cells_by_fraction(data: pd.DataFrame, gene_list: List[str], threshold
     return data_filtered
 
 
-def filter_doublets(data: pd.DataFrame, expected_doublet_rate: float = 0.05) -> pd.DataFrame:
+def filter_doublets(data: pd.DataFrame, expected_doublet_rate: float = 0.05, threshold: Optional[float] = None) -> pd.DataFrame:
     """
     Detects and removes doublets (cells that are actually two or more cells captured together).
 
@@ -131,6 +131,8 @@ def filter_doublets(data: pd.DataFrame, expected_doublet_rate: float = 0.05) -> 
     expected_doublet_rate : float, default=0.05
         Expected doublet rate of the dataset (typically 0.05-0.1 for 10x genomics).
         Can be estimated as: (number_of_cells_captured / number_of_cells_expected) - 1
+    threshold : float, optional
+        Threshold for doublet score. If provided, cells with scores above this threshold will be considered doublets.
 
     Returns
     -------
@@ -146,7 +148,10 @@ def filter_doublets(data: pd.DataFrame, expected_doublet_rate: float = 0.05) -> 
     adata = sc.AnnData(data)
 
     # Run Scrublet doublet detection
-    sc.pp.scrublet(adata, expected_doublet_rate=expected_doublet_rate)
+    sc.pp.scrublet(
+        adata, expected_doublet_rate=expected_doublet_rate, threshold=threshold)
+
+    sc.pl.scrublet_score_distribution(adata)
 
     # Extract doublet predictions (cells marked as doublets have True in 'predicted_doublet' column)
     is_doublet = adata.obs["predicted_doublet"].values

@@ -1,5 +1,5 @@
 import pandas as pd
-from .types import NormMethod
+from .types import NormMethod, PreprocessingConfig
 from .filters import Species, filter_high_mito_cells, filter_high_rrna_cells, filter_high_apoptosis_cells, filter_low_magnitude_genes
 from .transforms import normalize_by_library_size, log_transform, normalize_data_with_pearson
 from .dimensionality import apply_pca
@@ -7,10 +7,11 @@ from src.constants import N_PCA_COMPONENTS
 
 
 def preprocess_data(
-    raw_data: pd.DataFrame, 
-    norm_method: NormMethod = "pearson", 
+    raw_data: pd.DataFrame,
+    norm_method: NormMethod = "pearson",
     species: Species = "human",
-    n_pca_components: int = N_PCA_COMPONENTS
+    n_pca_components: int = N_PCA_COMPONENTS,
+    preprocessing_config: PreprocessingConfig = PreprocessingConfig(),
 ) -> pd.DataFrame:
     """
     Runs filtering, normalization, and PCA dimensionality reduction.
@@ -32,7 +33,7 @@ def preprocess_data(
         Processed data ready for clustering
     """
     # Always filter first
-    clean_data = filter_data(raw_data, species=species)
+    clean_data = filter_data(raw_data, config=preprocessing_config, species=species)
 
     # Selective normalization
     if norm_method == "log_cpm":
@@ -62,17 +63,17 @@ def normalize_data_with_log_cpm(filtered_data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
-def filter_data(raw_data: pd.DataFrame, species: Species = "human") -> pd.DataFrame:
+def filter_data(raw_data: pd.DataFrame, config: PreprocessingConfig, species: Species = "human") -> pd.DataFrame:
     """
     Runs the full filtering pipeline.
     """
     print(f"Filtering...")
     print(f"  Input: {raw_data.shape[0]} cells × {raw_data.shape[1]} genes")
 
-    data = filter_low_magnitude_genes(raw_data)
-    data = filter_high_apoptosis_cells(data, species=species)
-    data = filter_high_rrna_cells(data, species=species)
-    data = filter_high_mito_cells(data)
+    data = filter_low_magnitude_genes(raw_data, min_count=config.gene_magnitude_threshold)
+    data = filter_high_apoptosis_cells(data, species=species, threshold=config.apoptosis_threshold)
+    data = filter_high_rrna_cells(data, species=species, threshold=config.rrna_threshold)
+    data = filter_high_mito_cells(data, threshold=config.mito_threshold)
 
     print(f"  Output: {data.shape[0]} cells × {data.shape[1]} genes")
     return data
