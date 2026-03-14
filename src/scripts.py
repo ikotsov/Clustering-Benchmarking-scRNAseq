@@ -33,7 +33,7 @@ def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", n_pca
 
     config = load_dataset_config(dataset_dir)
     species_value = config.get("species")
-    species = species_value if species_value in Species else "human"
+    species = species_value if species_value in ["human", "mouse"] else "human"
     preprocessing_config = parse_preprocessing_config(config)
 
     # Load & preprocess
@@ -41,28 +41,43 @@ def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", n_pca
         f"\n=== PREPROCESSING: {accession}, norm_method={norm_method}, n_pca_components={n_pca_components} ===")
     print()
     raw_data = load_csv_data(raw_file_path)
-    preprocessed_data = preprocess_data(
+    preprocessed_pca = preprocess_data(
         raw_data,
         norm_method=norm_method,
         species=species,
         n_pca_components=n_pca_components,
         preprocessing_config=preprocessing_config,
+        with_pca=True,
+    )
+    preprocessed_no_pca = preprocess_data(
+        raw_data,
+        norm_method=norm_method,
+        species=species,
+        n_pca_components=n_pca_components,
+        preprocessing_config=preprocessing_config,
+        with_pca=False,
     )
 
-    # Save
+    # Save both representations
     output_dir = os.path.join(dataset_dir, "results")
     os.makedirs(output_dir, exist_ok=True)
 
-    filename = f"{norm_method}_pca_preprocessed.csv.gz"
-    save_path = os.path.join(output_dir, filename)
+    for with_pca in (True, False):
+        preprocessed_data = preprocessed_pca if with_pca else preprocessed_no_pca
+        filename = _preprocessed_filename(norm_method, with_pca)
+        save_path = os.path.join(output_dir, filename)
+        preprocessed_data.to_csv(save_path, compression='gzip')
+        print()
+        print(
+            f"✓ Saved to: {filename} ({preprocessed_data.shape[0]} × {preprocessed_data.shape[1]} features)")
 
-    preprocessed_data.to_csv(save_path, compression='gzip')
-    print()
-    print(
-        f"✓ Saved to: {filename} ({preprocessed_data.shape[0]} × {preprocessed_data.shape[1]} components)")
 
-
-def run_experiment(accession: str, algo_name: str, norm_method: NormMethod = "pearson"):
+def run_experiment(
+    accession: str,
+    algo_name: str,
+    norm_method: NormMethod = "pearson",
+    with_pca: bool = True,
+):
     """
     Orchestrates the clustering flow: Load preprocessed data -> Cluster -> Evaluate -> Save.
     Expects preprocessed data to already exist (use run_preprocessing first).
@@ -81,11 +96,13 @@ def run_experiment(accession: str, algo_name: str, norm_method: NormMethod = "pe
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     dataset_dir = os.path.join(project_root, "data", accession)
 
-    print(f"\n=== EXPERIMENT: {accession} + {algo_name.upper()} ===")
+    pca_tag = _pca_label(with_pca).upper()
+    print(
+        f"\n=== EXPERIMENT: {accession} + {algo_name.upper()} + {pca_tag} ===")
     print()
 
     # 2. Load preprocessed data
-    preprocessed_filename = f"{norm_method}_pca_preprocessed.csv.gz"
+    preprocessed_filename = _preprocessed_filename(norm_method, with_pca)
     preprocessed_file = os.path.join(
         dataset_dir, "results", preprocessed_filename)
 
@@ -114,7 +131,7 @@ def run_experiment(accession: str, algo_name: str, norm_method: NormMethod = "pe
 
     target_data["cluster"] = labels
 
-    filename = f"{norm_method}_pca_{algo_name}.csv.gz"
+    filename = f"{norm_method}_{_pca_label(with_pca)}_{algo_name}.csv.gz"
     save_path = os.path.join(output_dir, filename)
 
     target_data.to_csv(save_path, compression='gzip')
@@ -149,8 +166,16 @@ def run_experiment(accession: str, algo_name: str, norm_method: NormMethod = "pe
     save_evaluation_results(
         dataset=accession,
         algorithm=algo_name,
-        preprocessing=norm_method,
-        n_pca_components=N_PCA_COMPONENTS,
+        preprocessing=f"{norm_method}_{_pca_label(with_pca)}",
+        n_pca_components=N_PCA_COMPONENTS if with_pca else 0,
         metrics=metrics,
         output_dir=output_dir
     )
+
+
+def _pca_label(with_pca: bool) -> str:
+    return "pca" if with_pca else "no_pca"
+
+
+def _preprocessed_filename(norm_method: NormMethod, with_pca: bool) -> str:
+    return f"{norm_method}_{_pca_label(with_pca)}_preprocessed.csv.gz"

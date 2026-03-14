@@ -13,6 +13,7 @@ def preprocess_data(
     species: Species = "human",
     n_pca_components: int = N_PCA_COMPONENTS,
     preprocessing_config: PreprocessingConfig = PreprocessingConfig(),
+    with_pca: bool = True,
 ) -> pd.DataFrame:
     """
     Runs filtering, normalization, and PCA dimensionality reduction.
@@ -51,9 +52,14 @@ def preprocess_data(
     else:
         raise ValueError(f"Unknown normalization method: {norm_method}")
 
+    if not with_pca:
+        print()
+        print("Skipping dimensionality reduction (PCA)...")
+        return normalized_data
+
     # Apply PCA
     print()
-    print("Dimensionality Reduction (PCA)...")
+    print("Dimensionality reduction (PCA)...")
     return apply_pca(normalized_data, n_components=n_pca_components)
 
 
