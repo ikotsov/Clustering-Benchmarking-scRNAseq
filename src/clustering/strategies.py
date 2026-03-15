@@ -1,4 +1,5 @@
 import pandas as pd
+from sklearn import cluster as sklearn_cluster
 from sklearn.cluster import Birch, KMeans, OPTICS, SpectralClustering
 
 from src.constants import SEED
@@ -54,5 +55,22 @@ def birch_strategy(data: pd.DataFrame, **kwargs) -> pd.Series:
         n_clusters=n_clusters,
         threshold=threshold,
         branching_factor=branching_factor,
+    )
+    return pd.Series(model.fit_predict(data), index=data.index)
+
+
+def hdbscan_strategy(data: pd.DataFrame, **kwargs) -> pd.Series:
+    '''
+    Clustering strategy using HDBSCAN algorithm.
+    https://scikit-learn.org/stable/modules/generated/sklearn.cluster.HDBSCAN.html
+    '''
+    hdbscan_cls = getattr(sklearn_cluster, "HDBSCAN")
+    min_cluster_size = kwargs.get("min_cluster_size", 5)
+    min_samples = kwargs.get("min_samples", None)
+    cluster_selection_epsilon = kwargs.get("cluster_selection_epsilon", 0.0)
+    model = hdbscan_cls(
+        min_cluster_size=min_cluster_size,
+        min_samples=min_samples,
+        cluster_selection_epsilon=cluster_selection_epsilon,
     )
     return pd.Series(model.fit_predict(data), index=data.index)
