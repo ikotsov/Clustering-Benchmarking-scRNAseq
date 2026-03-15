@@ -1,4 +1,3 @@
-import scprep
 import yaml
 import os
 import pandas as pd
@@ -66,32 +65,6 @@ def parse_preprocessing_config(config: DatasetConfig) -> PreprocessingConfig:
         apoptosis_threshold=apoptosis_threshold,
         gene_magnitude_threshold=gene_magnitude_threshold,
     )
-
-
-def load_10x_data(data_path: str = "../data/") -> pd.DataFrame:
-    """Load 10x data.
-
-    Parameters
-    ----------
-    data_path : str
-        Path to the directory containing the 10x-formatted data.
-
-    Returns
-    -------
-    raw_data : scprep.io.load_10X
-        The loaded raw data as a sparse dataframe.
-    """
-    raw_data = scprep.io.load_10X(
-        data_path,
-        # sparse dataframes take up less memory than regular dataframes
-        # if changed to False, downstream processing steps may need to be adjusted
-        sparse=True,
-        # we know that gene symbols are unique in this dataset, so we can use them as labels
-        gene_labels='symbol',
-    )
-
-    # Silence the error because we know that scprep returns a pd.DataFrame in this case.
-    return cast(pd.DataFrame, raw_data)
 
 
 def load_ground_truth_labels(dataset_dir: str) -> pd.Series:
