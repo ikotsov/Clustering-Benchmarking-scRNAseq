@@ -79,7 +79,7 @@ def save_evaluation_results(
     output_dir: str
 ) -> None:
     """
-    Save evaluation results into a shared results.json file in output_dir.
+    Save evaluation results into a shared results.json file.
 
     Results are stored in a nested structure:
         algorithm -> preprocessing -> "pca" | "no_pca" -> run entry
