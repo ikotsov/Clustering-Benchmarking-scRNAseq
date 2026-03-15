@@ -79,7 +79,12 @@ def save_evaluation_results(
     output_dir: str
 ) -> None:
     """
-    Save evaluation results as JSON with metadata.
+    Save evaluation results into a shared results.json file in output_dir.
+
+    Results are stored in a nested structure:
+        algorithm -> preprocessing -> "pca" | "no_pca" -> run entry
+
+    Re-running an experiment overwrites only that specific leaf entry.
 
     Parameters
     ----------
@@ -88,27 +93,33 @@ def save_evaluation_results(
     algorithm : str
         Clustering algorithm name
     preprocessing : str
-        Preprocessing branch used
+        Normalization method used (e.g. "log_cpm", "pearson")
     n_pca_components : int
-        Number of PCA components used
+        Number of PCA components used (0 means no PCA was applied)
     metrics : dict
         Dictionary of metric names and values (e.g., {"ari": 0.85, "nmi": 0.78})
     output_dir : str
-        Directory to save the results
+        Directory containing results.json
     """
-    results = {
+    results_file = os.path.join(output_dir, "results.json")
+
+    if os.path.exists(results_file):
+        with open(results_file, 'r') as f:
+            all_results = json.load(f)
+    else:
+        all_results = {}
+
+    pca_key = "pca" if n_pca_components > 0 else "no_pca"
+
+    all_results.setdefault(algorithm, {}).setdefault(preprocessing, {})[pca_key] = {
         "dataset": dataset,
-        "algorithm": algorithm,
-        "preprocessing": preprocessing,
         "n_pca_components": n_pca_components,
         "metrics": metrics,
-        "timestamp": datetime.now().isoformat()
+        "timestamp": datetime.now().isoformat(),
     }
 
-    filename = f"{preprocessing}_pca{n_pca_components}_{algorithm}_evaluation.json"
-    filepath = os.path.join(output_dir, filename)
+    with open(results_file, 'w') as f:
+        json.dump(all_results, f, indent=2)
 
-    with open(filepath, 'w') as f:
-        json.dump(results, f, indent=2)
-
-    print(f"  ✓ Evaluation saved: {filename}")
+    print(
+        f"  ✓ Evaluation saved: {algorithm} → {preprocessing} → {pca_key} in results.json")

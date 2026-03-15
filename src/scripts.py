@@ -163,13 +163,14 @@ def run_experiment(
         labels, index=target_data.index, name="cluster")
     metrics = evaluate_clustering_externally(labels_series, ground_truth)
 
-    print(f"  • ARI: {metrics['ari']:.3f}")
-    print(f"  • NMI: {metrics['nmi']:.3f}")
+    print(f"  • ARI:     {metrics['ari']:.3f}")
+    print(f"  • NMI:     {metrics['nmi']:.3f}")
+    print(f"  • Jaccard: {metrics['jaccard']:.3f}")
 
     save_evaluation_results(
         dataset=accession,
         algorithm=algo_name,
-        preprocessing=f"{norm_method}_{_pca_label(with_pca)}",
+        preprocessing=norm_method,
         n_pca_components=N_PCA_COMPONENTS if with_pca else 0,
         metrics=metrics,
         output_dir=output_dir
