@@ -12,7 +12,7 @@ from sklearn.metrics import (
 from sklearn.metrics.cluster import pair_confusion_matrix
 
 
-def evaluate_clustering(labels_pred: pd.Series, labels_true: pd.Series) -> dict[str, float]:
+def evaluate_clustering_externally(labels_pred: pd.Series, labels_true: pd.Series) -> dict[str, float]:
     """
     Compares predicted clusters against ground truth.
     Both Series must be aligned by the same index (Cell Barcodes).

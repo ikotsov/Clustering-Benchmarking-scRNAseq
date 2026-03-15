@@ -4,7 +4,7 @@ from src.data_loading import load_csv_data, load_dataset_config, load_ground_tru
 from src.preprocessing import preprocess_data
 from src.clustering.registry import get_clustering_strategy
 from src.preprocessing.types import NormMethod
-from src.evaluation import evaluate_clustering, save_evaluation_results
+from src.evaluation import evaluate_clustering_externally, save_evaluation_results
 from src.constants import N_PCA_COMPONENTS
 from src.types import Species
 
@@ -161,7 +161,7 @@ def run_experiment(
     # Wew rely on the fact that the clustering algorithm returns labels in the same order as the input data.
     labels_series = pd.Series(
         labels, index=target_data.index, name="cluster")
-    metrics = evaluate_clustering(labels_series, ground_truth)
+    metrics = evaluate_clustering_externally(labels_series, ground_truth)
 
     print(f"  • ARI: {metrics['ari']:.3f}")
     print(f"  • NMI: {metrics['nmi']:.3f}")
