@@ -3,6 +3,7 @@ import json
 import os
 from datetime import datetime
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
+from sklearn.metrics.cluster import pair_confusion_matrix
 
 
 def evaluate_clustering(labels_pred: pd.Series, labels_true: pd.Series) -> dict[str, float]:
@@ -24,7 +25,11 @@ def evaluate_clustering(labels_pred: pd.Series, labels_true: pd.Series) -> dict[
     ari = float(adjusted_rand_score(y_true, y_pred))
     nmi = float(normalized_mutual_info_score(y_true, y_pred))
 
-    return {"ari": ari, "nmi": nmi}
+    C = pair_confusion_matrix(y_true, y_pred)
+    tp, fp, fn = int(C[1, 1]), int(C[0, 1]), int(C[1, 0])
+    jaccard = tp / (tp + fp + fn) if (tp + fp + fn) > 0 else 0.0
+
+    return {"ari": ari, "nmi": nmi, "jaccard": jaccard}
 
 
 def save_evaluation_results(
