@@ -128,21 +128,7 @@ def run_experiment(
     labels = cluster_func(
         target_data, n_clusters=n_clusters if n_clusters else 5)
 
-    # 4. Save results
-    output_dir = os.path.join(dataset_dir, "results")
-    os.makedirs(output_dir, exist_ok=True)
-
-    target_data["cluster"] = labels
-
-    filename = f"{norm_method}_{_pca_label(with_pca)}_{algo_name}.csv.gz"
-    save_path = os.path.join(output_dir, filename)
-
-    target_data.to_csv(save_path, compression='gzip')
-    print()
-    print(
-        f"✓ Saved to: {filename} ({target_data.shape[0]} × {target_data.shape[1]} features + clusters)")
-
-    # 5. Load ground truth labels
+    # 4. Load ground truth labels
     print()
     print("Loading ground truth labels...")
     try:
@@ -153,7 +139,7 @@ def run_experiment(
         print("  Skipping evaluation.")
         return
 
-    # 6. Evaluate and save results
+    # 5. Evaluate and save results
     print()
     print("Evaluation...")
     # Here we align the predicted labels with the ground truth labels based on the index (cell IDs).
@@ -173,7 +159,7 @@ def run_experiment(
         preprocessing=norm_method,
         n_pca_components=N_PCA_COMPONENTS if with_pca else 0,
         metrics=metrics,
-        output_dir=output_dir
+        dataset_dir=dataset_dir
     )
 
 
