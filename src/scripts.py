@@ -170,9 +170,9 @@ def run_experiment(
         dataset=accession,
         algorithm=algo_name,
         preprocessing=norm_method,
-        n_pca_components=N_PCA_COMPONENTS if with_pca else 0,
+        with_pca=with_pca,
         metrics=metrics,
-        output_dir=output_dir
+        output_dir=output_dir,
     )
 
 
