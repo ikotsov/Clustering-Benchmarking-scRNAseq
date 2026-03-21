@@ -153,13 +153,16 @@ def run_experiment(
     print(f"  • NMI:     {metrics['nmi']:.3f}")
     print(f"  • Jaccard: {metrics['jaccard']:.3f}")
 
+    output_dir = os.path.join(dataset_dir, "results")
+    os.makedirs(output_dir, exist_ok=True)
+
     save_evaluation_results(
         dataset=accession,
         algorithm=algo_name,
         preprocessing=norm_method,
         n_pca_components=N_PCA_COMPONENTS if with_pca else 0,
         metrics=metrics,
-        dataset_dir=dataset_dir
+        output_dir=output_dir
     )
 
 
