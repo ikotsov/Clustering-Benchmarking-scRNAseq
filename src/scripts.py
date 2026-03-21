@@ -5,14 +5,14 @@ from src.preprocessing import preprocess_data
 from src.clustering.registry import get_clustering_strategy
 from src.preprocessing.types import NormMethod
 from src.evaluation import evaluate_clustering_externally, evaluate_clustering_internally, save_evaluation_results
-from src.constants import N_PCA_COMPONENTS
+from src.constants import PCA_VARIANCE_RATIO
 from src.types import Species
 
 
 VALID_SPECIES: tuple[Species, Species] = ("human", "mouse")
 
 
-def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", n_pca_components: int = N_PCA_COMPONENTS):
+def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", pca_variance_ratio: float = PCA_VARIANCE_RATIO):
     """
     Runs only the preprocessing step and saves the result.
     Useful for exploring preprocessing outputs or running multiple preprocessing strategies for all datasets at once.
@@ -23,8 +23,8 @@ def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", n_pca
         Dataset accession ID
     norm_method : NormMethod, default="pearson"
         Normalization method ("pearson" or "log_cpm")
-    n_pca_components : int, default=N_PCA_COMPONENTS
-        Number of PCA components to retain
+    pca_variance_ratio : float, default=PCA_VARIANCE_RATIO
+        Fraction of variance to preserve when PCA is applied
     """
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     dataset_dir = os.path.join(project_root, "data", accession)
@@ -41,14 +41,14 @@ def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", n_pca
 
     # Load & preprocess
     print(
-        f"\n=== PREPROCESSING: {accession}, norm_method={norm_method}, n_pca_components={n_pca_components} ===")
+        f"\n=== PREPROCESSING: {accession}, norm_method={norm_method}, pca_variance_ratio={pca_variance_ratio:.0%} ===")
     print()
     raw_data = load_csv_data(raw_file_path)
     preprocessed_pca = preprocess_data(
         raw_data,
         norm_method=norm_method,
         species=species,
-        n_pca_components=n_pca_components,
+        pca_variance_ratio=pca_variance_ratio,
         preprocessing_config=preprocessing_config,
         with_pca=True,
     )
@@ -56,7 +56,7 @@ def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", n_pca
         raw_data,
         norm_method=norm_method,
         species=species,
-        n_pca_components=n_pca_components,
+        pca_variance_ratio=pca_variance_ratio,
         preprocessing_config=preprocessing_config,
         with_pca=False,
     )

@@ -3,7 +3,7 @@ from .types import NormMethod, PreprocessingConfig
 from .filters import filter_high_mito_cells, filter_high_rrna_cells, filter_high_apoptosis_cells, filter_low_magnitude_genes
 from .transforms import normalize_by_library_size, log_transform, normalize_data_with_pearson
 from .dimensionality import apply_pca
-from src.constants import N_PCA_COMPONENTS
+from src.constants import PCA_VARIANCE_RATIO
 from src.types import Species
 
 
@@ -11,7 +11,7 @@ def preprocess_data(
     raw_data: pd.DataFrame,
     norm_method: NormMethod = "pearson",
     species: Species = "human",
-    n_pca_components: int = N_PCA_COMPONENTS,
+    pca_variance_ratio: float = PCA_VARIANCE_RATIO,
     preprocessing_config: PreprocessingConfig = PreprocessingConfig(),
     with_pca: bool = True,
 ) -> pd.DataFrame:
@@ -26,8 +26,8 @@ def preprocess_data(
         Normalization method to use ("log_cpm" or "pearson")
     species : Species, default="human"
         Species for filtering (affects mitochondrial, ribosomal, apoptosis genes)
-    n_pca_components : int, default=N_PCA_COMPONENTS
-        Number of principal components to retain
+    pca_variance_ratio : float, default=PCA_VARIANCE_RATIO
+        Fraction of variance to preserve when PCA is applied
 
     Returns
     -------
@@ -60,7 +60,7 @@ def preprocess_data(
     # Apply PCA
     print()
     print("Dimensionality reduction (PCA)...")
-    return apply_pca(normalized_data, n_components=n_pca_components)
+    return apply_pca(normalized_data, variance_ratio=pca_variance_ratio)
 
 
 def normalize_data_with_log_cpm(filtered_data: pd.DataFrame) -> pd.DataFrame:
