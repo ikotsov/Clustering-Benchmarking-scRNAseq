@@ -1,6 +1,6 @@
 import pandas as pd
 from sklearn import cluster as sklearn_cluster
-from sklearn.cluster import Birch, KMeans, OPTICS, SpectralClustering
+from sklearn.cluster import AgglomerativeClustering, Birch, KMeans, OPTICS, SpectralClustering
 
 from src.constants import SEED
 
@@ -55,6 +55,23 @@ def birch_strategy(data: pd.DataFrame, **kwargs) -> pd.Series:
         n_clusters=n_clusters,
         threshold=threshold,
         branching_factor=branching_factor,
+    )
+    return pd.Series(model.fit_predict(data), index=data.index)
+
+
+def agglomerative_strategy(data: pd.DataFrame, **kwargs) -> pd.Series:
+    '''
+    Clustering strategy using Agglomerative Clustering algorithm.
+    https://scikit-learn.org/stable/modules/generated/sklearn.cluster.AgglomerativeClustering.html
+    '''
+    n_clusters = kwargs.get("n_clusters", 5)
+    linkage = kwargs.get("linkage", "ward")
+    metric = kwargs.get("metric", "euclidean")
+
+    model = AgglomerativeClustering(
+        n_clusters=n_clusters,
+        linkage=linkage,
+        metric=metric,
     )
     return pd.Series(model.fit_predict(data), index=data.index)
 

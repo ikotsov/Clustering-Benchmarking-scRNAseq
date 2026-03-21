@@ -1,6 +1,7 @@
 import pandas as pd
 from typing import Callable, Dict
 from .strategies import (
+    agglomerative_strategy,
     birch_strategy,
     kmeans_strategy,
     optics_strategy,
@@ -10,6 +11,7 @@ from .strategies import (
 ClusteringFunc = Callable[..., pd.Series]
 
 STRATEGY_REGISTRY: Dict[str, ClusteringFunc] = {
+    "agglomerative": agglomerative_strategy,
     "birch": birch_strategy,
     "kmeans": kmeans_strategy,
     "optics": optics_strategy,
