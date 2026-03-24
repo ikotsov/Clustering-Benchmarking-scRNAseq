@@ -14,22 +14,25 @@ ClusteringFunc = Callable[..., pd.Series]
 ClusteringAlgorithm = Literal[
     "agglomerative",
     "birch",
+    "hdbscan",
     "kmeans",
     "leiden",
     "optics",
     "spectral",
-    "hdbscan_strategy"
 ]
 
 STRATEGY_REGISTRY: Dict[ClusteringAlgorithm, ClusteringFunc] = {
     "agglomerative": agglomerative_strategy,
     "birch": birch_strategy,
+    "hdbscan": hdbscan_strategy,
     "kmeans": kmeans_strategy,
     "leiden": leiden_strategy,
     "optics": optics_strategy,
     "spectral": spectral_strategy,
-    "hdbscan_strategy": hdbscan_strategy,
 }
+
+AVAILABLE_ALGORITHMS: tuple[ClusteringAlgorithm, ...] = tuple(
+    STRATEGY_REGISTRY.keys())
 
 
 def get_clustering_strategy(name: ClusteringAlgorithm) -> ClusteringFunc:
