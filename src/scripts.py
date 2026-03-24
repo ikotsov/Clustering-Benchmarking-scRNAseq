@@ -2,7 +2,7 @@ import os
 import pandas as pd
 from src.data_loading import load_csv_data, load_dataset_config, load_ground_truth_labels, parse_preprocessing_config
 from src.preprocessing import preprocess_data
-from src.clustering.registry import get_clustering_strategy
+from src.clustering.registry import ClusteringAlgorithm, get_clustering_strategy
 from src.preprocessing.types import NormMethod
 from src.evaluation import evaluate_clustering_externally, evaluate_clustering_internally, save_evaluation_results
 from src.constants import PCA_VARIANCE_RATIO
@@ -78,7 +78,7 @@ def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", pca_v
 
 def run_experiment(
     accession: str,
-    algo_name: str,
+    algo_name: ClusteringAlgorithm,
     norm_method: NormMethod = "pearson",
     with_pca: bool = True,
 ):
