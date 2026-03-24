@@ -13,7 +13,6 @@ def kmeans_strategy(data: pd.DataFrame, **kwargs) -> pd.Series:
 
     Selects initial cluster centroids using sampling based on an empirical probability distribution of the points’ contribution to the overall inertia.
     This technique speeds up convergence.
-
     '''
     n_clusters = kwargs.get("n_clusters", 5)
     model = KMeans(n_clusters=n_clusters, random_state=SEED)
