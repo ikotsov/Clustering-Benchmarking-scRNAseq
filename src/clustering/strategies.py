@@ -1,5 +1,3 @@
-from typing import Literal, cast
-
 import pandas as pd
 import scanpy as sc
 from sklearn import cluster as sklearn_cluster
