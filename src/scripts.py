@@ -1,6 +1,12 @@
 import os
 import pandas as pd
-from src.data_loading import load_csv_data, load_dataset_config, load_ground_truth_labels, parse_preprocessing_config
+from src.data_loading import (
+    load_csv_data,
+    load_dataset_config,
+    load_ground_truth_labels,
+    parse_clustering_params,
+    parse_preprocessing_config,
+)
 from src.preprocessing import preprocess_data
 from src.clustering.registry import ClusteringAlgorithm, get_clustering_strategy
 from src.preprocessing.types import NormMethod
@@ -125,9 +131,8 @@ def run_experiment(
     print(f"Clustering ({algo_name})...")
     cluster_func = get_clustering_strategy(algo_name)
 
-    n_clusters = config.get("n_clusters")
-    labels = cluster_func(
-        target_data, n_clusters=n_clusters if n_clusters else 5)
+    cluster_kwargs = parse_clustering_params(config, algo_name)
+    labels = cluster_func(target_data, **cluster_kwargs)
 
     # 4. Load ground truth labels
     print()

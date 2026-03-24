@@ -15,6 +15,7 @@ class DatasetConfig(TypedDict):
     species: Species
     n_clusters: int
     preprocessing: NotRequired[dict[str, float | int]]
+    clustering_params: NotRequired[dict[str, dict[str, object]]]
 
 
 def load_dataset_config(dataset_dir: str) -> DatasetConfig:
@@ -65,6 +66,29 @@ def parse_preprocessing_config(config: DatasetConfig) -> PreprocessingConfig:
         apoptosis_threshold=apoptosis_threshold,
         gene_magnitude_threshold=gene_magnitude_threshold,
     )
+
+
+ClusteringParamValue = int | float | str | bool | None
+
+
+def parse_clustering_params(config: DatasetConfig, algorithm: str) -> dict[str, ClusteringParamValue]:
+    raw_clustering = config.get("clustering_params")
+    if not isinstance(raw_clustering, dict):
+        return {}
+
+    raw_algo_params = raw_clustering.get(algorithm)
+    if not isinstance(raw_algo_params, dict):
+        return {}
+
+    parsed: dict[str, ClusteringParamValue] = {}
+    for key, value in raw_algo_params.items():
+        if not isinstance(key, str):
+            continue
+
+        if isinstance(value, (int, float, str, bool)) or value is None:
+            parsed[key] = value
+
+    return parsed
 
 
 def load_ground_truth_labels(dataset_dir: str) -> pd.Series:
