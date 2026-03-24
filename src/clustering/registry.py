@@ -7,6 +7,7 @@ from .strategies import (
     leiden_strategy,
     optics_strategy,
     spectral_strategy,
+    hdbscan_strategy
 )
 
 ClusteringFunc = Callable[..., pd.Series]
@@ -17,6 +18,7 @@ ClusteringAlgorithm = Literal[
     "leiden",
     "optics",
     "spectral",
+    "hdbscan_strategy"
 ]
 
 STRATEGY_REGISTRY: Dict[ClusteringAlgorithm, ClusteringFunc] = {
@@ -26,6 +28,7 @@ STRATEGY_REGISTRY: Dict[ClusteringAlgorithm, ClusteringFunc] = {
     "leiden": leiden_strategy,
     "optics": optics_strategy,
     "spectral": spectral_strategy,
+    "hdbscan_strategy": hdbscan_strategy,
 }
 
 
