@@ -1,4 +1,7 @@
+from typing import Literal, cast
+
 import pandas as pd
+import scanpy as sc
 from sklearn import cluster as sklearn_cluster
 from sklearn.cluster import AgglomerativeClustering, Birch, KMeans, OPTICS, SpectralClustering
 
@@ -91,3 +94,28 @@ def hdbscan_strategy(data: pd.DataFrame, **kwargs) -> pd.Series:
         cluster_selection_epsilon=cluster_selection_epsilon,
     )
     return pd.Series(model.fit_predict(data), index=data.index)
+
+
+def leiden_strategy(data: pd.DataFrame, **kwargs) -> pd.Series:
+    '''
+    Clustering strategy using Scanpy Leiden algorithm.
+    https://scanpy.readthedocs.io/en/stable/generated/scanpy.tl.leiden.html
+    '''
+    resolution = float(kwargs.get("resolution", 1.0))
+
+    adata = sc.AnnData(data)
+    sc.pp.neighbors(adata, use_rep='X')
+    sc.tl.leiden(
+        adata,
+        resolution=resolution,
+        random_state=SEED,
+        # Using the igraph implementation and a fixed number of iterations can be significantly faster,
+        # especially for larger datasets.
+        # `directed` must be `False` to work with igraph’s implementation
+        n_iterations=2,
+        flavor='igraph',
+        directed=False
+    )
+
+    labels = pd.Categorical(adata.obs['leiden']).codes
+    return pd.Series(labels, index=data.index)
