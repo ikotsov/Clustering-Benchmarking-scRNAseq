@@ -7,6 +7,7 @@ from src.preprocessing.types import NormMethod
 from src.evaluation import evaluate_clustering_externally, evaluate_clustering_internally, save_evaluation_results
 from src.constants import PCA_VARIANCE_RATIO
 from src.types import Species
+from src.utils import get_pca_label
 
 
 VALID_SPECIES: tuple[Species, Species] = ("human", "mouse")
@@ -99,7 +100,7 @@ def run_experiment(
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     dataset_dir = os.path.join(project_root, "data", accession)
 
-    pca_tag = _pca_label(with_pca).upper()
+    pca_tag = get_pca_label(with_pca).upper()
     print(
         f"\n=== EXPERIMENT: {accession} + {algo_name.upper()} + {pca_tag} ===")
     print()
@@ -176,9 +177,5 @@ def run_experiment(
     )
 
 
-def _pca_label(with_pca: bool) -> str:
-    return "pca" if with_pca else "no_pca"
-
-
 def _preprocessed_filename(norm_method: NormMethod, with_pca: bool) -> str:
-    return f"{norm_method}_{_pca_label(with_pca)}_preprocessed.csv.gz"
+    return f"{norm_method}_{get_pca_label(with_pca)}_preprocessed.csv.gz"

@@ -53,3 +53,7 @@ def get_human_mt_genes(data: pd.DataFrame) -> list:
     Returns a list of genes whose names start with 'MT-' (common human mitochondrial prefix).
     """
     return data.columns[data.columns.str.startswith(HUMAN_MITOCHONDRIAL_PREFIX)].tolist()
+
+
+def get_pca_label(with_pca: bool) -> str:
+    return "pca" if with_pca else "no_pca"

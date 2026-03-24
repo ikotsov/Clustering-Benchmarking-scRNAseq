@@ -11,6 +11,8 @@ from sklearn.metrics import (
 )
 from sklearn.metrics.cluster import pair_confusion_matrix
 
+from src.utils import get_pca_label
+
 
 def evaluate_clustering_externally(labels_pred: pd.Series, labels_true: pd.Series) -> dict[str, float]:
     """
@@ -165,6 +167,6 @@ def save_evaluation_results(
     with open(results_file, 'w') as f:
         json.dump(all_results, f, indent=2)
 
-    pca_key = "pca" if with_pca else "no_pca"
+    pca_key = get_pca_label(with_pca)
     print(
         f"  ✓ Evaluation saved: {algorithm} → {preprocessing} → {pca_key} in results.json")
