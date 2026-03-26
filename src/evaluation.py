@@ -30,14 +30,25 @@ def evaluate_clustering_externally(labels_pred: pd.Series, labels_true: pd.Serie
     y_pred = labels_pred.loc[common_cells]
     y_true = labels_true.loc[common_cells]
 
-    ari = float(adjusted_rand_score(y_true, y_pred))
-    nmi = float(normalized_mutual_info_score(y_true, y_pred))
+    return {
+        "ari": compute_ari(y_true, y_pred),
+        "nmi": compute_nmi(y_true, y_pred),
+        "jaccard": compute_jaccard(y_true, y_pred),
+    }
 
+
+def compute_ari(y_true: pd.Series, y_pred: pd.Series) -> float:
+    return float(adjusted_rand_score(y_true, y_pred))
+
+
+def compute_nmi(y_true: pd.Series, y_pred: pd.Series) -> float:
+    return float(normalized_mutual_info_score(y_true, y_pred))
+
+
+def compute_jaccard(y_true: pd.Series, y_pred: pd.Series) -> float:
     C = pair_confusion_matrix(y_true, y_pred)
     tp, fp, fn = int(C[1, 1]), int(C[0, 1]), int(C[1, 0])
-    jaccard = tp / (tp + fp + fn) if (tp + fp + fn) > 0 else 0.0
-
-    return {"ari": ari, "nmi": nmi, "jaccard": jaccard}
+    return tp / (tp + fp + fn) if (tp + fp + fn) > 0 else 0.0
 
 
 def evaluate_clustering_internally(data: pd.DataFrame, labels_pred: pd.Series) -> dict[str, float]:
