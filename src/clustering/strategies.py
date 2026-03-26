@@ -101,7 +101,7 @@ def leiden_strategy(data: pd.DataFrame, **kwargs) -> pd.Series:
     resolution = float(kwargs.get("resolution", 1.0))
 
     adata = sc.AnnData(data)
-    sc.pp.neighbors(adata, use_rep='X')
+    sc.pp.neighbors(adata, use_rep='X', random_state=SEED)
     sc.tl.leiden(
         adata,
         resolution=resolution,
