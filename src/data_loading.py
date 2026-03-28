@@ -1,9 +1,10 @@
+import json
 import yaml
 import os
 import pandas as pd
 from typing import cast, NotRequired, TypedDict
 
-from src.types import Species
+from src.types import NormMethod, Species
 from src.preprocessing.types import PreprocessingConfig
 
 
@@ -85,6 +86,43 @@ def parse_clustering_params(config: DatasetConfig, algorithm: str) -> dict[str, 
         if not isinstance(key, str):
             continue
 
+        if isinstance(value, (int, float, str, bool)) or value is None:
+            parsed[key] = value
+
+    return parsed
+
+
+def parse_n_clusters(config: DatasetConfig) -> int | None:
+    raw_n_clusters = config.get("n_clusters")
+    if isinstance(raw_n_clusters, int) and raw_n_clusters > 0:
+        return raw_n_clusters
+    return None
+
+
+def load_clustering_params(
+    dataset_dir: str,
+    norm_method: NormMethod,
+    algorithm: str,
+) -> dict[str, ClusteringParamValue]:
+    from src.tuning.common import CLUSTERING_PARAMS_FILENAME
+
+    outputs_dir = os.path.join(dataset_dir, "outputs")
+    params_path = os.path.join(outputs_dir, CLUSTERING_PARAMS_FILENAME)
+    if not os.path.exists(params_path):
+        return {}
+
+    with open(params_path, "r") as f:
+        loaded = json.load(f)
+
+    raw_best_params = loaded.get(norm_method, {}).get(
+        algorithm, {}).get("best_params", {})
+    if not isinstance(raw_best_params, dict):
+        return {}
+
+    parsed: dict[str, ClusteringParamValue] = {}
+    for key, value in raw_best_params.items():
+        if not isinstance(key, str):
+            continue
         if isinstance(value, (int, float, str, bool)) or value is None:
             parsed[key] = value
 

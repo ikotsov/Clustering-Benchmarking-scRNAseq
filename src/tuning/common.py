@@ -12,6 +12,7 @@ from src.types import NormMethod
 
 
 DEFAULT_NORM_METHOD: NormMethod = 'log_cpm'
+CLUSTERING_PARAMS_FILENAME = "clustering_params.json"
 
 
 def load_preprocessed_data(
@@ -62,7 +63,7 @@ def save_tuning_results(
     objective_metric: ObjectiveMetric,
 ) -> str:
     """
-    Save tuning results to a JSON file (tuning.json).
+    Save tuning results to a JSON file (clustering_params.json).
     Results are organized hierarchically by norm_method > algorithm.
 
     Args:
@@ -81,8 +82,8 @@ def save_tuning_results(
     output_dir = os.path.join(dataset_dir, "outputs")
     os.makedirs(output_dir, exist_ok=True)
 
-    # Path to tuning.json file
-    output_path = os.path.join(output_dir, "tuning.json")
+    # Path to clustering params file
+    output_path = os.path.join(output_dir, CLUSTERING_PARAMS_FILENAME)
 
     # Load existing results or start fresh
     if os.path.exists(output_path):

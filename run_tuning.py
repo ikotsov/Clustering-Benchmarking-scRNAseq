@@ -2,6 +2,7 @@ from itertools import product
 
 from src.constants import DATASETS, NORM_METHODS
 from src.tuning.algorithms import ALGORITHM_PARAM_SPECS, run_tuning
+from src.tuning.common import CLUSTERING_PARAMS_FILENAME
 
 
 ALGORITHMS = tuple(ALGORITHM_PARAM_SPECS.keys())
@@ -30,5 +31,5 @@ if __name__ == "__main__":
     print(f"\n{'='*80}")
     print(f"Tuning complete! Results in:")
     for dataset in DATASETS:
-        print(f"  data/{dataset}/outputs/tuning.json")
+        print(f"  data/{dataset}/outputs/{CLUSTERING_PARAMS_FILENAME}.json")
     print(f"{'='*80}\n")

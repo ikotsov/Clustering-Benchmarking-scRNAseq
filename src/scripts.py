@@ -2,9 +2,10 @@ import os
 import pandas as pd
 from src.data_loading import (
     load_csv_data,
+    load_clustering_params,
     load_dataset_config,
     load_ground_truth_labels,
-    parse_clustering_params,
+    parse_n_clusters,
     parse_preprocessing_config,
 )
 from src.preprocessing import preprocess_data
@@ -16,6 +17,12 @@ from src.utils import get_pca_label
 
 
 VALID_SPECIES: tuple[Species, Species] = ("human", "mouse")
+ALGORITHMS_REQUIRING_N_CLUSTERS: tuple[ClusteringAlgorithm, ...] = (
+    "agglomerative",
+    "birch",
+    "kmeans",
+    "spectral",
+)
 
 
 def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", pca_variance_ratio: float = PCA_VARIANCE_RATIO):
@@ -130,7 +137,16 @@ def run_experiment(
     print(f"Clustering ({algo_name})...")
     cluster_func = get_clustering_strategy(algo_name)
 
-    cluster_kwargs = parse_clustering_params(config, algo_name)
+    cluster_kwargs = load_clustering_params(
+        dataset_dir=dataset_dir,
+        norm_method=norm_method,
+        algorithm=algo_name,
+    )
+
+    n_clusters = parse_n_clusters(config)
+    if algo_name in ALGORITHMS_REQUIRING_N_CLUSTERS and n_clusters is not None:
+        cluster_kwargs["n_clusters"] = n_clusters
+
     labels = cluster_func(target_data, **cluster_kwargs)
 
     # 4. Load ground truth labels
