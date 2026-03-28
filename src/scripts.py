@@ -168,7 +168,7 @@ def run_experiment(
 
     metrics = {**external_metrics, **internal_metrics}
 
-    output_dir = os.path.join(dataset_dir, "results")
+    output_dir = os.path.join(dataset_dir, "outputs")
     os.makedirs(output_dir, exist_ok=True)
 
     save_evaluation_results(

@@ -30,5 +30,5 @@ if __name__ == "__main__":
     print(f"\n{'='*80}")
     print(f"Tuning complete! Results in:")
     for dataset in DATASETS:
-        print(f"  data/{dataset}/results/tuning.json")
+        print(f"  data/{dataset}/outputs/tuning.json")
     print(f"{'='*80}\n")

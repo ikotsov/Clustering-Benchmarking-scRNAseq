@@ -78,7 +78,7 @@ def save_tuning_results(
     """
     # Create output directory
     dataset_dir = os.path.join("data", accession)
-    output_dir = os.path.join(dataset_dir, "results")
+    output_dir = os.path.join(dataset_dir, "outputs")
     os.makedirs(output_dir, exist_ok=True)
 
     # Path to tuning.json file
