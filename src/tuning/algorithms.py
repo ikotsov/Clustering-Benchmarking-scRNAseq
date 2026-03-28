@@ -26,6 +26,13 @@ ALGORITHM_PARAM_SPECS: dict[ClusteringAlgorithm, dict[str, ParamSpec]] = {
         "threshold": {"kind": "float", "low": 0.1, "high": 2.0},
         "branching_factor": {"kind": "int", "low": 20, "high": 100},
     },
+    "hdbscan": {
+        "min_cluster_size": {"kind": "int", "low": 3, "high": 30},
+        "min_samples": {"kind": "int", "low": 1, "high": 10},
+    },
+    "optics": {
+        "min_samples": {"kind": "int", "low": 3, "high": 20},
+    },
 }
 
 
