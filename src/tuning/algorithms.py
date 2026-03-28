@@ -9,7 +9,13 @@ from src.clustering.registry import ClusteringAlgorithm, get_clustering_strategy
 from src.constants import SEED
 from src.data_loading import load_ground_truth_labels
 from src.preprocessing.types import NormMethod
-from src.tuning.common import DEFAULT_NORM_METHOD, ObjectiveMetric, compute_clustering_metrics, load_preprocessed_data
+from src.tuning.common import (
+    DEFAULT_NORM_METHOD,
+    ObjectiveMetric,
+    compute_clustering_metrics,
+    load_preprocessed_data,
+    save_tuning_results,
+)
 
 
 class ParamSpec(TypedDict):
@@ -75,6 +81,15 @@ def run_tuning(
 
     print(f"Tuning complete ({algorithm}). Best params: {best_params}")
     print(f"Best {objective_metric}: {best_value:.4f}")
+
+    save_tuning_results(
+        accession=accession,
+        algorithm=algorithm,
+        norm_method=norm_method,
+        best_params=best_trial.params,
+        best_value=best_value,
+        objective_metric=objective_metric,
+    )
 
 
 def _objective(
