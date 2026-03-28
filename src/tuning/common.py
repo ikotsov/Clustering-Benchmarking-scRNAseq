@@ -19,9 +19,9 @@ def load_preprocessed_data(
     norm_method: NormMethod = DEFAULT_NORM_METHOD,
 ) -> pd.DataFrame:
     dataset_dir = os.path.join("data", accession)
-    preprocessed_filename = f"{norm_method}_pca_preprocessed.csv.gz"
+    preprocessed_filename = f"{norm_method}_pca.csv.gz"
     preprocessed_file = os.path.join(
-        dataset_dir, "results", preprocessed_filename)
+        dataset_dir, "processed", preprocessed_filename)
 
     if not os.path.exists(preprocessed_file):
         raise FileNotFoundError(

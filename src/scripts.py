@@ -68,12 +68,12 @@ def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", pca_v
     )
 
     # Save both representations
-    output_dir = os.path.join(dataset_dir, "results")
+    output_dir = os.path.join(dataset_dir, "processed")
     os.makedirs(output_dir, exist_ok=True)
 
     for with_pca in (True, False):
         preprocessed_data = preprocessed_pca if with_pca else preprocessed_no_pca
-        filename = _preprocessed_filename(norm_method, with_pca)
+        filename = _processed_filename(norm_method, with_pca)
         save_path = os.path.join(output_dir, filename)
         preprocessed_data.to_csv(save_path, compression='gzip')
         print()
@@ -111,9 +111,9 @@ def run_experiment(
     print()
 
     # 2. Load preprocessed data
-    preprocessed_filename = _preprocessed_filename(norm_method, with_pca)
+    preprocessed_filename = _processed_filename(norm_method, with_pca)
     preprocessed_file = os.path.join(
-        dataset_dir, "results", preprocessed_filename)
+        dataset_dir, "processed", preprocessed_filename)
 
     if not os.path.exists(preprocessed_file):
         raise FileNotFoundError(
@@ -181,5 +181,5 @@ def run_experiment(
     )
 
 
-def _preprocessed_filename(norm_method: NormMethod, with_pca: bool) -> str:
-    return f"{norm_method}_{get_pca_label(with_pca)}_preprocessed.csv.gz"
+def _processed_filename(norm_method: NormMethod, with_pca: bool) -> str:
+    return f"{norm_method}_{get_pca_label(with_pca)}.csv.gz"
