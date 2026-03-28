@@ -74,7 +74,7 @@ def evaluate_clustering_internally(data: pd.DataFrame, labels_pred: pd.Series) -
     # These metrics require at least 2 distinct clusters
     n_unique = y.nunique()
     if n_unique < 2:
-        return {"silhouette": float("nan"), "calinski_harabasz": float("nan"), "davies_bouldin": float("nan")}
+        return {"silhouette": 0.0, "calinski_harabasz": 0.0, "davies_bouldin": 0.0}
 
     return {
         "silhouette": float(silhouette_score(X, y)),
