@@ -1,9 +1,5 @@
 from dataclasses import dataclass
-from typing import Literal
-
 from src.constants import GENE_MAGNITUDE_THRESHOLD, RRNA_THRESHOLD, APOPTOSIS_THRESHOLD, MITO_THRESHOLD
-
-NormMethod = Literal["pearson", "log_cpm"]
 
 
 @dataclass

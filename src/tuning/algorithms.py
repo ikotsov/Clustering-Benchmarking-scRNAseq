@@ -8,7 +8,6 @@ from optuna.samplers import TPESampler
 from src.clustering.registry import ClusteringAlgorithm, get_clustering_strategy
 from src.constants import SEED
 from src.data_loading import load_ground_truth_labels
-from src.preprocessing.types import NormMethod
 from src.tuning.common import (
     DEFAULT_NORM_METHOD,
     ObjectiveMetric,
@@ -16,6 +15,7 @@ from src.tuning.common import (
     load_preprocessed_data,
     save_tuning_results,
 )
+from src.types import NormMethod
 
 
 class ParamSpec(TypedDict):

@@ -8,7 +8,7 @@ from sklearn.metrics import accuracy_score
 from src.evaluation import compute_ari, compute_nmi, compute_jaccard
 from src.data_loading import load_csv_data
 from src.clustering.registry import ClusteringAlgorithm
-from src.preprocessing.types import NormMethod
+from src.types import NormMethod
 
 
 DEFAULT_NORM_METHOD: NormMethod = 'log_cpm'
@@ -81,7 +81,7 @@ def save_tuning_results(
     output_dir = os.path.join(dataset_dir, "results")
     os.makedirs(output_dir, exist_ok=True)
 
-    # Path to consolidated tuning.json file
+    # Path to tuning.json file
     output_path = os.path.join(output_dir, "tuning.json")
 
     # Load existing results or start fresh

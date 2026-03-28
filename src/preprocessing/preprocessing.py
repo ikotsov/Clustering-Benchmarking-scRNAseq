@@ -1,10 +1,10 @@
 import pandas as pd
-from .types import NormMethod, PreprocessingConfig
+from .types import PreprocessingConfig
 from .filters import filter_high_mito_cells, filter_high_rrna_cells, filter_high_apoptosis_cells, filter_low_magnitude_genes
 from .transforms import normalize_by_library_size, log_transform, normalize_data_with_pearson
 from .dimensionality import apply_pca
 from src.constants import PCA_VARIANCE_RATIO
-from src.types import Species
+from src.types import NormMethod, Species
 
 
 def preprocess_data(

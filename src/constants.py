@@ -1,3 +1,5 @@
+from src.types import NormMethod
+
 SEED = 42
 PCA_VARIANCE_RATIO = 0.80
 RRNA_THRESHOLD = 0.05
@@ -10,3 +12,4 @@ DATASETS = [
     # "GSE45719",
     # "GSE57249",
 ]
+NORM_METHODS: tuple[NormMethod, NormMethod] = ("log_cpm", "pearson")

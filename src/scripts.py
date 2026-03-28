@@ -9,10 +9,9 @@ from src.data_loading import (
 )
 from src.preprocessing import preprocess_data
 from src.clustering.registry import ClusteringAlgorithm, get_clustering_strategy
-from src.preprocessing.types import NormMethod
 from src.evaluation import evaluate_clustering_externally, evaluate_clustering_internally, save_evaluation_results
 from src.constants import PCA_VARIANCE_RATIO
-from src.types import Species
+from src.types import NormMethod, Species
 from src.utils import get_pca_label
 
 
