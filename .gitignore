@@ -220,4 +220,3 @@ __marimo__/
 data/**
 !data/**/
 !data/**/config.yaml
-!data/**/results/*_evaluation.json
