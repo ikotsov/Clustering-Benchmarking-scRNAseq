@@ -6,21 +6,25 @@ from sklearn.metrics import accuracy_score
 
 from src.evaluation import compute_ari, compute_nmi, compute_jaccard
 from src.data_loading import load_csv_data
+from src.preprocessing.types import NormMethod
 
 
-NORM_METHOD = 'log_cpm'
+DEFAULT_NORM_METHOD: NormMethod = 'log_cpm'
 
 
-def load_preprocessed_data(accession: str) -> pd.DataFrame:
+def load_preprocessed_data(
+    accession: str,
+    norm_method: NormMethod = DEFAULT_NORM_METHOD,
+) -> pd.DataFrame:
     dataset_dir = os.path.join("data", accession)
-    preprocessed_filename = f"{NORM_METHOD}_pca_preprocessed.csv.gz"
+    preprocessed_filename = f"{norm_method}_pca_preprocessed.csv.gz"
     preprocessed_file = os.path.join(
         dataset_dir, "results", preprocessed_filename)
 
     if not os.path.exists(preprocessed_file):
         raise FileNotFoundError(
             f"Preprocessed file not found: {preprocessed_filename}\n"
-            f"Run preprocessing first with: run_preprocessing('{accession}')"
+            f"Run preprocessing first with: run_preprocessing('{accession}', '{norm_method}')"
         )
 
     return load_csv_data(preprocessed_file)

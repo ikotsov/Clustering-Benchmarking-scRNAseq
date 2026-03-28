@@ -8,12 +8,8 @@ from optuna.samplers import TPESampler
 from src.clustering.registry import ClusteringAlgorithm, get_clustering_strategy
 from src.constants import SEED
 from src.data_loading import load_ground_truth_labels
-from src.tuning.common import (
-    ObjectiveMetric,
-    compute_clustering_metrics,
-    load_preprocessed_data,
-    validate_objective_metric,
-)
+from src.preprocessing.types import NormMethod
+from src.tuning.common import DEFAULT_NORM_METHOD, ObjectiveMetric, compute_clustering_metrics, load_preprocessed_data
 
 
 class ParamSpec(TypedDict):
@@ -37,6 +33,7 @@ def run_tuning(
     accession: str,
     algorithm: ClusteringAlgorithm,
     n_trials: int = 50,
+    norm_method: NormMethod = DEFAULT_NORM_METHOD,
     objective_metric: ObjectiveMetric = 'mean_external_score',
 ) -> None:
     if n_trials <= 0:
@@ -46,9 +43,7 @@ def run_tuning(
         raise ValueError(
             f"Tuning is not configured for '{algorithm}'. Supported: {supported}")
 
-    objective_metric = validate_objective_metric(objective_metric)
-
-    data = load_preprocessed_data(accession)
+    data = load_preprocessed_data(accession, norm_method=norm_method)
 
     project_root = os.path.dirname(os.path.dirname(
         os.path.dirname(os.path.abspath(__file__))))
