@@ -1,4 +1,4 @@
-format: "10x"
+format: "to check"
 n_clusters: 5
 species: "mouse"
 preprocessing:
