@@ -6,10 +6,3 @@ preprocessing:
   rrna_threshold: 0.05
   apoptosis_threshold: 0.05
   gene_magnitude_threshold: 2
-clustering_params:
-  leiden:
-    resolution: 0.8
-  spectral:
-    affinity: nearest_neighbors
-  kmeans:
-    n_clusters: 5
