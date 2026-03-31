@@ -1,0 +1,8 @@
+format: "to check"
+n_clusters: 8
+species: "human"
+preprocessing:
+  mito_threshold: 0.05
+  rrna_threshold: 0.05
+  apoptosis_threshold: 0.05
+  gene_magnitude_threshold: 2
