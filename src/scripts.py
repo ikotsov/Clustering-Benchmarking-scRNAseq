@@ -57,6 +57,8 @@ def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", pca_v
         f"\n=== PREPROCESSING: {accession}, norm_method={norm_method}, pca_variance_ratio={pca_variance_ratio:.0%} ===")
     print()
     raw_data = load_csv_data(raw_file_path)
+
+    print("--- Building PCA representation ---")
     preprocessed_pca = preprocess_data(
         raw_data,
         norm_method=norm_method,
@@ -65,6 +67,9 @@ def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", pca_v
         preprocessing_config=preprocessing_config,
         with_pca=True,
     )
+
+    print()
+    print("--- Building non-PCA representation ---")
     preprocessed_no_pca = preprocess_data(
         raw_data,
         norm_method=norm_method,
