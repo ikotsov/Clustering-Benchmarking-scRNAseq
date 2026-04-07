@@ -1,0 +1,398 @@
+{
+  "dataset": "E-MTAB-3321",
+  "updated_at": "2026-04-07T17:48:45.195389",
+  "runs": [
+    {
+      "algorithm": "agglomerative",
+      "normalization": "log_cpm",
+      "with_pca": true,
+      "metrics": {
+        "ari": 0.5439312405449491,
+        "nmi": 0.7209998808078306,
+        "jaccard": 0.4996532593619972,
+        "silhouette": 0.1827683828945857,
+        "calinski_harabasz": 26.725571139292693,
+        "davies_bouldin": 2.1485597828632925
+      },
+      "timestamp": "2026-04-07T17:48:39.190084"
+    },
+    {
+      "algorithm": "agglomerative",
+      "normalization": "log_cpm",
+      "with_pca": false,
+      "metrics": {
+        "ari": 0.5439312405449491,
+        "nmi": 0.7209998808078306,
+        "jaccard": 0.4996532593619972,
+        "silhouette": 0.11687129815282277,
+        "calinski_harabasz": 18.240907663885356,
+        "davies_bouldin": 2.5946671406938826
+      },
+      "timestamp": "2026-04-07T17:48:39.279665"
+    },
+    {
+      "algorithm": "agglomerative",
+      "normalization": "pearson",
+      "with_pca": true,
+      "metrics": {
+        "ari": 0.5432229740267929,
+        "nmi": 0.7069711981357195,
+        "jaccard": 0.4986111111111111,
+        "silhouette": 0.30383130552501675,
+        "calinski_harabasz": 49.437046841033414,
+        "davies_bouldin": 1.3152600125713991
+      },
+      "timestamp": "2026-04-07T17:48:39.288527"
+    },
+    {
+      "algorithm": "agglomerative",
+      "normalization": "pearson",
+      "with_pca": false,
+      "metrics": {
+        "ari": 0.5432229740267929,
+        "nmi": 0.7069711981357195,
+        "jaccard": 0.4986111111111111,
+        "silhouette": 0.19900206373131807,
+        "calinski_harabasz": 29.926322223192585,
+        "davies_bouldin": 1.7527687931277725
+      },
+      "timestamp": "2026-04-07T17:48:39.459321"
+    },
+    {
+      "algorithm": "birch",
+      "normalization": "log_cpm",
+      "with_pca": true,
+      "metrics": {
+        "ari": 0.5439312405449491,
+        "nmi": 0.7209998808078306,
+        "jaccard": 0.4996532593619972,
+        "silhouette": 0.1827683828945857,
+        "calinski_harabasz": 26.725571139292693,
+        "davies_bouldin": 2.1485597828632925
+      },
+      "timestamp": "2026-04-07T17:48:39.478320"
+    },
+    {
+      "algorithm": "birch",
+      "normalization": "log_cpm",
+      "with_pca": false,
+      "metrics": {
+        "ari": 0.5439312405449491,
+        "nmi": 0.7209998808078306,
+        "jaccard": 0.4996532593619972,
+        "silhouette": 0.11687129815282277,
+        "calinski_harabasz": 18.240907663885356,
+        "davies_bouldin": 2.5946671406938826
+      },
+      "timestamp": "2026-04-07T17:48:39.619639"
+    },
+    {
+      "algorithm": "birch",
+      "normalization": "pearson",
+      "with_pca": true,
+      "metrics": {
+        "ari": 0.5432229740267929,
+        "nmi": 0.7069711981357195,
+        "jaccard": 0.4986111111111111,
+        "silhouette": 0.30383130552501675,
+        "calinski_harabasz": 49.437046841033414,
+        "davies_bouldin": 1.3152600125713991
+      },
+      "timestamp": "2026-04-07T17:48:39.630382"
+    },
+    {
+      "algorithm": "birch",
+      "normalization": "pearson",
+      "with_pca": false,
+      "metrics": {
+        "ari": 0.5432229740267929,
+        "nmi": 0.7069711981357195,
+        "jaccard": 0.4986111111111111,
+        "silhouette": 0.19900206373131807,
+        "calinski_harabasz": 29.926322223192585,
+        "davies_bouldin": 1.7527687931277725
+      },
+      "timestamp": "2026-04-07T17:48:39.808256"
+    },
+    {
+      "algorithm": "hdbscan",
+      "normalization": "log_cpm",
+      "with_pca": true,
+      "metrics": {
+        "ari": 0.47004644747282737,
+        "nmi": 0.6204526393139135,
+        "jaccard": 0.46220302375809935,
+        "silhouette": 0.15438992406260754,
+        "calinski_harabasz": 22.81041023418804,
+        "davies_bouldin": 2.5052033235851425
+      },
+      "timestamp": "2026-04-07T17:48:39.821554"
+    },
+    {
+      "algorithm": "hdbscan",
+      "normalization": "log_cpm",
+      "with_pca": false,
+      "metrics": {
+        "ari": 0.7239257890633288,
+        "nmi": 0.7187082853000084,
+        "jaccard": 0.6875418620227729,
+        "silhouette": 0.13793354798655,
+        "calinski_harabasz": 18.932532257551202,
+        "davies_bouldin": 2.4541416723530323
+      },
+      "timestamp": "2026-04-07T17:48:39.963220"
+    },
+    {
+      "algorithm": "hdbscan",
+      "normalization": "pearson",
+      "with_pca": true,
+      "metrics": {
+        "ari": 0.7906281378472724,
+        "nmi": 0.7454974936209434,
+        "jaccard": 0.764780673871583,
+        "silhouette": 0.21090916296712184,
+        "calinski_harabasz": 19.884850380386272,
+        "davies_bouldin": 2.4011116331797724
+      },
+      "timestamp": "2026-04-07T17:48:39.974141"
+    },
+    {
+      "algorithm": "hdbscan",
+      "normalization": "pearson",
+      "with_pca": false,
+      "metrics": {
+        "ari": 0.0,
+        "nmi": 0.0,
+        "jaccard": 0.34906897456071334,
+        "silhouette": 0.0,
+        "calinski_harabasz": 0.0,
+        "davies_bouldin": 0.0
+      },
+      "timestamp": "2026-04-07T17:48:40.124649"
+    },
+    {
+      "algorithm": "kmeans",
+      "normalization": "log_cpm",
+      "with_pca": true,
+      "metrics": {
+        "ari": 0.47009866868802225,
+        "nmi": 0.7071246602152202,
+        "jaccard": 0.44873458792991566,
+        "silhouette": 0.14618664682967333,
+        "calinski_harabasz": 23.389139270264554,
+        "davies_bouldin": 2.5514055024540903
+      },
+      "timestamp": "2026-04-07T17:48:40.164712"
+    },
+    {
+      "algorithm": "kmeans",
+      "normalization": "log_cpm",
+      "with_pca": false,
+      "metrics": {
+        "ari": 0.5477277229912848,
+        "nmi": 0.7391793671006123,
+        "jaccard": 0.5197923426346528,
+        "silhouette": 0.10345427596456365,
+        "calinski_harabasz": 16.137035701865713,
+        "davies_bouldin": 2.409011026314711
+      },
+      "timestamp": "2026-04-07T17:48:40.246425"
+    },
+    {
+      "algorithm": "kmeans",
+      "normalization": "pearson",
+      "with_pca": true,
+      "metrics": {
+        "ari": 0.5432229740267929,
+        "nmi": 0.7069711981357195,
+        "jaccard": 0.4986111111111111,
+        "silhouette": 0.30383130552501675,
+        "calinski_harabasz": 49.4370468410334,
+        "davies_bouldin": 1.3152600125713991
+      },
+      "timestamp": "2026-04-07T17:48:40.255681"
+    },
+    {
+      "algorithm": "kmeans",
+      "normalization": "pearson",
+      "with_pca": false,
+      "metrics": {
+        "ari": 0.8415359675351761,
+        "nmi": 0.7780572148121226,
+        "jaccard": 0.8111111111111111,
+        "silhouette": 0.17340840329195323,
+        "calinski_harabasz": 26.603589589120762,
+        "davies_bouldin": 1.522642326210892
+      },
+      "timestamp": "2026-04-07T17:48:40.403482"
+    },
+    {
+      "algorithm": "leiden",
+      "normalization": "log_cpm",
+      "with_pca": true,
+      "metrics": {
+        "ari": 0.8830845255383648,
+        "nmi": 0.8762086545831678,
+        "jaccard": 0.863724853990915,
+        "silhouette": 0.22924609357410225,
+        "calinski_harabasz": 38.855801587264075,
+        "davies_bouldin": 1.4979545799226708
+      },
+      "timestamp": "2026-04-07T17:48:44.160506"
+    },
+    {
+      "algorithm": "leiden",
+      "normalization": "log_cpm",
+      "with_pca": false,
+      "metrics": {
+        "ari": 0.5821412337440605,
+        "nmi": 0.7594729728968698,
+        "jaccard": 0.5522388059701493,
+        "silhouette": 0.11553527723696089,
+        "calinski_harabasz": 21.22253128566543,
+        "davies_bouldin": 2.425130824187404
+      },
+      "timestamp": "2026-04-07T17:48:44.241135"
+    },
+    {
+      "algorithm": "leiden",
+      "normalization": "pearson",
+      "with_pca": true,
+      "metrics": {
+        "ari": 0.6298807787896542,
+        "nmi": 0.6851197063443663,
+        "jaccard": 0.648319532391622,
+        "silhouette": 0.24830516065088817,
+        "calinski_harabasz": 42.82969375877123,
+        "davies_bouldin": 1.508682426843974
+      },
+      "timestamp": "2026-04-07T17:48:44.253340"
+    },
+    {
+      "algorithm": "leiden",
+      "normalization": "pearson",
+      "with_pca": false,
+      "metrics": {
+        "ari": 0.6298807787896542,
+        "nmi": 0.6851197063443663,
+        "jaccard": 0.648319532391622,
+        "silhouette": 0.18753887213148795,
+        "calinski_harabasz": 32.16173367582963,
+        "davies_bouldin": 1.7823637318303016
+      },
+      "timestamp": "2026-04-07T17:48:44.392137"
+    },
+    {
+      "algorithm": "optics",
+      "normalization": "log_cpm",
+      "with_pca": true,
+      "metrics": {
+        "ari": 0.41442898685752655,
+        "nmi": 0.5573927727416528,
+        "jaccard": 0.5066750104297038,
+        "silhouette": 0.004994314538836486,
+        "calinski_harabasz": 12.062541425641443,
+        "davies_bouldin": 1.4330755470125642
+      },
+      "timestamp": "2026-04-07T17:48:44.454807"
+    },
+    {
+      "algorithm": "optics",
+      "normalization": "log_cpm",
+      "with_pca": false,
+      "metrics": {
+        "ari": 0.27156202999928447,
+        "nmi": 0.47103097434814717,
+        "jaccard": 0.4513394370973211,
+        "silhouette": 0.1942054179892114,
+        "calinski_harabasz": 23.334521091218893,
+        "davies_bouldin": 1.3081827760807583
+      },
+      "timestamp": "2026-04-07T17:48:44.616055"
+    },
+    {
+      "algorithm": "optics",
+      "normalization": "pearson",
+      "with_pca": true,
+      "metrics": {
+        "ari": 0.42636399275736886,
+        "nmi": 0.6144378924471379,
+        "jaccard": 0.3937007874015748,
+        "silhouette": 0.23954678592827477,
+        "calinski_harabasz": 29.697768100780518,
+        "davies_bouldin": 1.85516674895222
+      },
+      "timestamp": "2026-04-07T17:48:44.674361"
+    },
+    {
+      "algorithm": "optics",
+      "normalization": "pearson",
+      "with_pca": false,
+      "metrics": {
+        "ari": 0.3920634571742075,
+        "nmi": 0.5204670211483085,
+        "jaccard": 0.49309420737992166,
+        "silhouette": 0.08881779054690664,
+        "calinski_harabasz": 24.385746502109626,
+        "davies_bouldin": 1.7623005670547995
+      },
+      "timestamp": "2026-04-07T17:48:44.925190"
+    },
+    {
+      "algorithm": "spectral",
+      "normalization": "log_cpm",
+      "with_pca": true,
+      "metrics": {
+        "ari": 0.6783564267711666,
+        "nmi": 0.833295110057674,
+        "jaccard": 0.6229809104258444,
+        "silhouette": 0.1722501574651704,
+        "calinski_harabasz": 26.56396811565064,
+        "davies_bouldin": 1.9589627225317927
+      },
+      "timestamp": "2026-04-07T17:48:44.944295"
+    },
+    {
+      "algorithm": "spectral",
+      "normalization": "log_cpm",
+      "with_pca": false,
+      "metrics": {
+        "ari": 0.6783564267711666,
+        "nmi": 0.833295110057674,
+        "jaccard": 0.6229809104258444,
+        "silhouette": 0.1111412557286774,
+        "calinski_harabasz": 18.145448222562855,
+        "davies_bouldin": 2.4315243686724695
+      },
+      "timestamp": "2026-04-07T17:48:45.029523"
+    },
+    {
+      "algorithm": "spectral",
+      "normalization": "pearson",
+      "with_pca": true,
+      "metrics": {
+        "ari": 0.5440936393038657,
+        "nmi": 0.7347121848482827,
+        "jaccard": 0.5003460207612457,
+        "silhouette": 0.2937056474176869,
+        "calinski_harabasz": 47.385833095725516,
+        "davies_bouldin": 1.397731835309465
+      },
+      "timestamp": "2026-04-07T17:48:45.043677"
+    },
+    {
+      "algorithm": "spectral",
+      "normalization": "pearson",
+      "with_pca": false,
+      "metrics": {
+        "ari": 0.6783564267711666,
+        "nmi": 0.833295110057674,
+        "jaccard": 0.6229809104258444,
+        "silhouette": 0.19710784040384835,
+        "calinski_harabasz": 28.989881474076586,
+        "davies_bouldin": 1.7632035085899305
+      },
+      "timestamp": "2026-04-07T17:48:45.195389"
+    }
+  ]
+}
