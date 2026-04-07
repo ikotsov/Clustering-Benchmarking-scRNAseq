@@ -1,4 +1,5 @@
 import pandas as pd
+import scanpy as sc
 from .types import PreprocessingConfig
 from .filters import filter_high_mito_cells, filter_high_rrna_cells, filter_high_apoptosis_cells, filter_low_magnitude_genes
 from .transforms import normalize_by_library_size, log_transform, normalize_data_with_pearson
@@ -63,9 +64,23 @@ def preprocess_data(
     return apply_pca(normalized_data, variance_ratio=pca_variance_ratio)
 
 
-def normalize_data_with_log_cpm(filtered_data: pd.DataFrame) -> pd.DataFrame:
+# In Seurat, 2,000 HVGs is default.
+N_HVG = 2_000
 
-    data = normalize_by_library_size(filtered_data)
+
+def normalize_data_with_log_cpm(filtered_data: pd.DataFrame, n_hvg: int = N_HVG) -> pd.DataFrame:
+    print(f"  • Selecting top {n_hvg} variable genes")
+    adata = sc.AnnData(filtered_data)
+    sc.pp.highly_variable_genes(
+        adata,
+        flavor="seurat_v3_paper",
+        n_top_genes=n_hvg,
+    )
+    hvg_genes = adata.var_names[adata.var["highly_variable"]]
+
+    data = filtered_data.loc[:, hvg_genes]
+
+    data = normalize_by_library_size(data)
     data = log_transform(data)
 
     return data
