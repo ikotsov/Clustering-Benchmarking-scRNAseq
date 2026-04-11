@@ -53,15 +53,10 @@ def build_stratified_hvg_samples(
     return stratified_hvg_samples
 
 
-STRATIFICATION_FEATURE_COLUMNS = ("num_expressed_cells", "mean_expression")
-
-
 def _estimate_gene_probabilities(gene_statistics: pd.DataFrame, observed_genes: list[str]) -> np.ndarray:
     """Estimate KDE-based sampling probability for gene universe."""
-    observed_hvg_features = gene_statistics.loc[observed_genes,
-                                                list(STRATIFICATION_FEATURE_COLUMNS)]
-    all_gene_features = gene_statistics.loc[:, list(
-        STRATIFICATION_FEATURE_COLUMNS)]
+    observed_hvg_features = gene_statistics.loc[observed_genes]
+    all_gene_features = gene_statistics
 
     # fallback, fair chance for all genes.
     uniform_distribution = np.full(
