@@ -8,7 +8,7 @@ from src.data_loading import (
     parse_n_clusters,
     parse_preprocessing_config,
 )
-from src.preprocessing import preprocess_data
+from src.preprocessing import apply_pca, preprocess_data
 from src.clustering.registry import ClusteringAlgorithm, get_clustering_strategy
 from src.evaluation import evaluate_clustering_externally, evaluate_clustering_internally, save_evaluation_results
 from src.constants import PCA_VARIANCE_RATIO
@@ -58,25 +58,19 @@ def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", pca_v
     print()
     raw_data = load_csv_data(raw_file_path)
 
-    print("--- Building PCA representation ---")
-    preprocessed_pca = preprocess_data(
+    print("--- Building non-PCA representation ---")
+    preprocessed_no_pca, hvg_genes_no_pca = preprocess_data(
         raw_data,
         norm_method=norm_method,
         species=species,
-        pca_variance_ratio=pca_variance_ratio,
         preprocessing_config=preprocessing_config,
-        with_pca=True,
     )
 
     print()
-    print("--- Building non-PCA representation ---")
-    preprocessed_no_pca = preprocess_data(
-        raw_data,
-        norm_method=norm_method,
-        species=species,
-        pca_variance_ratio=pca_variance_ratio,
-        preprocessing_config=preprocessing_config,
-        with_pca=False,
+    print("--- Building PCA representation from non-PCA data ---")
+    preprocessed_pca = apply_pca(
+        preprocessed_no_pca,
+        variance_ratio=pca_variance_ratio,
     )
 
     # Save both representations
@@ -91,6 +85,16 @@ def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", pca_v
         print()
         print(
             f"✓ Saved to: {filename} ({preprocessed_data.shape[0]} × {preprocessed_data.shape[1]} features)")
+
+    hvg_filename = _hvg_filename(norm_method)
+    hvg_path = os.path.join(output_dir, hvg_filename)
+    pd.Series(hvg_genes_no_pca, name="gene").to_csv(
+        hvg_path,
+        sep="\t",
+        index=False,
+    )
+    print()
+    print(f"✓ Saved HVGs to: {hvg_filename} ({len(hvg_genes_no_pca)} genes)")
 
 
 def run_experiment(
@@ -204,3 +208,7 @@ def run_experiment(
 
 def _processed_filename(norm_method: NormMethod, with_pca: bool) -> str:
     return f"{norm_method}_{get_pca_label(with_pca)}.csv.gz"
+
+
+def _hvg_filename(norm_method: NormMethod) -> str:
+    return f"hvgs_{norm_method}.tsv"

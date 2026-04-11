@@ -3,8 +3,6 @@ import scanpy as sc
 from .types import PreprocessingConfig
 from .filters import filter_high_mito_cells, filter_high_rrna_cells, filter_high_apoptosis_cells, filter_low_magnitude_genes
 from .transforms import normalize_by_library_size, log_transform, normalize_data_with_pearson
-from .dimensionality import apply_pca
-from src.constants import PCA_VARIANCE_RATIO
 from src.types import NormMethod, Species
 
 
@@ -12,12 +10,10 @@ def preprocess_data(
     raw_data: pd.DataFrame,
     norm_method: NormMethod = "pearson",
     species: Species = "human",
-    pca_variance_ratio: float = PCA_VARIANCE_RATIO,
     preprocessing_config: PreprocessingConfig = PreprocessingConfig(),
-    with_pca: bool = True,
-) -> pd.DataFrame:
+) -> tuple[pd.DataFrame, list[str]]:
     """
-    Runs filtering, normalization, and PCA dimensionality reduction.
+    Runs filtering and normalization.
 
     Parameters
     ----------
@@ -27,13 +23,10 @@ def preprocess_data(
         Normalization method to use ("log_cpm" or "pearson")
     species : Species, default="human"
         Species for filtering (affects mitochondrial, ribosomal, apoptosis genes)
-    pca_variance_ratio : float, default=PCA_VARIANCE_RATIO
-        Fraction of variance to preserve when PCA is applied
-
     Returns
     -------
-    pd.DataFrame
-        Processed data ready for clustering
+    tuple[pd.DataFrame, list[str]]
+        Processed data (HVG space) ready for optional downstream PCA and selected HVG names
     """
     # Always filter first
     clean_data = filter_data(
@@ -43,32 +36,24 @@ def preprocess_data(
     if norm_method == "log_cpm":
         print()
         print("Normalization (LogCPM)...")
-        normalized_data = normalize_data_with_log_cpm(clean_data)
+        normalized_data, hvg_genes = normalize_data_with_log_cpm(clean_data)
 
     elif norm_method == "pearson":
         print()
         print("Normalization (Pearson Residuals)...")
-        normalized_data = normalize_data_with_pearson(clean_data)
+        normalized_data, hvg_genes = normalize_data_with_pearson(clean_data)
 
     else:
         raise ValueError(f"Unknown normalization method: {norm_method}")
 
-    if not with_pca:
-        print()
-        print("Skipping dimensionality reduction (PCA)...")
-        return normalized_data
-
-    # Apply PCA
-    print()
-    print("Dimensionality reduction (PCA)...")
-    return apply_pca(normalized_data, variance_ratio=pca_variance_ratio)
+    return normalized_data, hvg_genes
 
 
 # In Seurat, 2,000 HVGs is default.
 N_HVG = 2_000
 
 
-def normalize_data_with_log_cpm(filtered_data: pd.DataFrame, n_hvg: int = N_HVG) -> pd.DataFrame:
+def normalize_data_with_log_cpm(filtered_data: pd.DataFrame, n_hvg: int = N_HVG) -> tuple[pd.DataFrame, list[str]]:
     print(f"  • Selecting top {n_hvg} variable genes")
     adata = sc.AnnData(filtered_data)
     sc.pp.highly_variable_genes(
@@ -76,14 +61,14 @@ def normalize_data_with_log_cpm(filtered_data: pd.DataFrame, n_hvg: int = N_HVG)
         flavor="seurat_v3_paper",
         n_top_genes=n_hvg,
     )
-    hvg_genes = adata.var_names[adata.var["highly_variable"]]
+    hvg_genes = adata.var_names[adata.var["highly_variable"]].tolist()
 
     data = filtered_data.loc[:, hvg_genes]
 
     data = normalize_by_library_size(data)
     data = log_transform(data)
 
-    return data
+    return data, hvg_genes
 
 
 def filter_data(raw_data: pd.DataFrame, config: PreprocessingConfig, species: Species = "human") -> pd.DataFrame:
