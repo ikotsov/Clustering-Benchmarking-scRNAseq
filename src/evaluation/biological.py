@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 import numpy as np
 import pandas as pd
 from numpy.linalg import LinAlgError
@@ -7,13 +9,21 @@ DEFAULT_STRATIFIED_SAMPLES = 100
 DEFAULT_SEED = 3
 
 
+@dataclass(frozen=True)
+class StratifiedHVGSampleSet:
+    """Container for observed HVGs and matched random control samples."""
+
+    observed_hvg_genes: list[str]
+    control_samples: list[list[str]]
+
+
 def build_dataset_stratified_hvgs(
     gene_statistics: pd.DataFrame,
     hvg_genes: list[str],
     norm_method: str,
     n_samples: int = DEFAULT_STRATIFIED_SAMPLES,
     seed: int = DEFAULT_SEED,
-) -> dict[str, dict[str, list[str]]]:
+) -> dict[str, StratifiedHVGSampleSet]:
     """Build stratified HVGs grouped by normalization method."""
     return {
         norm_method: build_stratified_hvg_samples(
@@ -30,15 +40,15 @@ def build_stratified_hvg_samples(
     hvg_genes: list[str],
     n_samples: int = DEFAULT_STRATIFIED_SAMPLES,
     seed: int = DEFAULT_SEED,
-) -> dict[str, list[str]]:
+) -> StratifiedHVGSampleSet:
     """Build observed HVGs and stratified random samples."""
     gene_sampling_probabilities = _estimate_gene_probabilities(
         gene_statistics, hvg_genes)
     rng = np.random.default_rng(seed)
-    stratified_hvg_samples = {"observed_hvg_genes": hvg_genes}
     all_genes = gene_statistics.index.to_numpy()
+    control_samples: list[list[str]] = []
 
-    for sample_idx in range(1, n_samples + 1):
+    for _ in range(1, n_samples + 1):
         # matched random sets (same size, similar feature distribution) used as a null/control reference.
         sampled_hvg_control_genes = rng.choice(
             all_genes,
@@ -47,10 +57,12 @@ def build_stratified_hvg_samples(
             p=gene_sampling_probabilities,
             shuffle=False,
         )
-        stratified_hvg_samples[f"sample_{sample_idx}"] = sampled_hvg_control_genes.tolist(
-        )
+        control_samples.append(sampled_hvg_control_genes.tolist())
 
-    return stratified_hvg_samples
+    return StratifiedHVGSampleSet(
+        observed_hvg_genes=hvg_genes,
+        control_samples=control_samples,
+    )
 
 
 def _estimate_gene_probabilities(gene_statistics: pd.DataFrame, observed_genes: list[str]) -> np.ndarray:
