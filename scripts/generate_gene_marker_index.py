@@ -17,6 +17,7 @@ under the "all" species bucket.
 
 import json
 from pathlib import Path
+from typing import Literal, cast
 
 import pandas as pd
 
@@ -24,21 +25,29 @@ import pandas as pd
 GeneList = list[str]
 CellTypeIndex = dict[str, GeneList]
 TissueIndex = dict[str, CellTypeIndex]
-DatabaseIndex = dict[str, TissueIndex]
-GeneMarkerIndex = dict[str, DatabaseIndex]
+DatabaseName = Literal["cell_marker", "sctype"]
+SpeciesName = Literal["all", "human", "mouse"]
+DatabaseIndex = dict[DatabaseName, TissueIndex]
+GeneMarkerIndex = dict[SpeciesName, DatabaseIndex]
+
+CELL_MARKER_DATABASE: DatabaseName = "cell_marker"
+SCTYPE_DATABASE: DatabaseName = "sctype"
+ALL_SPECIES: SpeciesName = "all"
+HUMAN_SPECIES: SpeciesName = "human"
+MOUSE_SPECIES: SpeciesName = "mouse"
 
 
 CELL_MARKER_SCHEMA = {
     "species": "species",
-    "db": "cell_marker",
+    "db": CELL_MARKER_DATABASE,
     "tissue": "tissue_class",
     "cell_type": "cell_name",
     "gene": "marker",
 }
 
 SCTYPE_SCHEMA = {
-    "species": "all",
-    "db": "sctype",
+    "species": ALL_SPECIES,
+    "db": SCTYPE_DATABASE,
     "tissue": "tissueType",
     "cell_type": "cellName",
     # geneSymbolmore1 contains positive markers, while geneSymbolmore2 contains negative markers.
@@ -119,7 +128,7 @@ def _process_cell_marker(
         _add_gene_entry(
             index,
             species_key,
-            CELL_MARKER_SCHEMA["db"],
+            CELL_MARKER_DATABASE,
             tissue_key,
             cell_type_key,
             [gene_key],
@@ -159,8 +168,8 @@ def _process_sctype_marker(
 
         _add_gene_entry(
             index,
-            SCTYPE_SCHEMA["species"],
-            SCTYPE_SCHEMA["db"],
+            ALL_SPECIES,
+            SCTYPE_DATABASE,
             tissue_key,
             cell_type_key,
             list(genes),
@@ -181,17 +190,17 @@ def _normalize_label(value: object) -> str:
     return text
 
 
-def _normalize_species(value: object) -> str:
+def _normalize_species(value: object) -> SpeciesName:
     species = _normalize_label(value).lower()
     if species in {"human", "mouse"}:
-        return species
-    return species or "all"
+        return cast(SpeciesName, species)
+    return ALL_SPECIES
 
 
 def _add_gene_entry(
     index: GeneMarkerIndex,
-    species: str,
-    db: str,
+    species: SpeciesName,
+    db: DatabaseName,
     tissue: str,
     cell_type: str,
     genes: GeneList,
