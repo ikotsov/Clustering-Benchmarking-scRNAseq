@@ -1,8 +1,9 @@
+import json
 import anndata as ad
 from pathlib import Path
 import pandas as pd
 import scanpy as sc
-from typing import Literal
+from typing import Literal, TypeAlias, cast
 
 from .types import EnrichmentSetName
 from src.types import Species
@@ -12,13 +13,18 @@ DEFAULT_DEG_PVAL_CUTOFF = 0.01
 DEFAULT_DEG_POSITIVE_LOGFC = 1.0
 DEFAULT_DEG_NEGATIVE_LOGFC = -1.0
 DEFAULT_DEG_METHOD = "wilcoxon"
-CELL_MARKER_FILENAME_BY_SPECIES: dict[Species, str] = {
-    "human": "Cell_marker_Human.xlsx",
-    "mouse": "Cell_marker_Mouse.xlsx",
-}
-SCTYPE_FILENAME = "ScTypeDB_full.xlsx"
+
 MARKER_DATABASE_DIR = Path(__file__).resolve(
 ).parents[3] / "data" / "gene_markers"
+GENE_MARKER_INDEX_FILENAME = "gene_marker_index.json"
+GENE_MARKER_INDEX_PATH = MARKER_DATABASE_DIR / \
+    "outputs" / GENE_MARKER_INDEX_FILENAME
+GeneMarkerGenes: TypeAlias = list[str]
+GeneMarkerCellTypes: TypeAlias = dict[str, GeneMarkerGenes]
+GeneMarkerTissues: TypeAlias = dict[str, GeneMarkerCellTypes]
+GeneMarkerDatabases: TypeAlias = dict[str, GeneMarkerTissues]
+GeneMarkerIndex: TypeAlias = dict[str, GeneMarkerDatabases]
+GeneMarkerCollapsedCellTypes: TypeAlias = dict[str, set[str]]
 
 
 def build_dataset_biological_enrichment_sets(
@@ -49,84 +55,11 @@ def build_biological_enrichment_set(
     if enrichment_set == "de_markers":
         return build_de_marker_enrichment_set(expression_data, cell_type_labels)
     if enrichment_set == "cell_marker":
-        return build_cell_marker_enrichment_set(species=species)
+        return get_cell_marker_enrichment_set(species=species)
     if enrichment_set == "sctype":
-        return build_sctype_enrichment_set()
+        return get_sctype_enrichment_set()
 
     raise ValueError(f"Unsupported enrichment set: {enrichment_set}")
-
-
-def build_cell_marker_enrichment_set(
-    species: Species,
-) -> dict[str, set[str]]:
-    """Build marker sets grouped by CellMarker cell_name for a species."""
-    file_name = CELL_MARKER_FILENAME_BY_SPECIES[species]
-    marker_path = MARKER_DATABASE_DIR / file_name
-    if not marker_path.exists():
-        raise FileNotFoundError(
-            f"Marker database file not found: {marker_path}")
-
-    marker_data = pd.read_excel(marker_path)
-
-    selected = marker_data.loc[:, ["cell_name", "marker"]].dropna()
-    selected["cell_name"] = selected["cell_name"].astype(str).str.strip()
-    selected["marker"] = selected["marker"].astype(str).str.strip()
-    selected = selected[
-        (selected["cell_name"] != "")
-        & (selected["marker"] != "")
-    ]
-
-    return {
-        str(cell_name): {
-            str(gene)
-            for gene in genes.tolist()
-            if pd.notna(gene) and str(gene).strip() != ""
-        }
-        for cell_name, genes in selected.groupby("cell_name")["marker"]
-    }
-
-
-def build_sctype_enrichment_set() -> dict[str, set[str]]:
-    """Build ScType marker sets grouped by cellName across all tissues."""
-    marker_path = MARKER_DATABASE_DIR / SCTYPE_FILENAME
-    if not marker_path.exists():
-        raise FileNotFoundError(
-            f"Marker database file not found: {marker_path}")
-
-    sctype_data = pd.read_excel(marker_path)
-
-    selected = sctype_data.loc[:, ["cellName",
-                                   "geneSymbolmore1", "geneSymbolmore2"]].copy()
-    selected["cellName"] = selected["cellName"].astype(str).str.strip()
-    selected = selected[selected["cellName"] != ""]
-    selected["genes"] = selected.apply(_parse_gene_symbols, axis=1)
-
-    grouped = selected.groupby("cellName")["genes"].agg(
-        lambda gene_sets: set().union(*gene_sets)
-    )
-    return {str(cell_name): set(genes) for cell_name, genes in grouped.items()}
-
-
-def _parse_gene_symbols(row: pd.Series) -> set[str]:
-    """Convert ScType geneSymbolmore columns into one deduplicated gene set."""
-    genes: set[str] = set()
-    for column_name in ("geneSymbolmore1", "geneSymbolmore2"):
-        genes.update(_parse_gene_symbol_value(row[column_name]))
-
-    return genes
-
-
-def _parse_gene_symbol_value(value: str) -> set[str]:
-    """Split a comma-separated gene list into a set of symbols."""
-    value_str = value.strip()
-    if value_str == "" or value_str.lower() == "nan":
-        return set()
-
-    return {
-        token.strip()
-        for token in value_str.split(",")
-        if token.strip() != ""
-    }
 
 
 def build_de_marker_enrichment_set(
@@ -190,6 +123,48 @@ def build_de_marker_enrichment_set(
         | positive_markers_by_cell_type.get(cell_type, set())
         for cell_type in cell_types
     }
+
+
+def get_cell_marker_enrichment_set(
+    species: Species,
+) -> GeneMarkerCollapsedCellTypes:
+    """Build marker sets grouped by CellMarker cell_name for a species."""
+    marker_index = load_gene_marker_index()
+    species_bucket = marker_index.get(species, {})
+    cell_marker_bucket = species_bucket.get("cell_marker", {})
+    return _collapse_marker_index(cell_marker_bucket)
+
+
+def get_sctype_enrichment_set() -> GeneMarkerCollapsedCellTypes:
+    """Build ScType marker sets grouped by cellName across all tissues."""
+    marker_index = load_gene_marker_index()
+    all_species_bucket = marker_index.get("all", {})
+    sctype_bucket = all_species_bucket.get("sctype", {})
+    return _collapse_marker_index(sctype_bucket)
+
+
+def load_gene_marker_index() -> GeneMarkerIndex:
+    """Load the prebuilt gene marker index from the outputs folder."""
+    if not GENE_MARKER_INDEX_PATH.exists():
+        raise FileNotFoundError(
+            f"Gene marker index file not found: {GENE_MARKER_INDEX_PATH}"
+        )
+
+    with GENE_MARKER_INDEX_PATH.open("r", encoding="utf-8") as handle:
+        loaded = json.load(handle)
+
+    return cast(GeneMarkerIndex, loaded)
+
+
+def _collapse_marker_index(
+    tissue_bucket: GeneMarkerTissues,
+) -> GeneMarkerCollapsedCellTypes:
+    collapsed: GeneMarkerCollapsedCellTypes = {}
+    for cell_types in tissue_bucket.values():
+        for cell_name, genes in cell_types.items():
+            collapsed.setdefault(cell_name, set()).update(genes)
+
+    return collapsed
 
 
 def build_cluster_marker_enrichment_set(
