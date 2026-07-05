@@ -50,7 +50,7 @@ def filter_low_magnitude_genes(data: pd.DataFrame, min_count: int = GENE_MAGNITU
 
     dropped = data.shape[1] - data_filtered.shape[1]
 
-    logger.info("Dropped %s low-magnitude genes", dropped)
+    logger.debug("Dropped %s low-magnitude genes", dropped)
 
     return data_filtered
 
@@ -116,7 +116,7 @@ def filter_cells_by_fraction(data: pd.DataFrame, gene_list: List[str], threshold
 
     dropped = data.shape[0] - data_filtered.shape[0]
     if dropped > 0:
-        logger.info(
+        logger.debug(
             "Dropped %s cells (high %s: >%s%%)",
             dropped,
             filter_name,
@@ -170,8 +170,8 @@ def filter_doublets(data: pd.DataFrame, expected_doublet_rate: float = 0.05, thr
 
     dropped = data.shape[0] - data_filtered.shape[0]
     if dropped > 0:
-        logger.info("Dropped %s doublets", dropped)
+        logger.debug("Dropped %s doublets", dropped)
     else:
-        logger.info("No doublets detected")
+        logger.debug("No doublets detected")
 
     return data_filtered

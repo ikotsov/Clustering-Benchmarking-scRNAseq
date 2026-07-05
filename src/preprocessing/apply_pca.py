@@ -38,7 +38,7 @@ def apply_pca(data: pd.DataFrame, variance_ratio: float = PCA_VARIANCE_RATIO) ->
         raise ValueError(
             f"variance_ratio must be in (0, 1), got {variance_ratio}")
 
-    logger.info("Applying PCA (target explained variance: %s)",
+    logger.debug("Applying PCA (target explained variance: %s)",
                 f"{variance_ratio:.0%}")
 
     # Fit PCA
@@ -56,7 +56,7 @@ def apply_pca(data: pd.DataFrame, variance_ratio: float = PCA_VARIANCE_RATIO) ->
 
     # Report explained variance
     total_variance = pca.explained_variance_ratio_.sum() * 100
-    logger.info("Retained %s components", n_components_used)
-    logger.info("Explained variance: %.1f%%", total_variance)
+    logger.debug("Retained %s components", n_components_used)
+    logger.debug("Explained variance: %.1f%%", total_variance)
 
     return pca_data

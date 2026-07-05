@@ -38,7 +38,7 @@ def normalize_by_library_size(data: pd.DataFrame, rescale: int = CPM_RESCALE) ->
     Sample_1   500000.0   500000.0
     Sample_2   500000.0   500000.0
     """
-    logger.info("Normalizing library size (rescale=%0.0e)", rescale)
+    logger.debug("Normalizing library size (rescale=%0.0e)", rescale)
 
     # Calculate the sum of counts for each cell (row)
     library_size = data.sum(axis=1)
@@ -73,7 +73,7 @@ def log_transform(data: pd.DataFrame, pseudocount: int = 1) -> pd.DataFrame:
                 Gene_A     Gene_B
     Sample_1  4.615121        0.0
     """
-    logger.info("Applying log transform (log%s+x)", pseudocount)
+    logger.debug("Applying log transform (log%s+x)", pseudocount)
 
     data_log = np.log10(data + pseudocount)
 
@@ -91,8 +91,8 @@ def normalize_data_with_pearson(filtered_data: pd.DataFrame, n_hvg: int = N_HVG)
     Computes analytic Pearson Residuals (sctransform equivalent) using Scanpy.
     Follows: https://scanpy.readthedocs.io/en/latest/tutorials/experimental/pearson_residuals.html 
     """
-    logger.info("Computing residuals for %s cells", filtered_data.shape[0])
-    logger.info("Selecting top %s variable genes", n_hvg)
+    logger.debug("Computing residuals for %s cells", filtered_data.shape[0])
+    logger.debug("Selecting top %s variable genes", n_hvg)
 
     # Setup AnnData
     adata = sc.AnnData(filtered_data)

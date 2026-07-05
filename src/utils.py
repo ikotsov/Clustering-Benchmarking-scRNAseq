@@ -20,7 +20,7 @@ def extract_gene_subset(df, gene_list, subset_name="Subset"):
     total_target = len(gene_list)
 
     # Print Summary
-    logger.info("%s: Matched %s of %s reference genes.",
+    logger.debug("%s: Matched %s of %s reference genes.",
                 subset_name, count, total_target)
 
     # Extract Data

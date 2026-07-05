@@ -39,11 +39,11 @@ def preprocess_data(
 
     # Selective normalization
     if norm_method == "log_cpm":
-        logger.info("Normalization (LogCPM)...")
+        logger.debug("Normalization (LogCPM)...")
         normalized_data, hvg_genes = normalize_data_with_log_cpm(clean_data)
 
     elif norm_method == "pearson":
-        logger.info("Normalization (Pearson Residuals)...")
+        logger.debug("Normalization (Pearson Residuals)...")
         normalized_data, hvg_genes = normalize_data_with_pearson(clean_data)
 
     else:
@@ -57,7 +57,7 @@ N_HVG = 2_000
 
 
 def normalize_data_with_log_cpm(filtered_data: pd.DataFrame, n_hvg: int = N_HVG) -> tuple[pd.DataFrame, list[str]]:
-    logger.info("Selecting top %s variable genes", n_hvg)
+    logger.debug("Selecting top %s variable genes", n_hvg)
     adata = sc.AnnData(filtered_data)
     sc.pp.highly_variable_genes(
         adata,
