@@ -10,108 +10,72 @@ from .types import (
     FoldEnrichmentMetrics,
     MembershipMetrics,
     RandomSummaryStats,
-    StratifiedHVGSampleSet,
     TailStats,
 )
 
 
 def compute_biological_metrics_results(
-    stratified_hvg_samples: StratifiedHVGSampleSet,
+    cluster_marker_genes: list[str],
     enrichment_sets: dict[EnrichmentSetName, dict[str, set[str]]],
     all_genes: set[str],
     cluster_id: str,
     cluster_size: int,
-    cluster_marker_genes: list[str],
+    sample_type: str,
+    sample_index: int,
+    sample_seed: int,
+    run_hvg_count: int,
 ) -> list[BiologicalComparisonRecord]:
-    """Compute per-comparison biological metrics using observed vs random HVGs.
-
-    Each returned record corresponds to one predicted-cluster marker set compared
-    against one reference cell type marker set (within an enrichment set), with
-    cluster metadata attached for persistence.
-    """
-    observed_hvgs = set(stratified_hvg_samples.observed_hvg_genes)
-    random_hvg_samples = [set(sample)
-                          for sample in stratified_hvg_samples.control_samples]
+    """Compute biological metrics for one clustering run against reference sets."""
+    selected_cluster_markers = set(cluster_marker_genes)
 
     universe = sorted(all_genes)
-    observed_hvg_vector = _binary_membership_vector(universe, observed_hvgs)
-    random_hvg_vectors = [
-        _binary_membership_vector(universe, random_sample)
-        for random_sample in random_hvg_samples
-    ]
+    selected_cluster_marker_vector = _binary_membership_vector(
+        universe,
+        selected_cluster_markers,
+    )
 
     results: list[BiologicalComparisonRecord] = []
 
-    # for each reference enrichment set and cell type, compare observed and random HVG sets to the reference marker genes.
+    empty_metric_samples: list[float | None] = []
+
     for enrichment_set_name, marker_sets_by_cell_type in enrichment_sets.items():
-        # for each cell type in the reference enrichment set, compare observed and random HVG sets to the reference marker genes.
         for cell_type, reference_marker_genes in marker_sets_by_cell_type.items():
             marker_set = set(reference_marker_genes)
             y_true = _binary_membership_vector(universe, marker_set)
 
-            observed_metrics = _compute_membership_metrics(
+            run_metrics = _compute_membership_metrics(
                 y_true=y_true,
-                y_pred=observed_hvg_vector,
+                y_pred=selected_cluster_marker_vector,
             )
-            observed_fold = _compute_fold_enrichment(
-                selected_genes=observed_hvgs,
+            run_fold = _compute_fold_enrichment(
+                selected_genes=selected_cluster_markers,
                 marker_genes=marker_set,
                 all_genes=all_genes,
             )
 
-            random_metrics_for_cell_type: list[MembershipMetrics] = []
-            random_fold_values: list[float | None] = []
-            random_fold_intersections: list[int] = []
-            random_fold_expected: list[float | None] = []
-
-            # for each random sample, compute the same metrics to build a null distribution for comparison.
-            for random_sample, random_hvg_vector in zip(
-                random_hvg_samples,
-                random_hvg_vectors,
-            ):
-                sample_metrics = _compute_membership_metrics(
-                    y_true=y_true,
-                    y_pred=random_hvg_vector,
-                )
-                sample_fold = _compute_fold_enrichment(
-                    selected_genes=random_sample,
-                    marker_genes=marker_set,
-                    all_genes=all_genes,
-                )
-
-                random_metrics_for_cell_type.append(sample_metrics)
-                random_fold_values.append(sample_fold["fold_enrichment"])
-                random_fold_intersections.append(sample_fold["intersection"])
-                random_fold_expected.append(sample_fold["expected"])
-
             jaccard_stats = _right_tail_stats(
-                observed=observed_metrics["jaccard"],
-                random_values=[metrics["jaccard"]
-                               for metrics in random_metrics_for_cell_type],
+                observed=run_metrics["jaccard"],
+                random_values=empty_metric_samples,
             )
             precision_stats = _right_tail_stats(
-                observed=observed_metrics["precision"],
-                random_values=[metrics["precision"]
-                               for metrics in random_metrics_for_cell_type],
+                observed=run_metrics["precision"],
+                random_values=empty_metric_samples,
             )
             recall_stats = _right_tail_stats(
-                observed=observed_metrics["recall"],
-                random_values=[metrics["recall"]
-                               for metrics in random_metrics_for_cell_type],
+                observed=run_metrics["recall"],
+                random_values=empty_metric_samples,
             )
             specificity_stats = _right_tail_stats(
-                observed=observed_metrics["specificity"],
-                random_values=[metrics["specificity"]
-                               for metrics in random_metrics_for_cell_type],
+                observed=run_metrics["specificity"],
+                random_values=empty_metric_samples,
             )
             fpr_stats = _left_tail_stats(
-                observed=observed_metrics["fpr"],
-                random_values=[metrics["fpr"]
-                               for metrics in random_metrics_for_cell_type],
+                observed=run_metrics["fpr"],
+                random_values=empty_metric_samples,
             )
             fold_stats = _right_tail_stats(
-                observed=observed_fold["fold_enrichment"],
-                random_values=random_fold_values,
+                observed=run_fold["fold_enrichment"],
+                random_values=empty_metric_samples,
             )
 
             results.append(
@@ -122,72 +86,40 @@ def compute_biological_metrics_results(
                     "marker_genes": cluster_marker_genes,
                     "n_marker_genes": len(cluster_marker_genes),
                     "cell_type": cell_type,
-                    "jaccard": observed_metrics["jaccard"],
+                    "sample_type": sample_type,
+                    "sample_index": sample_index,
+                    "sample_seed": sample_seed,
+                    "run_hvg_count": run_hvg_count,
+                    "jaccard": run_metrics["jaccard"],
                     **_prefix_stats(jaccard_stats, "jaccard"),
-                    **_random_summary(
-                        "jaccard",
-                        [metrics["jaccard"]
-                            for metrics in random_metrics_for_cell_type],
-                    ),
-                    "tp": observed_metrics["tp"],
-                    "fp": observed_metrics["fp"],
-                    "fn": observed_metrics["fn"],
-                    "tn": observed_metrics["tn"],
-                    "precision": observed_metrics["precision"],
-                    "recall": observed_metrics["recall"],
-                    "specificity": observed_metrics["specificity"],
-                    "fpr": observed_metrics["fpr"],
+                    **_random_summary("jaccard", empty_metric_samples),
+                    "tp": run_metrics["tp"],
+                    "fp": run_metrics["fp"],
+                    "fn": run_metrics["fn"],
+                    "tn": run_metrics["tn"],
+                    "precision": run_metrics["precision"],
+                    "recall": run_metrics["recall"],
+                    "specificity": run_metrics["specificity"],
+                    "fpr": run_metrics["fpr"],
                     **_prefix_stats(precision_stats, "precision"),
                     **_prefix_stats(recall_stats, "recall"),
                     **_prefix_stats(specificity_stats, "specificity"),
                     **_prefix_stats(fpr_stats, "fpr"),
-                    **_random_summary(
-                        "precision",
-                        [metrics["precision"]
-                            for metrics in random_metrics_for_cell_type],
-                    ),
-                    **_random_summary(
-                        "recall",
-                        [metrics["recall"]
-                            for metrics in random_metrics_for_cell_type],
-                    ),
-                    **_random_summary(
-                        "specificity",
-                        [metrics["specificity"]
-                            for metrics in random_metrics_for_cell_type],
-                    ),
-                    **_random_summary(
-                        "fpr",
-                        [metrics["fpr"]
-                            for metrics in random_metrics_for_cell_type],
-                    ),
-                    **_random_summary(
-                        "tp",
-                        [metrics["tp"]
-                            for metrics in random_metrics_for_cell_type],
-                    ),
-                    **_random_summary(
-                        "fp",
-                        [metrics["fp"]
-                            for metrics in random_metrics_for_cell_type],
-                    ),
-                    **_random_summary(
-                        "fn",
-                        [metrics["fn"]
-                            for metrics in random_metrics_for_cell_type],
-                    ),
-                    **_random_summary(
-                        "tn",
-                        [metrics["tn"]
-                            for metrics in random_metrics_for_cell_type],
-                    ),
-                    "intersection": observed_fold["intersection"],
-                    "expected": observed_fold["expected"],
-                    "fold_enrichment": observed_fold["fold_enrichment"],
+                    **_random_summary("precision", empty_metric_samples),
+                    **_random_summary("recall", empty_metric_samples),
+                    **_random_summary("specificity", empty_metric_samples),
+                    **_random_summary("fpr", empty_metric_samples),
+                    **_random_summary("tp", empty_metric_samples),
+                    **_random_summary("fp", empty_metric_samples),
+                    **_random_summary("fn", empty_metric_samples),
+                    **_random_summary("tn", empty_metric_samples),
+                    "intersection": run_fold["intersection"],
+                    "expected": run_fold["expected"],
+                    "fold_enrichment": run_fold["fold_enrichment"],
                     **_prefix_stats(fold_stats, "fold_enrichment"),
-                    **_random_summary("fold_enrichment", random_fold_values),
-                    **_random_summary("intersection", random_fold_intersections),
-                    **_random_summary("expected", random_fold_expected),
+                    **_random_summary("fold_enrichment", empty_metric_samples),
+                    **_random_summary("intersection", empty_metric_samples),
+                    **_random_summary("expected", empty_metric_samples),
                 }
             )
 

@@ -55,6 +55,7 @@ def build_algorithm_celltype_heatmap_table(
     normalization: str | None = None,
     with_pca: bool | None = None,
     aggregate: str = "mean",
+    sample_type: str = "observed",
 ) -> pd.DataFrame:
     """Build an algorithm x cell_type table for marker-alignment metrics.
 
@@ -72,6 +73,8 @@ def build_algorithm_celltype_heatmap_table(
         data = data.loc[data["normalization"] == normalization]
     if with_pca is not None:
         data = data.loc[data["with_pca"] == with_pca]
+    if "sample_type" in data.columns:
+        data = data.loc[data["sample_type"] == sample_type]
 
     if data.empty:
         return pd.DataFrame()

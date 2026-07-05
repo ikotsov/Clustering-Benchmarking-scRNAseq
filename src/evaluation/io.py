@@ -2,6 +2,7 @@ import json
 import os
 from datetime import datetime
 
+from src.evaluation.biological.types import BiologicalComparisonRecord
 from src.utils import get_pca_label
 
 
@@ -98,8 +99,76 @@ def save_evaluation_results(
     all_results["updated_at"] = now_iso
 
     with open(results_file, 'w') as f:
-        json.dump(all_results, f, indent=2)
+        json.dump(all_results, f, indent=2, allow_nan=False)
 
     pca_key = get_pca_label(with_pca)
     print(
         f"  ✓ Evaluation saved: {algorithm} → {preprocessing} → {pca_key} in results.json")
+
+
+def save_biological_evaluation_results(
+    dataset: str,
+    algorithm: str,
+    preprocessing: str,
+    with_pca: bool,
+    comparison_records: list[BiologicalComparisonRecord],
+    output_dir: str,
+) -> None:
+    """Save biological evaluation results into biological_results.json."""
+    results_file = os.path.join(output_dir, "biological_results.json")
+    now_iso = datetime.now().isoformat()
+
+    all_results: dict[str, object]
+    if os.path.exists(results_file):
+        with open(results_file, "r") as f:
+            loaded = json.load(f)
+
+        all_results = loaded
+    else:
+        all_results = {
+            "dataset": dataset,
+            "updated_at": now_iso,
+            "runs": [],
+        }
+
+    runs = all_results["runs"]
+    if not isinstance(runs, list):
+        raise ValueError(
+            "Invalid biological_results.json format: 'runs' must be a list."
+        )
+
+    run_entry = {
+        "algorithm": algorithm,
+        "normalization": preprocessing,
+        "with_pca": with_pca,
+        "comparison_records": comparison_records,
+        "timestamp": now_iso,
+    }
+
+    replaced = False
+    for idx, existing in enumerate(runs):
+        if not isinstance(existing, dict):
+            continue
+
+        if (
+            existing.get("algorithm") == algorithm
+            and existing.get("normalization") == preprocessing
+            and bool(existing.get("with_pca", False)) == with_pca
+        ):
+            runs[idx] = run_entry
+            replaced = True
+            break
+
+    if not replaced:
+        runs.append(run_entry)
+
+    all_results.setdefault("dataset", dataset)
+    all_results["updated_at"] = now_iso
+
+    with open(results_file, "w") as f:
+        json.dump(all_results, f, allow_nan=False)
+
+    pca_key = get_pca_label(with_pca)
+    print(
+        f"  ✓ Biological evaluation saved: {algorithm} → {preprocessing} → {pca_key} in biological_results.json"
+    )

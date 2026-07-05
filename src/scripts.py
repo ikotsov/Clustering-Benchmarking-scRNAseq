@@ -1,4 +1,6 @@
 import os
+from collections.abc import Mapping
+
 import pandas as pd
 from src.data_loading import (
     load_csv_data,
@@ -9,11 +11,18 @@ from src.data_loading import (
     parse_preprocessing_config,
 )
 from src.preprocessing import apply_pca, preprocess_data
-from src.clustering.registry import ClusteringAlgorithm, get_clustering_strategy
-from src.evaluation import evaluate_clustering_externally, evaluate_clustering_internally, save_evaluation_results
+from src.clustering.registry import ClusteringAlgorithm, ClusteringFunc, get_clustering_strategy
+from src.evaluation import (
+    evaluate_clustering_biologically,
+    evaluate_clustering_externally,
+    evaluate_clustering_internally,
+    save_biological_evaluation_results,
+    save_evaluation_results,
+)
 from src.constants import PCA_VARIANCE_RATIO
 from src.types import NormMethod, Species
 from src.utils import get_pca_label
+from src.evaluation.biological.types import EnrichmentSetName
 
 
 VALID_SPECIES: tuple[Species, Species] = ("human", "mouse")
@@ -102,6 +111,7 @@ def run_experiment(
     algo_name: ClusteringAlgorithm,
     norm_method: NormMethod = "pearson",
     with_pca: bool = True,
+    enrichment_set_names: list[EnrichmentSetName] | None = None,
 ):
     """
     Orchestrates the clustering flow: Load preprocessed data -> Cluster -> Evaluate -> Save.
@@ -142,6 +152,8 @@ def run_experiment(
 
     # 3. Clustering
     config = load_dataset_config(dataset_dir)
+    species_value = config.get("species")
+    species = species_value if species_value in VALID_SPECIES else "human"
     print()
     print(f"Clustering ({algo_name})...")
     cluster_func = get_clustering_strategy(algo_name)
@@ -202,6 +214,71 @@ def run_experiment(
         preprocessing=norm_method,
         with_pca=with_pca,
         metrics=metrics,
+        output_dir=output_dir,
+    )
+
+    run_biological_evaluation(
+        accession=accession,
+        algo_name=algo_name,
+        norm_method=norm_method,
+        with_pca=with_pca,
+        ground_truth=ground_truth,
+        species=species,
+        clustering_strategy=cluster_func,
+        clustering_kwargs=cluster_kwargs,
+        enrichment_set_names=enrichment_set_names,
+    )
+
+
+def run_biological_evaluation(
+    accession: str,
+    algo_name: ClusteringAlgorithm,
+    norm_method: NormMethod,
+    with_pca: bool,
+    ground_truth: pd.Series,
+    species: Species,
+    clustering_strategy: ClusteringFunc,
+    clustering_kwargs: Mapping[str, object] | None = None,
+    enrichment_set_names: list[EnrichmentSetName] | None = None,
+):
+    """Run the biological evaluation stage and persist the results."""
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    dataset_dir = os.path.join(project_root, "data", accession)
+
+    print()
+    print("Biological evaluation...")
+    biological_input_filename = _processed_filename(
+        norm_method, with_pca=False)
+    biological_input_path = os.path.join(
+        dataset_dir, "processed", biological_input_filename)
+    if not os.path.exists(biological_input_path):
+        raise FileNotFoundError(
+            f"Biological input not found: {biological_input_filename}"
+        )
+
+    biological_data = load_csv_data(biological_input_path)
+
+    biological_results = evaluate_clustering_biologically(
+        expression_data=biological_data,
+        cell_type_labels=ground_truth.astype(str),
+        clustering_strategy=clustering_strategy,
+        clustering_kwargs=clustering_kwargs,
+        enrichment_set_names=enrichment_set_names,
+        species=species,
+    )
+    print(
+        f"  • Biological comparisons retained: {len(biological_results)} rows"
+    )
+
+    output_dir = os.path.join(dataset_dir, "outputs")
+    os.makedirs(output_dir, exist_ok=True)
+
+    save_biological_evaluation_results(
+        dataset=accession,
+        algorithm=algo_name,
+        preprocessing=norm_method,
+        with_pca=with_pca,
+        comparison_records=biological_results,
         output_dir=output_dir,
     )
 

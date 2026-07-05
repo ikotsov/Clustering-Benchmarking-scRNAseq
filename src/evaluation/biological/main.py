@@ -1,3 +1,5 @@
+from collections.abc import Callable, Mapping
+
 import pandas as pd
 
 from .constants import DEFAULT_SEED, DEFAULT_STRATIFIED_SAMPLES
@@ -13,12 +15,15 @@ from src.types import Species
 
 def evaluate_clustering_biologically(
     expression_data: pd.DataFrame,
-    predicted_labels: pd.Series[str],
     cell_type_labels: pd.Series[str],
+    clustering_strategy: Callable[..., pd.Series],
+    clustering_kwargs: Mapping[str, object] | None = None,
     enrichment_set_names: list[EnrichmentSetName] | None = None,
     species: Species = "human",
+    n_samples: int = DEFAULT_STRATIFIED_SAMPLES,
+    seed: int = DEFAULT_SEED,
 ) -> list[BiologicalComparisonRecord]:
-    """Evaluate predicted clusters biologically against reference cell-type markers."""
+    """Run biological evaluation for one observed run and sampled-HVG reruns."""
 
     requested_enrichment_sets: list[EnrichmentSetName] = (
         enrichment_set_names if enrichment_set_names is not None else [
@@ -32,40 +37,64 @@ def evaluate_clustering_biologically(
         enrichment_sets=requested_enrichment_sets,
         species=species,
     )
-    cluster_marker_sets = build_cluster_marker_enrichment_set(
-        expression_data=expression_data,
-        predicted_cluster_labels=predicted_labels,
-    )
 
     gene_sampling_features = compute_gene_sampling_features(expression_data)
-    all_genes = {str(gene) for gene in expression_data.columns}
-    cluster_sizes = predicted_labels.value_counts()
+    hvg_genes = expression_data.columns.astype(str).tolist()
+    sampled_hvg_sets = build_stratified_hvg_samples(
+        gene_sampling_features=gene_sampling_features,
+        hvg_genes=hvg_genes,
+        n_samples=n_samples,
+        seed=seed,
+    )
+
+    run_definitions: list[tuple[str, int, list[str]]] = [
+        ("observed", 0, hvg_genes)]
+    for sample_index, sampled_genes in enumerate(sampled_hvg_sets.control_samples, start=1):
+        run_definitions.append(("sampled", sample_index, sampled_genes))
+
+    all_genes = {str(gene) for gene in hvg_genes}
+    effective_clustering_kwargs = clustering_kwargs if clustering_kwargs is not None else {}
 
     comparison_records: list[BiologicalComparisonRecord] = []
 
-    # for each cluster, compare its marker genes to the reference enrichment sets.
-    for idx, (cluster_id, marker_genes) in enumerate(cluster_marker_sets.items(), start=1):
-        sorted_marker_genes = sorted(marker_genes)
-        cluster_size = int(cluster_sizes.get(cluster_id, 0))
-
-        if len(sorted_marker_genes) == 0:
-            continue
-
-        stratified_hvg_samples = build_stratified_hvg_samples(
-            gene_sampling_features=gene_sampling_features,
-            hvg_genes=sorted_marker_genes,
-            n_samples=DEFAULT_STRATIFIED_SAMPLES,
-            seed=DEFAULT_SEED + idx,
+    for sample_type, sample_index, sampled_genes in run_definitions:
+        sampled_expression_data = expression_data.loc[:, sampled_genes]
+        clustering_labels = clustering_strategy(
+            sampled_expression_data,
+            **effective_clustering_kwargs,
         )
-        metrics = compute_biological_metrics_results(
-            stratified_hvg_samples=stratified_hvg_samples,
-            enrichment_sets=reference_enrichment_sets,
-            all_genes=all_genes,
-            cluster_id=cluster_id,
-            cluster_size=cluster_size,
-            cluster_marker_genes=sorted_marker_genes,
+        predicted_labels = pd.Series(
+            clustering_labels,
+            index=sampled_expression_data.index,
+            name="cluster",
+        ).astype(str)
+
+        cluster_marker_sets = build_cluster_marker_enrichment_set(
+            expression_data=sampled_expression_data,
+            predicted_cluster_labels=predicted_labels,
         )
-        comparison_records.extend(metrics)
+        cluster_sizes = predicted_labels.value_counts()
+
+        # for each cluster, compare its marker genes to the reference enrichment sets.
+        for cluster_id, marker_genes in cluster_marker_sets.items():
+            sorted_marker_genes = sorted(marker_genes)
+            cluster_size = int(cluster_sizes.get(cluster_id, 0))
+
+            if len(sorted_marker_genes) == 0:
+                continue
+
+            metrics = compute_biological_metrics_results(
+                cluster_marker_genes=sorted_marker_genes,
+                enrichment_sets=reference_enrichment_sets,
+                all_genes=all_genes,
+                cluster_id=cluster_id,
+                cluster_size=cluster_size,
+                sample_type=sample_type,
+                sample_index=sample_index,
+                sample_seed=seed + sample_index,
+                run_hvg_count=len(sampled_genes),
+            )
+            comparison_records.extend(metrics)
 
     return comparison_records
 
