@@ -66,7 +66,7 @@ def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", pca_v
 
     # Load & preprocess
     logger.info(
-        "=== PREPROCESSING: %s, norm_method=%s, pca_variance_ratio=%s ===",
+        "PREPROCESSING: %s, norm_method=%s, pca_variance_ratio=%s",
         accession,
         norm_method,
         f"{pca_variance_ratio:.0%}",
@@ -140,7 +140,7 @@ def run_experiment(
     dataset_dir = os.path.join(project_root, "data", accession)
 
     pca_tag = get_pca_label(with_pca).upper()
-    logger.info("=== EXPERIMENT: %s + %s + %s ===",
+    logger.info("EXPERIMENT: %s + %s + %s",
                 accession, algo_name.upper(), pca_tag)
 
     # 2. Load preprocessed data
