@@ -21,7 +21,7 @@ def extract_gene_subset(df, gene_list, subset_name="Subset"):
 
     # Print Summary
     logger.debug("%s: Matched %s of %s reference genes.",
-                subset_name, count, total_target)
+                 subset_name, count, total_target)
 
     # Extract Data
     subset_df = df[overlapping]
