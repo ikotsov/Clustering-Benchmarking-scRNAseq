@@ -1,7 +1,12 @@
+import logging
+
 import numpy as np
 import pandas as pd
 from typing import cast
 import scanpy as sc
+
+
+logger = logging.getLogger(__name__)
 
 # Adjust as needed. Seurat uses 10_000 for normalization by default.
 CPM_RESCALE = 1_000_000
@@ -33,7 +38,7 @@ def normalize_by_library_size(data: pd.DataFrame, rescale: int = CPM_RESCALE) ->
     Sample_1   500000.0   500000.0
     Sample_2   500000.0   500000.0
     """
-    print(f"  • Normalizing library size (rescale={rescale:.0e})")
+    logger.info("Normalizing library size (rescale=%0.0e)", rescale)
 
     # Calculate the sum of counts for each cell (row)
     library_size = data.sum(axis=1)
@@ -68,7 +73,7 @@ def log_transform(data: pd.DataFrame, pseudocount: int = 1) -> pd.DataFrame:
                 Gene_A     Gene_B
     Sample_1  4.615121        0.0
     """
-    print(f"  • Applying log transform (log{pseudocount}+x)")
+    logger.info("Applying log transform (log%s+x)", pseudocount)
 
     data_log = np.log10(data + pseudocount)
 
@@ -86,8 +91,8 @@ def normalize_data_with_pearson(filtered_data: pd.DataFrame, n_hvg: int = N_HVG)
     Computes analytic Pearson Residuals (sctransform equivalent) using Scanpy.
     Follows: https://scanpy.readthedocs.io/en/latest/tutorials/experimental/pearson_residuals.html 
     """
-    print(f"  • Computing residuals for {filtered_data.shape[0]} cells")
-    print(f"  • Selecting top {n_hvg} variable genes")
+    logger.info("Computing residuals for %s cells", filtered_data.shape[0])
+    logger.info("Selecting top %s variable genes", n_hvg)
 
     # Setup AnnData
     adata = sc.AnnData(filtered_data)

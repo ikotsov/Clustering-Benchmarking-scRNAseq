@@ -1,7 +1,12 @@
+import logging
+
 import pandas as pd
 from sklearn.decomposition import PCA
 
 from src.constants import SEED, PCA_VARIANCE_RATIO
+
+
+logger = logging.getLogger(__name__)
 
 
 def apply_pca(data: pd.DataFrame, variance_ratio: float = PCA_VARIANCE_RATIO) -> pd.DataFrame:
@@ -33,8 +38,8 @@ def apply_pca(data: pd.DataFrame, variance_ratio: float = PCA_VARIANCE_RATIO) ->
         raise ValueError(
             f"variance_ratio must be in (0, 1), got {variance_ratio}")
 
-    print(
-        f"  • Applying PCA (target explained variance: {variance_ratio:.0%})")
+    logger.info("Applying PCA (target explained variance: %s)",
+                f"{variance_ratio:.0%}")
 
     # Fit PCA
     pca = PCA(n_components=variance_ratio, random_state=SEED)
@@ -51,7 +56,7 @@ def apply_pca(data: pd.DataFrame, variance_ratio: float = PCA_VARIANCE_RATIO) ->
 
     # Report explained variance
     total_variance = pca.explained_variance_ratio_.sum() * 100
-    print(f"  • Retained {n_components_used} components")
-    print(f"  • Explained variance: {total_variance:.1f}%")
+    logger.info("Retained %s components", n_components_used)
+    logger.info("Explained variance: %.1f%%", total_variance)
 
     return pca_data

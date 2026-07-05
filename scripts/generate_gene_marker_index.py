@@ -16,10 +16,14 @@ under the "all" species bucket.
 """
 
 import json
+import logging
 from pathlib import Path
 from typing import Literal, cast
 
 import pandas as pd
+
+
+logger = logging.getLogger(__name__)
 
 
 GeneList = list[str]
@@ -62,7 +66,7 @@ def main() -> None:
         rel = output_path.relative_to(PROJECT_ROOT)
     except Exception:
         rel = output_path
-    print(f"Wrote gene marker index to {rel}")
+    logger.info("Wrote gene marker index to %s", rel)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -214,4 +218,7 @@ def _add_gene_entry(
 
 
 if __name__ == "__main__":
+    from src.logging_config import configure_logging
+
+    configure_logging()
     main()

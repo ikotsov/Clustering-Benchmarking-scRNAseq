@@ -1,9 +1,14 @@
+import logging
+
 import pandas as pd
 import scanpy as sc
 from .types import PreprocessingConfig
 from .filters import filter_high_mito_cells, filter_high_rrna_cells, filter_high_apoptosis_cells, filter_low_magnitude_genes
 from .transforms import normalize_by_library_size, log_transform, normalize_data_with_pearson
 from src.types import NormMethod, Species
+
+
+logger = logging.getLogger(__name__)
 
 
 def preprocess_data(
@@ -34,13 +39,11 @@ def preprocess_data(
 
     # Selective normalization
     if norm_method == "log_cpm":
-        print()
-        print("Normalization (LogCPM)...")
+        logger.info("Normalization (LogCPM)...")
         normalized_data, hvg_genes = normalize_data_with_log_cpm(clean_data)
 
     elif norm_method == "pearson":
-        print()
-        print("Normalization (Pearson Residuals)...")
+        logger.info("Normalization (Pearson Residuals)...")
         normalized_data, hvg_genes = normalize_data_with_pearson(clean_data)
 
     else:
@@ -54,7 +57,7 @@ N_HVG = 2_000
 
 
 def normalize_data_with_log_cpm(filtered_data: pd.DataFrame, n_hvg: int = N_HVG) -> tuple[pd.DataFrame, list[str]]:
-    print(f"  • Selecting top {n_hvg} variable genes")
+    logger.info("Selecting top %s variable genes", n_hvg)
     adata = sc.AnnData(filtered_data)
     sc.pp.highly_variable_genes(
         adata,
@@ -75,8 +78,9 @@ def filter_data(raw_data: pd.DataFrame, config: PreprocessingConfig, species: Sp
     """
     Runs the full filtering pipeline.
     """
-    print(f"Filtering...")
-    print(f"  Input: {raw_data.shape[0]} cells × {raw_data.shape[1]} genes")
+    logger.info("Filtering...")
+    logger.info("Input: %s cells × %s genes",
+                raw_data.shape[0], raw_data.shape[1])
 
     data = filter_low_magnitude_genes(
         raw_data, min_count=config.gene_magnitude_threshold)
@@ -86,5 +90,5 @@ def filter_data(raw_data: pd.DataFrame, config: PreprocessingConfig, species: Sp
         data, species=species, threshold=config.rrna_threshold)
     data = filter_high_mito_cells(data, threshold=config.mito_threshold)
 
-    print(f"  Output: {data.shape[0]} cells × {data.shape[1]} genes")
+    logger.info("Output: %s cells × %s genes", data.shape[0], data.shape[1])
     return data

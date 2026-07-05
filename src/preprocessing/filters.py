@@ -1,3 +1,5 @@
+import logging
+
 from typing import List, Optional
 import pandas as pd
 import scanpy as sc
@@ -5,6 +7,9 @@ import scanpy as sc
 from ..types import Species
 from .genes import HUMAN_APOPTOSIS_GENES, HUMAN_RRNA_GENES, MOUSE_APOPTOSIS_GENES, MOUSE_RRNA_GENES
 from ..constants import GENE_MAGNITUDE_THRESHOLD
+
+
+logger = logging.getLogger(__name__)
 
 
 def filter_low_magnitude_genes(data: pd.DataFrame, min_count: int = GENE_MAGNITUDE_THRESHOLD) -> pd.DataFrame:
@@ -45,7 +50,7 @@ def filter_low_magnitude_genes(data: pd.DataFrame, min_count: int = GENE_MAGNITU
 
     dropped = data.shape[1] - data_filtered.shape[1]
 
-    print(f"  • Dropped {dropped} low-magnitude genes")
+    logger.info("Dropped %s low-magnitude genes", dropped)
 
     return data_filtered
 
@@ -111,8 +116,12 @@ def filter_cells_by_fraction(data: pd.DataFrame, gene_list: List[str], threshold
 
     dropped = data.shape[0] - data_filtered.shape[0]
     if dropped > 0:
-        print(
-            f"  • Dropped {dropped} cells (high {filter_name}: >{threshold*100}%)")
+        logger.info(
+            "Dropped %s cells (high %s: >%s%%)",
+            dropped,
+            filter_name,
+            threshold * 100,
+        )
 
     return data_filtered
 
@@ -161,8 +170,8 @@ def filter_doublets(data: pd.DataFrame, expected_doublet_rate: float = 0.05, thr
 
     dropped = data.shape[0] - data_filtered.shape[0]
     if dropped > 0:
-        print(f"  • Dropped {dropped} doublets")
+        logger.info("Dropped %s doublets", dropped)
     else:
-        print(f"  • No doublets detected")
+        logger.info("No doublets detected")
 
     return data_filtered

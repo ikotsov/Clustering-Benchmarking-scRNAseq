@@ -1,6 +1,8 @@
+import logging
 from itertools import product
 
 from src.constants import DATASETS, NORM_METHODS
+from src.logging_config import configure_logging
 from src.tuning.algorithms import ALGORITHM_PARAM_SPECS, run_tuning
 from src.tuning.common import CLUSTERING_PARAMS_FILENAME
 
@@ -8,28 +10,38 @@ from src.tuning.common import CLUSTERING_PARAMS_FILENAME
 ALGORITHMS = tuple(ALGORITHM_PARAM_SPECS.keys())
 
 
+logger = logging.getLogger(__name__)
+
+
 if __name__ == "__main__":
+    configure_logging()
     total_runs = len(DATASETS) * len(ALGORITHMS) * len(NORM_METHODS)
-    print(f"  Total runs: {total_runs}")
+    logger.info("Total runs: %s", total_runs)
 
     run_count = 0
     for dataset, algorithm, norm_method in product(DATASETS, ALGORITHMS, NORM_METHODS):
         run_count += 1
-        print(
-            f"[{run_count}/{total_runs}] Tuning {dataset} + {algorithm} + {norm_method}...")
+        logger.info(
+            "[%s/%s] Tuning %s + %s + %s...",
+            run_count,
+            total_runs,
+            dataset,
+            algorithm,
+            norm_method,
+        )
         try:
             run_tuning(
                 accession=dataset,
                 algorithm=algorithm,
                 norm_method=norm_method,
             )
-            print()
         except Exception as e:
-            print(f"  ⚠ Error: {e}\n")
+            logger.error("Error: %s", e)
             continue
 
-    print(f"\n{'='*80}")
-    print(f"Tuning complete! Results in:")
+    logger.info("%s", "=" * 80)
+    logger.info("Tuning complete! Results in:")
     for dataset in DATASETS:
-        print(f"  data/{dataset}/outputs/{CLUSTERING_PARAMS_FILENAME}.json")
-    print(f"{'='*80}\n")
+        logger.info("data/%s/outputs/%s.json", dataset,
+                    CLUSTERING_PARAMS_FILENAME)
+    logger.info("%s", "=" * 80)

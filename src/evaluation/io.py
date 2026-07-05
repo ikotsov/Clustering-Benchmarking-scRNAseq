@@ -1,9 +1,13 @@
 import json
+import logging
 import os
 from datetime import datetime
 
 from src.evaluation.biological.types import BiologicalComparisonRecord
 from src.utils import get_pca_label
+
+
+logger = logging.getLogger(__name__)
 
 
 def save_evaluation_results(
@@ -102,8 +106,12 @@ def save_evaluation_results(
         json.dump(all_results, f, indent=2, allow_nan=False)
 
     pca_key = get_pca_label(with_pca)
-    print(
-        f"  ✓ Evaluation saved: {algorithm} → {preprocessing} → {pca_key} in results.json")
+    logger.info(
+        "  ✓ Evaluation saved: %s → %s → %s in results.json",
+        algorithm,
+        preprocessing,
+        pca_key,
+    )
 
 
 def save_biological_evaluation_results(
@@ -169,6 +177,9 @@ def save_biological_evaluation_results(
         json.dump(all_results, f, allow_nan=False)
 
     pca_key = get_pca_label(with_pca)
-    print(
-        f"  ✓ Biological evaluation saved: {algorithm} → {preprocessing} → {pca_key} in biological_results.json"
+    logger.info(
+        "  ✓ Biological evaluation saved: %s → %s → %s in biological_results.json",
+        algorithm,
+        preprocessing,
+        pca_key,
     )

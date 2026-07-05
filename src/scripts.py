@@ -1,3 +1,4 @@
+import logging
 import os
 from collections.abc import Mapping
 
@@ -23,6 +24,8 @@ from src.constants import PCA_VARIANCE_RATIO
 from src.types import NormMethod, Species
 from src.utils import get_pca_label
 from src.evaluation.biological.types import EnrichmentSetName
+
+logger = logging.getLogger(__name__)
 
 
 VALID_SPECIES: tuple[Species, Species] = ("human", "mouse")
@@ -62,12 +65,15 @@ def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", pca_v
     preprocessing_config = parse_preprocessing_config(config)
 
     # Load & preprocess
-    print(
-        f"\n=== PREPROCESSING: {accession}, norm_method={norm_method}, pca_variance_ratio={pca_variance_ratio:.0%} ===")
-    print()
+    logger.info(
+        "=== PREPROCESSING: %s, norm_method=%s, pca_variance_ratio=%s ===",
+        accession,
+        norm_method,
+        f"{pca_variance_ratio:.0%}",
+    )
     raw_data = load_csv_data(raw_file_path)
 
-    print("--- Building non-PCA representation ---")
+    logger.info("--- Building non-PCA representation ---")
     preprocessed_no_pca, hvg_genes_no_pca = preprocess_data(
         raw_data,
         norm_method=norm_method,
@@ -75,8 +81,7 @@ def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", pca_v
         preprocessing_config=preprocessing_config,
     )
 
-    print()
-    print("--- Building PCA representation from non-PCA data ---")
+    logger.info("--- Building PCA representation from non-PCA data ---")
     preprocessed_pca = apply_pca(
         preprocessed_no_pca,
         variance_ratio=pca_variance_ratio,
@@ -91,9 +96,12 @@ def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", pca_v
         filename = _processed_filename(norm_method, with_pca)
         save_path = os.path.join(output_dir, filename)
         preprocessed_data.to_csv(save_path, compression='gzip')
-        print()
-        print(
-            f"✓ Saved to: {filename} ({preprocessed_data.shape[0]} × {preprocessed_data.shape[1]} features)")
+        logger.info(
+            "Saved to: %s (%s × %s features)",
+            filename,
+            preprocessed_data.shape[0],
+            preprocessed_data.shape[1],
+        )
 
     hvg_filename = _hvg_filename(norm_method)
     hvg_path = os.path.join(output_dir, hvg_filename)
@@ -102,8 +110,8 @@ def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", pca_v
         sep="\t",
         index=False,
     )
-    print()
-    print(f"✓ Saved HVGs to: {hvg_filename} ({len(hvg_genes_no_pca)} genes)")
+    logger.info("Saved HVGs to: %s (%s genes)",
+                hvg_filename, len(hvg_genes_no_pca))
 
 
 def run_experiment(
@@ -132,9 +140,8 @@ def run_experiment(
     dataset_dir = os.path.join(project_root, "data", accession)
 
     pca_tag = get_pca_label(with_pca).upper()
-    print(
-        f"\n=== EXPERIMENT: {accession} + {algo_name.upper()} + {pca_tag} ===")
-    print()
+    logger.info("=== EXPERIMENT: %s + %s + %s ===",
+                accession, algo_name.upper(), pca_tag)
 
     # 2. Load preprocessed data
     preprocessed_filename = _processed_filename(norm_method, with_pca)
@@ -147,15 +154,14 @@ def run_experiment(
             f"Run preprocessing first with: run_preprocessing('{accession}', '{norm_method}')"
         )
 
-    print(f"Loading preprocessed data: {preprocessed_filename}")
+    logger.info("Loading preprocessed data: %s", preprocessed_filename)
     target_data = load_csv_data(preprocessed_file)
 
     # 3. Clustering
     config = load_dataset_config(dataset_dir)
     species_value = config.get("species")
     species = species_value if species_value in VALID_SPECIES else "human"
-    print()
-    print(f"Clustering ({algo_name})...")
+    logger.info("Clustering (%s)...", algo_name)
     cluster_func = get_clustering_strategy(algo_name)
 
     cluster_kwargs = load_clustering_params(
@@ -171,19 +177,17 @@ def run_experiment(
     labels = cluster_func(target_data, **cluster_kwargs)
 
     # 4. Load ground truth labels
-    print()
-    print("Loading ground truth labels...")
+    logger.info("Loading ground truth labels...")
     try:
         ground_truth = load_ground_truth_labels(dataset_dir)
-        print(f"  ✓ Loaded {len(ground_truth)} ground truth labels")
+        logger.info("Loaded %s ground truth labels", len(ground_truth))
     except FileNotFoundError as e:
-        print(f"  ⚠ Warning: {e}")
-        print("  Skipping evaluation.")
+        logger.warning("Warning: %s", e)
+        logger.warning("Skipping evaluation.")
         return
 
     # 5. Evaluate and save results
-    print()
-    print("Evaluation...")
+    logger.info("Evaluation...")
     # Here we align the predicted labels with the ground truth labels based on the index (cell IDs).
     # The alignment is done based on the order of the indices in the target_data.
     # Wew rely on the fact that the clustering algorithm returns labels in the same order as the input data.
@@ -192,16 +196,16 @@ def run_experiment(
     external_metrics = evaluate_clustering_externally(
         labels_series, ground_truth)
 
-    print(f"  • ARI:     {external_metrics['ari']:.3f}")
-    print(f"  • NMI:     {external_metrics['nmi']:.3f}")
-    print(f"  • Jaccard: {external_metrics['jaccard']:.3f}")
+    logger.info("ARI: %.3f", external_metrics["ari"])
+    logger.info("NMI: %.3f", external_metrics["nmi"])
+    logger.info("Jaccard: %.3f", external_metrics["jaccard"])
 
     internal_metrics = evaluate_clustering_internally(
         target_data, labels_series)
-    print(f"  • Silhouette:       {internal_metrics['silhouette']:.3f}")
-    print(
-        f"  • Calinski-Harabasz: {internal_metrics['calinski_harabasz']:.3f}")
-    print(f"  • Davies-Bouldin:   {internal_metrics['davies_bouldin']:.3f}")
+    logger.info("Silhouette: %.3f", internal_metrics["silhouette"])
+    logger.info("Calinski-Harabasz: %.3f",
+                internal_metrics["calinski_harabasz"])
+    logger.info("Davies-Bouldin: %.3f", internal_metrics["davies_bouldin"])
 
     metrics = {**external_metrics, **internal_metrics}
 
@@ -245,8 +249,7 @@ def run_biological_evaluation(
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     dataset_dir = os.path.join(project_root, "data", accession)
 
-    print()
-    print("Biological evaluation...")
+    logger.info("Biological evaluation...")
     biological_input_filename = _processed_filename(
         norm_method, with_pca=False)
     biological_input_path = os.path.join(
@@ -266,9 +269,8 @@ def run_biological_evaluation(
         enrichment_set_names=enrichment_set_names,
         species=species,
     )
-    print(
-        f"  • Biological comparisons retained: {len(biological_results)} rows"
-    )
+    logger.info("Biological comparisons retained: %s rows",
+                len(biological_results))
 
     output_dir = os.path.join(dataset_dir, "outputs")
     os.makedirs(output_dir, exist_ok=True)

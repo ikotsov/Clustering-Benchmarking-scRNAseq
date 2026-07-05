@@ -1,4 +1,9 @@
+import logging
+
 import pandas as pd
+
+
+logger = logging.getLogger(__name__)
 
 
 def extract_gene_subset(df, gene_list, subset_name="Subset"):
@@ -15,7 +20,8 @@ def extract_gene_subset(df, gene_list, subset_name="Subset"):
     total_target = len(gene_list)
 
     # Print Summary
-    print(f"{subset_name}: Matched {count} of {total_target} reference genes.")
+    logger.info("%s: Matched %s of %s reference genes.",
+                subset_name, count, total_target)
 
     # Extract Data
     subset_df = df[overlapping]
