@@ -21,4 +21,5 @@ def configure_logging(level: int = logging.INFO) -> None:
 
 def exclude_noisy_loggers() -> None:
     for logger_name in NOISY_LOGGERS:
+        # messages below this severity will get dropped
         logging.getLogger(logger_name).setLevel(logging.WARNING)
