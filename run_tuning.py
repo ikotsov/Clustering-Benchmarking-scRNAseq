@@ -39,9 +39,6 @@ if __name__ == "__main__":
             logger.error("Error: %s", e)
             continue
 
-    logger.info("%s", "=" * 80)
     logger.info("Tuning complete! Results in:")
     for dataset in DATASETS:
-        logger.info("data/%s/outputs/%s.json", dataset,
-                    CLUSTERING_PARAMS_FILENAME)
-    logger.info("%s", "=" * 80)
+        logger.info("data/%s/outputs/%s", dataset, CLUSTERING_PARAMS_FILENAME)
