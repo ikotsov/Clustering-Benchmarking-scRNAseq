@@ -73,7 +73,7 @@ def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", pca_v
     )
     raw_data = load_csv_data(raw_file_path)
 
-    logger.info("--- Building non-PCA representation ---")
+    logger.info("Building non-PCA representation...")
     preprocessed_no_pca, hvg_genes_no_pca = preprocess_data(
         raw_data,
         norm_method=norm_method,
@@ -81,7 +81,7 @@ def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", pca_v
         preprocessing_config=preprocessing_config,
     )
 
-    logger.info("--- Building PCA representation from non-PCA data ---")
+    logger.info("Building PCA representation from non-PCA data...")
     preprocessed_pca = apply_pca(
         preprocessed_no_pca,
         variance_ratio=pca_variance_ratio,
