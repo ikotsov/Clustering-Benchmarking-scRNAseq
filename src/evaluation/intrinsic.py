@@ -30,7 +30,10 @@ def evaluate_clustering_internally(data: pd.DataFrame, labels_pred: pd.Series) -
     X = data.loc[common_cells]
     y = labels_pred.loc[common_cells]
 
-    # These metrics are only defined for 2 <= n_clusters <= n_samples - 1
+    # 2 <= n_clusters <= n_samples - 1 is documented only for silhouette_score,
+    # but calinski_harabasz_score/davies_bouldin_score enforce the same bound
+    # internally (both call sklearn's check_number_of_labels). If we omit this
+    # condition, all three raise ValueError outside that range.
     n_unique = y.nunique()
     if n_unique < 2 or n_unique >= len(y):
         return {"silhouette": None, "calinski_harabasz": None, "davies_bouldin": None}
