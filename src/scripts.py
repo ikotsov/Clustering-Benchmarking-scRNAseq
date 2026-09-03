@@ -198,10 +198,12 @@ def run_experiment(
 
     internal_metrics = evaluate_clustering_internally(
         target_data, labels_series)
-    print(f"  • Silhouette:       {internal_metrics['silhouette']:.3f}")
     print(
-        f"  • Calinski-Harabasz: {internal_metrics['calinski_harabasz']:.3f}")
-    print(f"  • Davies-Bouldin:   {internal_metrics['davies_bouldin']:.3f}")
+        f"  • Silhouette:       {_format_metric(internal_metrics['silhouette'])}")
+    print(
+        f"  • Calinski-Harabasz: {_format_metric(internal_metrics['calinski_harabasz'])}")
+    print(
+        f"  • Davies-Bouldin:   {_format_metric(internal_metrics['davies_bouldin'])}")
 
     metrics = {**external_metrics, **internal_metrics}
 
@@ -228,6 +230,10 @@ def run_experiment(
         clustering_kwargs=cluster_kwargs,
         enrichment_set_names=enrichment_set_names,
     )
+
+
+def _format_metric(value: float | None) -> str:
+    return f"{value:.3f}" if value is not None else "N/A (undefined)"
 
 
 def run_biological_evaluation(

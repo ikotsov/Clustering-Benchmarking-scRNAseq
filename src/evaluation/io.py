@@ -11,7 +11,7 @@ def save_evaluation_results(
     algorithm: str,
     preprocessing: str,
     with_pca: bool,
-    metrics: dict[str, float],
+    metrics: dict[str, float | None],
     output_dir: str,
 ) -> None:
     """
