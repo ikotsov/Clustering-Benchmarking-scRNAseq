@@ -1,9 +1,14 @@
+import logging
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from typing import cast, List, Optional
 
 from src.constants import SEED, GENE_MAGNITUDE_THRESHOLD
+
+
+logger = logging.getLogger(__name__)
 
 # To show cleanr and ready to use data - Blue is associated with stability.
 BLUE = '#3498db'
@@ -137,7 +142,7 @@ def plot_filtering_effect_violin(data_before: pd.DataFrame, data_after: pd.DataF
     # Identify valid genes
     valid_genes = [g for g in gene_list if g in data_before.columns]
     if not valid_genes:
-        print(f"Warning: No valid genes found for {metric_name}")
+        logger.warning("No valid genes found for %s", metric_name)
         return
 
     # Calculate metrics (Fractions)
@@ -335,5 +340,5 @@ def plot_pearson_diagnostic(pearsons_data):
     plt.show()
 
     # Health check
-    print(f"Mean variance: {gene_vars.mean():.2f}")
-    print(f"Max variance:  {gene_vars.max():.2f}")
+    logger.info("Mean variance: %.2f", gene_vars.mean())
+    logger.info("Max variance: %.2f", gene_vars.max())

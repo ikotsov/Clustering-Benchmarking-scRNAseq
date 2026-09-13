@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Literal, TypedDict
 
@@ -16,6 +17,9 @@ from src.tuning.common import (
     save_tuning_results,
 )
 from src.types import NormMethod
+
+
+logger = logging.getLogger(__name__)
 
 
 class ParamSpec(TypedDict):
@@ -79,8 +83,9 @@ def run_tuning(
         best_trial.value) if best_trial.value is not None else float("nan")
     best_params = ", ".join(f"{k}={v}" for k, v in best_trial.params.items())
 
-    print(f"Tuning complete ({algorithm}). Best params: {best_params}")
-    print(f"Best {objective_metric}: {best_value:.4f}")
+    logger.info("Tuning complete (%s). Best params: %s",
+                algorithm, best_params)
+    logger.info("Best %s: %.4f", objective_metric, best_value)
 
     save_tuning_results(
         accession=accession,

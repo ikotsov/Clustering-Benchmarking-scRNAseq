@@ -1,6 +1,11 @@
+import logging
+
 import pandas as pd
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
 from sklearn.metrics.cluster import pair_confusion_matrix
+
+
+logger = logging.getLogger(__name__)
 
 
 def evaluate_clustering_externally(labels_pred: pd.Series, labels_true: pd.Series) -> dict[str, float]:
@@ -13,8 +18,11 @@ def evaluate_clustering_externally(labels_pred: pd.Series, labels_true: pd.Serie
 
     # Warn if many cells are missing
     if len(common_cells) < len(labels_pred) * 0.9:
-        print(
-            f"  ⚠ Warning: Only {len(common_cells)}/{len(labels_pred)} cells found in ground truth")
+        logger.warning(
+            "Only %s/%s cells found in ground truth",
+            len(common_cells),
+            len(labels_pred),
+        )
 
     y_pred = labels_pred.loc[common_cells]
     y_true = labels_true.loc[common_cells]
