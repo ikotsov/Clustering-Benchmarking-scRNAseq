@@ -202,10 +202,12 @@ def run_experiment(
 
     internal_metrics = evaluate_clustering_internally(
         target_data, labels_series)
-    logger.info("Silhouette: %.3f", internal_metrics["silhouette"])
+    logger.info("Silhouette: %.3f", _format_metric(
+        internal_metrics['silhouette']))
     logger.info("Calinski-Harabasz: %.3f",
-                internal_metrics["calinski_harabasz"])
-    logger.info("Davies-Bouldin: %.3f", internal_metrics["davies_bouldin"])
+                _format_metric(internal_metrics['calinski_harabasz']))
+    logger.info("Davies-Bouldin: %.3f",
+                _format_metric(internal_metrics['davies_bouldin']))
 
     metrics = {**external_metrics, **internal_metrics}
 
@@ -232,6 +234,10 @@ def run_experiment(
         clustering_kwargs=cluster_kwargs,
         enrichment_set_names=enrichment_set_names,
     )
+
+
+def _format_metric(value: float | None) -> str:
+    return f"{value:.3f}" if value is not None else "N/A (undefined)"
 
 
 def run_biological_evaluation(

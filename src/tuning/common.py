@@ -3,7 +3,6 @@ import os
 from typing import Literal, TypeAlias
 
 import pandas as pd
-from sklearn.metrics import accuracy_score
 
 from src.evaluation import compute_ari, compute_nmi, compute_jaccard
 from src.data_loading import load_csv_data
@@ -33,8 +32,7 @@ def load_preprocessed_data(
     return load_csv_data(preprocessed_file)
 
 
-ObjectiveMetric = Literal["ari", "nmi",
-                          "jaccard", "accuracy", "mean_external_score"]
+ObjectiveMetric = Literal["ari", "nmi", "jaccard", "mean_external_score"]
 
 
 ClusteringMetrics: TypeAlias = dict[ObjectiveMetric, float]
@@ -45,7 +43,6 @@ def compute_clustering_metrics(pred: pd.Series, true: pd.Series) -> ClusteringMe
         "ari": compute_ari(true, pred),
         "nmi": compute_nmi(true, pred),
         "jaccard": compute_jaccard(true, pred),
-        "accuracy": float(accuracy_score(true, pred)),
         "mean_external_score": 0.0,
     }
     metrics["mean_external_score"] = (
