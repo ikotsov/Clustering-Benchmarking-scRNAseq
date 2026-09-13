@@ -22,6 +22,8 @@ from typing import Literal, cast
 
 import pandas as pd
 
+from src.logging_config import configure_logging
+
 
 logger = logging.getLogger(__name__)
 
@@ -218,7 +220,5 @@ def _add_gene_entry(
 
 
 if __name__ == "__main__":
-    from src.logging_config import configure_logging
-
     configure_logging()
     main()

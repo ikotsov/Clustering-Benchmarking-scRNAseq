@@ -23,6 +23,6 @@ if __name__ == "__main__":
                 accession=dataset,
                 norm_method=norm_method,
             )
-        except Exception as e:
-            logger.error("Error: %s", e)
+        except Exception:
+            logger.exception("Failed preprocessing %s + %s", dataset, norm_method)
             continue

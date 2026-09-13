@@ -35,8 +35,9 @@ if __name__ == "__main__":
                 algorithm=algorithm,
                 norm_method=norm_method,
             )
-        except Exception as e:
-            logger.error("Error: %s", e)
+        except Exception:
+            logger.exception(
+                "Failed tuning %s + %s + %s", dataset, algorithm, norm_method)
             continue
 
     logger.info("Tuning complete! Results in:")

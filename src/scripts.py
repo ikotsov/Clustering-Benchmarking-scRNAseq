@@ -66,10 +66,10 @@ def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", pca_v
 
     # Load & preprocess
     logger.info(
-        "PREPROCESSING: %s, norm_method=%s, pca_variance_ratio=%s",
+        "PREPROCESSING: %s, norm_method=%s, pca_variance_ratio=%.0f%%",
         accession,
         norm_method,
-        f"{pca_variance_ratio:.0%}",
+        pca_variance_ratio * 100,
     )
     raw_data = load_csv_data(raw_file_path)
 
@@ -182,8 +182,7 @@ def run_experiment(
         ground_truth = load_ground_truth_labels(dataset_dir)
         logger.info("Loaded %s ground truth labels", len(ground_truth))
     except FileNotFoundError as e:
-        logger.warning("Warning: %s", e)
-        logger.warning("Skipping evaluation.")
+        logger.warning("%s -- skipping evaluation.", e)
         return
 
     # 5. Evaluate and save results
@@ -202,11 +201,11 @@ def run_experiment(
 
     internal_metrics = evaluate_clustering_internally(
         target_data, labels_series)
-    logger.info("Silhouette: %.3f", _format_metric(
+    logger.info("Silhouette: %s", _format_metric(
         internal_metrics['silhouette']))
-    logger.info("Calinski-Harabasz: %.3f",
+    logger.info("Calinski-Harabasz: %s",
                 _format_metric(internal_metrics['calinski_harabasz']))
-    logger.info("Davies-Bouldin: %.3f",
+    logger.info("Davies-Bouldin: %s",
                 _format_metric(internal_metrics['davies_bouldin']))
 
     metrics = {**external_metrics, **internal_metrics}

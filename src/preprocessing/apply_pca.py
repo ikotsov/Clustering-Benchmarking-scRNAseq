@@ -38,8 +38,8 @@ def apply_pca(data: pd.DataFrame, variance_ratio: float = PCA_VARIANCE_RATIO) ->
         raise ValueError(
             f"variance_ratio must be in (0, 1), got {variance_ratio}")
 
-    logger.debug("Applying PCA (target explained variance: %s)",
-                 f"{variance_ratio:.0%}")
+    logger.debug("Applying PCA (target explained variance: %.0f%%)",
+                 variance_ratio * 100)
 
     # Fit PCA
     pca = PCA(n_components=variance_ratio, random_state=SEED)

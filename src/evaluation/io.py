@@ -107,7 +107,7 @@ def save_evaluation_results(
 
     pca_key = get_pca_label(with_pca)
     logger.info(
-        "  ✓ Evaluation saved: %s → %s → %s in results.json",
+        "Evaluation saved: %s -> %s -> %s in results.json",
         algorithm,
         preprocessing,
         pca_key,
@@ -178,7 +178,7 @@ def save_biological_evaluation_results(
 
     pca_key = get_pca_label(with_pca)
     logger.info(
-        "  ✓ Biological evaluation saved: %s → %s → %s in biological_results.json",
+        "Biological evaluation saved: %s -> %s -> %s in biological_results.json",
         algorithm,
         preprocessing,
         pca_key,
