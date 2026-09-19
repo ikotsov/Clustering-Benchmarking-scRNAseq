@@ -83,10 +83,10 @@ def log_transform(data: pd.DataFrame, pseudocount: int = 1) -> pd.DataFrame:
 
 
 # In Seurat, 3,000 HVGs is the default.
-N_HVG = 3_000
+PEARSON_N_HVG = 3_000
 
 
-def normalize_with_pearson(filtered_data: pd.DataFrame, n_hvg: int = N_HVG) -> tuple[pd.DataFrame, list[str]]:
+def normalize_with_pearson(filtered_data: pd.DataFrame, n_hvg: int = PEARSON_N_HVG) -> tuple[pd.DataFrame, list[str]]:
     """
     Computes analytic Pearson Residuals (sctransform equivalent) using Scanpy.
     Follows: https://scanpy.readthedocs.io/en/latest/tutorials/experimental/pearson_residuals.html 
@@ -120,3 +120,25 @@ def normalize_with_pearson(filtered_data: pd.DataFrame, n_hvg: int = N_HVG) -> t
     pearson_df = adata_hvg.to_df()
 
     return pearson_df, hvg_genes
+
+
+# In Seurat, 2,000 HVGs is default.
+LOG_CPM_N_HVG = 2_000
+
+
+def normalize_with_log_cpm(filtered_data: pd.DataFrame, n_hvg: int = LOG_CPM_N_HVG) -> tuple[pd.DataFrame, list[str]]:
+    logger.debug("Selecting top %s variable genes", n_hvg)
+    adata = sc.AnnData(filtered_data)
+    sc.pp.highly_variable_genes(
+        adata,
+        flavor="seurat_v3_paper",
+        n_top_genes=n_hvg,
+    )
+    hvg_genes = adata.var_names[adata.var["highly_variable"]].tolist()
+
+    data = filtered_data.loc[:, hvg_genes]
+
+    data = normalize_by_library_size(data)
+    data = log_transform(data)
+
+    return data, hvg_genes
