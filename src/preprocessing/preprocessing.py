@@ -34,7 +34,7 @@ def preprocess_data(
         Processed data (HVG space) ready for optional downstream PCA and selected HVG names
     """
     # Filter first
-    clean_data = filter_data(
+    clean_data = run_filtering_pipeline(
         raw_data, config=preprocessing_config, species=species)
 
     if norm_method == "log_cpm":
@@ -71,7 +71,7 @@ def normalize_with_log_cpm(filtered_data: pd.DataFrame, n_hvg: int = N_HVG) -> t
     return data, hvg_genes
 
 
-def filter_data(raw_data: pd.DataFrame, config: PreprocessingConfig, species: Species = "human") -> pd.DataFrame:
+def run_filtering_pipeline(raw_data: pd.DataFrame, config: PreprocessingConfig, species: Species = "human") -> pd.DataFrame:
     """
     Runs the full filtering pipeline.
     """
