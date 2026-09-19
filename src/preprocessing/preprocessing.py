@@ -3,7 +3,7 @@ import logging
 import pandas as pd
 from .types import PreprocessingConfig
 from .filters import filter_high_mito_cells, filter_high_rrna_cells, filter_high_apoptosis_cells, filter_low_magnitude_genes
-from .transforms import normalize_with_log_cpm, normalize_with_pearson
+from .transforms import select_hvgs, normalize_with_log_cpm, normalize_with_pearson
 from src.types import NormMethod, Species
 
 
@@ -36,12 +36,17 @@ def preprocess_data(
     clean_data = run_filtering_pipeline(
         raw_data, config=preprocessing_config, species=species)
 
+    # Then select HVGs
+    hvg_genes = select_hvgs(clean_data, norm_method)
+    hvg_data = clean_data.loc[:, hvg_genes]
+
+    # Then normalize
     if norm_method == "log_cpm":
         logger.debug("Normalization (LogCPM)...")
-        normalized_data, hvg_genes = normalize_with_log_cpm(clean_data)
+        normalized_data = normalize_with_log_cpm(hvg_data)
     elif norm_method == "pearson":
         logger.debug("Normalization (Pearson Residuals)...")
-        normalized_data, hvg_genes = normalize_with_pearson(clean_data)
+        normalized_data = normalize_with_pearson(hvg_data)
     else:
         raise ValueError(f"Unknown normalization method: {norm_method}")
 
