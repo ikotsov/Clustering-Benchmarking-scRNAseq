@@ -122,7 +122,7 @@ def normalize_with_pearson(filtered_data: pd.DataFrame, n_hvg: int = PEARSON_N_H
     return pearson_df, hvg_genes
 
 
-# In Seurat, 2,000 HVGs is default.
+# In Seurat, 2,000 HVGs is the default.
 LOG_CPM_N_HVG = 2_000
 
 
