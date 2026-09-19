@@ -82,11 +82,11 @@ def log_transform(data: pd.DataFrame, pseudocount: int = 1) -> pd.DataFrame:
     return cast(pd.DataFrame, data_log)
 
 
-# In Seurat, 3,000 HVGs is default.
+# In Seurat, 3,000 HVGs is the default.
 N_HVG = 3_000
 
 
-def normalize_data_with_pearson(filtered_data: pd.DataFrame, n_hvg: int = N_HVG) -> tuple[pd.DataFrame, list[str]]:
+def normalize_with_pearson(filtered_data: pd.DataFrame, n_hvg: int = N_HVG) -> tuple[pd.DataFrame, list[str]]:
     """
     Computes analytic Pearson Residuals (sctransform equivalent) using Scanpy.
     Follows: https://scanpy.readthedocs.io/en/latest/tutorials/experimental/pearson_residuals.html 
