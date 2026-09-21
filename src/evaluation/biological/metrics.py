@@ -1,4 +1,5 @@
-from typing import Literal, Sequence
+import math
+from typing import Literal, Sequence, cast
 
 import numpy as np
 import pandas as pd
@@ -6,6 +7,7 @@ from sklearn.metrics import confusion_matrix, jaccard_score, precision_score, re
 
 from .types import (
     BiologicalComparisonRecord,
+    BiologicalMetricsRecord,
     EnrichmentSetName,
     FoldEnrichmentMetrics,
     MembershipMetrics,
@@ -13,8 +15,25 @@ from .types import (
     TailStats,
 )
 
+# Metrics where a *higher* value is more biologically meaningful, so the
+# significance test asks "is the observed value higher than random chance?".
+RIGHT_TAIL_METRICS: tuple[str, ...] = (
+    "jaccard", "precision", "recall", "specificity", "fold_enrichment",
+)
+# Metrics where a *lower* value is more meaningful (a false-positive rate
+# should be below what random gene selection produces), so the test asks
+# "is the observed value lower than random chance?".
+LEFT_TAIL_METRICS: tuple[str, ...] = ("fpr",)
+# Raw counts that only get a descriptive summary, not a z-score/p-value/CI significance test.
+RANDOM_SUMMARY_ONLY_METRICS: tuple[str, ...] = (
+    "tp", "fp", "fn", "tn", "intersection", "expected",
+)
+ALL_NULL_TRACKED_METRICS: tuple[str, ...] = (
+    RIGHT_TAIL_METRICS + LEFT_TAIL_METRICS + RANDOM_SUMMARY_ONLY_METRICS
+)
 
-def compute_biological_metrics_results(
+
+def compute_run_metrics(
     cluster_marker_genes: list[str],
     enrichment_sets: dict[EnrichmentSetName, dict[str, set[str]]],
     all_genes: set[str],
@@ -24,8 +43,8 @@ def compute_biological_metrics_results(
     sample_index: int,
     sample_seed: int,
     run_hvg_count: int,
-) -> list[BiologicalComparisonRecord]:
-    """Compute biological metrics for one clustering run against reference sets."""
+) -> list[BiologicalMetricsRecord]:
+    """Compute raw biological metrics for one cluster of one run. """
     selected_cluster_markers = set(cluster_marker_genes)
 
     universe = sorted(all_genes)
@@ -34,9 +53,7 @@ def compute_biological_metrics_results(
         selected_cluster_markers,
     )
 
-    results: list[BiologicalComparisonRecord] = []
-
-    empty_metric_samples: list[float | None] = []
+    results: list[BiologicalMetricsRecord] = []
 
     for enrichment_set_name, marker_sets_by_cell_type in enrichment_sets.items():
         for cell_type, reference_marker_genes in marker_sets_by_cell_type.items():
@@ -53,31 +70,6 @@ def compute_biological_metrics_results(
                 all_genes=all_genes,
             )
 
-            jaccard_stats = _right_tail_stats(
-                observed=run_metrics["jaccard"],
-                random_values=empty_metric_samples,
-            )
-            precision_stats = _right_tail_stats(
-                observed=run_metrics["precision"],
-                random_values=empty_metric_samples,
-            )
-            recall_stats = _right_tail_stats(
-                observed=run_metrics["recall"],
-                random_values=empty_metric_samples,
-            )
-            specificity_stats = _right_tail_stats(
-                observed=run_metrics["specificity"],
-                random_values=empty_metric_samples,
-            )
-            fpr_stats = _left_tail_stats(
-                observed=run_metrics["fpr"],
-                random_values=empty_metric_samples,
-            )
-            fold_stats = _right_tail_stats(
-                observed=run_fold["fold_enrichment"],
-                random_values=empty_metric_samples,
-            )
-
             results.append(
                 {
                     "enrichment_set": enrichment_set_name,
@@ -91,8 +83,6 @@ def compute_biological_metrics_results(
                     "sample_seed": sample_seed,
                     "run_hvg_count": run_hvg_count,
                     "jaccard": run_metrics["jaccard"],
-                    **_prefix_stats(jaccard_stats, "jaccard"),
-                    **_random_summary("jaccard", empty_metric_samples),
                     "tp": run_metrics["tp"],
                     "fp": run_metrics["fp"],
                     "fn": run_metrics["fn"],
@@ -101,29 +91,122 @@ def compute_biological_metrics_results(
                     "recall": run_metrics["recall"],
                     "specificity": run_metrics["specificity"],
                     "fpr": run_metrics["fpr"],
-                    **_prefix_stats(precision_stats, "precision"),
-                    **_prefix_stats(recall_stats, "recall"),
-                    **_prefix_stats(specificity_stats, "specificity"),
-                    **_prefix_stats(fpr_stats, "fpr"),
-                    **_random_summary("precision", empty_metric_samples),
-                    **_random_summary("recall", empty_metric_samples),
-                    **_random_summary("specificity", empty_metric_samples),
-                    **_random_summary("fpr", empty_metric_samples),
-                    **_random_summary("tp", empty_metric_samples),
-                    **_random_summary("fp", empty_metric_samples),
-                    **_random_summary("fn", empty_metric_samples),
-                    **_random_summary("tn", empty_metric_samples),
                     "intersection": run_fold["intersection"],
                     "expected": run_fold["expected"],
                     "fold_enrichment": run_fold["fold_enrichment"],
-                    **_prefix_stats(fold_stats, "fold_enrichment"),
-                    **_random_summary("fold_enrichment", empty_metric_samples),
-                    **_random_summary("intersection", empty_metric_samples),
-                    **_random_summary("expected", empty_metric_samples),
                 }
             )
 
     return results
+
+
+def attach_tail_statistics(
+    observed_records: list[BiologicalMetricsRecord],
+    sampled_records: list[BiologicalMetricsRecord],
+) -> list[BiologicalComparisonRecord]:
+    """Test each observed metric against the null distribution of sampled runs.
+
+    `sampled_records` are the same metrics computed on many KDE-matched
+    random gene sets instead of the real HVGs, they are the "what would this
+    look like by chance" baseline that each observed value is tested against.
+
+    A random/sampled rerun can produce a different number of clusters than
+    the observed run (algorithms like leiden/hdbscan/optics choose their own
+    cluster count, and even a fixed cluster count doesn't give clusters a
+    stable identity across reruns). So "observed cluster 2" cannot be matched
+    to one specific cluster in a given random rerun.
+
+    Instead, for every random rerun we take the *best* (max, for metrics
+    where higher is more meaningful) value across that rerun's own clusters,
+    per reference cell type. This answers: "what is the strongest alignment
+    to this cell type that a random gene subset could produce by chance, in
+    one rerun?". Doing this for all `n_samples` reruns gives exactly one null
+    value per rerun per cell type. For metrics where *lower* is more meaningful 
+    (false-positive rate), we take the rerun's *minimum* instead, for the same 
+    reason in the opposite direction.
+    """
+    null_pools = _build_null_pools(sampled_records)
+
+    enriched_records: list[BiologicalComparisonRecord] = []
+    for record in observed_records:
+        pool_key = (record["enrichment_set"], record["cell_type"])
+        metric_pools = null_pools.get(pool_key, {})
+
+        enriched: BiologicalComparisonRecord = dict(record)
+        for metric_name in RIGHT_TAIL_METRICS:
+            random_values = metric_pools.get(metric_name, [])
+            observed_value = _as_optional_float(record.get(metric_name))
+            stats = _right_tail_stats(observed_value, random_values)
+            enriched.update(_prefix_stats(stats, metric_name))
+            enriched.update(_random_summary(metric_name, random_values))
+        for metric_name in LEFT_TAIL_METRICS:
+            random_values = metric_pools.get(metric_name, [])
+            observed_value = _as_optional_float(record.get(metric_name))
+            stats = _left_tail_stats(observed_value, random_values)
+            enriched.update(_prefix_stats(stats, metric_name))
+            enriched.update(_random_summary(metric_name, random_values))
+        for metric_name in RANDOM_SUMMARY_ONLY_METRICS:
+            random_values = metric_pools.get(metric_name, [])
+            enriched.update(_random_summary(metric_name, random_values))
+
+        enriched_records.append(enriched)
+
+    return enriched_records
+
+
+def _as_optional_float(value: object) -> float | None:
+    """Narrow a dynamically-looked-up record field to the numeric type it
+    always actually holds (`.get()` with a non-literal key can't be typed
+    more precisely than `object` on a TypedDict)."""
+    return None if value is None else cast(float, value)
+
+
+def _build_null_pools(
+    sampled_records: list[BiologicalMetricsRecord],
+) -> dict[tuple[EnrichmentSetName, str], dict[str, list[float | None]]]:
+    """Reduce every sampled run's clusters to one null value per metric.
+
+    Groups sampled-run records by `(enrichment_set, cell_type)`, then within
+    each group by `sample_index` (one random rerun can contribute several
+    cluster records), and reduces each rerun's cluster records to a single
+    representative value per metric, max for `RIGHT_TAIL_METRICS`/
+    `RANDOM_SUMMARY_ONLY_METRICS`, min for `LEFT_TAIL_METRICS`. See
+    `attach_tail_statistics` for why this pooling is needed.
+    """
+    records_by_key_and_sample: dict[
+        tuple[EnrichmentSetName, str], dict[int, dict[str, list[float | None]]]
+    ] = {}
+    for record in sampled_records:
+        key = (record["enrichment_set"], record["cell_type"])
+        sample_index = record["sample_index"]
+        by_sample = records_by_key_and_sample.setdefault(key, {})
+        metric_values = by_sample.setdefault(
+            sample_index, {name: [] for name in ALL_NULL_TRACKED_METRICS}
+        )
+        for metric_name in ALL_NULL_TRACKED_METRICS:
+            metric_values[metric_name].append(_as_optional_float(record.get(metric_name)))
+
+    null_pools: dict[tuple[EnrichmentSetName, str], dict[str, list[float | None]]] = {}
+    for key, by_sample in records_by_key_and_sample.items():
+        pooled: dict[str, list[float | None]] = {
+            name: [] for name in ALL_NULL_TRACKED_METRICS
+        }
+        for metric_values in by_sample.values():
+            for metric_name in ALL_NULL_TRACKED_METRICS:
+                clean_values = [
+                    value
+                    for value in metric_values[metric_name]
+                    if value is not None and not math.isnan(value)
+                ]
+                if not clean_values:
+                    pooled[metric_name].append(None)
+                elif metric_name in LEFT_TAIL_METRICS:
+                    pooled[metric_name].append(min(clean_values))
+                else:
+                    pooled[metric_name].append(max(clean_values))
+        null_pools[key] = pooled
+
+    return null_pools
 
 
 def _compute_membership_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> MembershipMetrics:
@@ -182,7 +265,9 @@ def _prefix_stats(stats: TailStats, metric_name: str) -> dict[str, float | None]
 
 
 def _compute_random_summary(values: Sequence[int | float | None]) -> RandomSummaryStats:
-    clean_values = [float(value) for value in values if pd.notna(value)]
+    clean_values = [
+        float(value) for value in values if value is not None and not math.isnan(value)
+    ]
     if len(clean_values) == 0:
         return {"mean": None, "std": None, "n": 0}
 
@@ -222,8 +307,10 @@ def _compute_tail_stats(
     random_values: Sequence[float | None],
     direction: Literal["right", "left"],
 ) -> TailStats:
-    clean_random = [float(value) for value in random_values if pd.notna(value)]
-    if pd.isna(observed) or len(clean_random) == 0:
+    clean_random = [
+        float(value) for value in random_values if value is not None and not math.isnan(value)
+    ]
+    if observed is None or math.isnan(observed) or len(clean_random) == 0:
         return {"z_score": None, "p_value": None, "ci_lower": None, "ci_upper": None}
 
     random_array = np.asarray(clean_random)

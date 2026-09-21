@@ -7,9 +7,9 @@ from .markers import (
     build_cluster_marker_enrichment_set,
     build_dataset_biological_enrichment_sets,
 )
-from .metrics import compute_biological_metrics_results
+from .metrics import attach_tail_statistics, compute_run_metrics
 from .sampling import build_stratified_hvg_samples
-from .types import BiologicalComparisonRecord, EnrichmentSetName
+from .types import BiologicalComparisonRecord, BiologicalMetricsRecord, EnrichmentSetName
 from src.types import Species
 
 
@@ -55,7 +55,11 @@ def evaluate_clustering_biologically(
     all_genes = {str(gene) for gene in hvg_genes}
     effective_clustering_kwargs = clustering_kwargs if clustering_kwargs is not None else {}
 
-    comparison_records: list[BiologicalComparisonRecord] = []
+    # "observed" holds the metrics for the real HVGs; "sampled" holds the
+    # same metrics recomputed on each random control gene set, which together
+    # form the null distribution the observed values are tested against.
+    observed_records: list[BiologicalMetricsRecord] = []
+    sampled_records: list[BiologicalMetricsRecord] = []
 
     for sample_type, sample_index, sampled_genes in run_definitions:
         sampled_expression_data = expression_data.loc[:, sampled_genes]
@@ -83,7 +87,7 @@ def evaluate_clustering_biologically(
             if len(sorted_marker_genes) == 0:
                 continue
 
-            metrics = compute_biological_metrics_results(
+            run_metrics = compute_run_metrics(
                 cluster_marker_genes=sorted_marker_genes,
                 enrichment_sets=reference_enrichment_sets,
                 all_genes=all_genes,
@@ -94,9 +98,23 @@ def evaluate_clustering_biologically(
                 sample_seed=seed + sample_index,
                 run_hvg_count=len(sampled_genes),
             )
-            comparison_records.extend(metrics)
+            if sample_type == "observed":
+                observed_records.extend(run_metrics)
+            else:
+                sampled_records.extend(run_metrics)
 
-    return comparison_records
+    # Test each observed value against the null distribution built from the
+    # sampled/random reruns. This widens each record from the fixed-shape
+    # BiologicalMetricsRecord to the looser BiologicalComparisonRecord, since
+    # the attached stat fields (e.g. "jaccard_z_score") are named dynamically
+    # per metric rather than being part of a fixed schema.
+    enriched_observed_records = attach_tail_statistics(
+        observed_records, sampled_records)
+    widened_sampled_records: list[BiologicalComparisonRecord] = [
+        dict(record) for record in sampled_records
+    ]
+
+    return enriched_observed_records + widened_sampled_records
 
 
 def compute_gene_sampling_features(data: pd.DataFrame) -> pd.DataFrame:
