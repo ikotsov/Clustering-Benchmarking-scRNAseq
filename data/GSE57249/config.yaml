@@ -1,0 +1,6 @@
+species: "mouse"
+preprocessing:
+  mito_threshold: 0.5
+  rrna_threshold: 0.25
+  apoptosis_threshold: 0.05
+  min_gene_max_count: 2
