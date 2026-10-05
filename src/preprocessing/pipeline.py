@@ -61,13 +61,13 @@ def run_filtering_pipeline(raw_data: pd.DataFrame, config: PreprocessingConfig, 
     logger.info("Input: %s cells x %s genes",
                 raw_data.shape[0], raw_data.shape[1])
 
-    data = filter_low_magnitude_genes(
-        raw_data, min_count=config.gene_magnitude_threshold)
     data = filter_high_apoptosis_cells(
-        data, species=species, threshold=config.apoptosis_threshold)
+        raw_data, species=species, threshold=config.apoptosis_threshold)
     data = filter_high_rrna_cells(
         data, species=species, threshold=config.rrna_threshold)
     data = filter_high_mito_cells(data, threshold=config.mito_threshold)
+    data = filter_low_magnitude_genes(
+        data, min_count=config.gene_magnitude_threshold)
 
     logger.info("Output: %s cells x %s genes", data.shape[0], data.shape[1])
     return data
