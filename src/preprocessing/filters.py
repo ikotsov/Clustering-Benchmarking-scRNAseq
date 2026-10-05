@@ -6,13 +6,13 @@ import scanpy as sc
 
 from ..types import Species
 from .genes import HUMAN_APOPTOSIS_GENES, HUMAN_RRNA_GENES, MOUSE_APOPTOSIS_GENES, MOUSE_RRNA_GENES
-from ..constants import GENE_MAGNITUDE_THRESHOLD
+from ..constants import MIN_GENE_MAX_COUNT
 
 
 logger = logging.getLogger(__name__)
 
 
-def filter_low_magnitude_genes(data: pd.DataFrame, min_count: int = GENE_MAGNITUDE_THRESHOLD) -> pd.DataFrame:
+def filter_genes_by_max_count(data: pd.DataFrame, min_count: int = MIN_GENE_MAX_COUNT) -> pd.DataFrame:
     """
     Removes genes that never exceed a specific count threshold.
     (by default removes genes containing only 0s and 1s).
@@ -35,7 +35,7 @@ def filter_low_magnitude_genes(data: pd.DataFrame, min_count: int = GENE_MAGNITU
     Sample_2      5        0           0
     Sample_3      2        1           0
 
-    >>> filter_low_magnitude_genes(data, min_count=2)
+    >>> filter_genes_by_max_count(data, min_count=2)
     # Gene_Binary is removed (max value is 1)
     # Gene_Zero is removed (max value is 0)
               Gene_A
@@ -50,7 +50,7 @@ def filter_low_magnitude_genes(data: pd.DataFrame, min_count: int = GENE_MAGNITU
 
     dropped = data.shape[1] - data_filtered.shape[1]
 
-    logger.debug("Dropped %s low-magnitude genes", dropped)
+    logger.debug("Dropped %s genes with max count < %s", dropped, min_count)
 
     return data_filtered
 

@@ -5,4 +5,4 @@ preprocessing:
   mito_threshold: 0.05
   rrna_threshold: 0.05
   apoptosis_threshold: 0.05
-  gene_magnitude_threshold: 2
+  min_gene_max_count: 2

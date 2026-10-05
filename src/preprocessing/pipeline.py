@@ -2,7 +2,7 @@ import logging
 
 import pandas as pd
 from .types import PreprocessingConfig
-from .filters import apoptosis_genes, filter_low_magnitude_genes, high_fraction_mask, mito_genes, rrna_genes
+from .filters import apoptosis_genes, filter_genes_by_max_count, high_fraction_mask, mito_genes, rrna_genes
 from .transforms import select_hvgs, normalize_with_log_cpm, normalize_with_pearson
 from src.types import NormMethod, Species
 
@@ -79,8 +79,8 @@ def run_filtering_pipeline(raw_data: pd.DataFrame, config: PreprocessingConfig, 
                 int(failed_any.sum()))
 
     data = raw_data.loc[~failed_any]
-    data = filter_low_magnitude_genes(
-        data, min_count=config.gene_magnitude_threshold)
+    data = filter_genes_by_max_count(
+        data, min_count=config.min_gene_max_count)
 
     logger.info("Output: %s cells x %s genes", data.shape[0], data.shape[1])
     return data

@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from typing import cast, List, Optional
 
-from src.constants import SEED, GENE_MAGNITUDE_THRESHOLD
+from src.constants import SEED, MIN_GENE_MAX_COUNT
 
 
 logger = logging.getLogger(__name__)
@@ -16,10 +16,10 @@ BLUE = '#3498db'
 RED = '#e74c3c'
 
 
-def plot_gene_magnitude_distribution(data_before, data_after, x_limit=20):
+def plot_gene_max_count_distribution(data_before, data_after, x_limit=20):
     """
     Plots the distribution of MAXIMUM expression counts per gene to show
-    the effect of filtering out low-magnitude genes.
+    the effect of filtering out genes whose max count is below the cutoff.
     """
     # Calculate the MAX count for every gene (Column-wise max)
     max_counts_before = data_before.max(axis=0)
@@ -43,8 +43,8 @@ def plot_gene_magnitude_distribution(data_before, data_after, x_limit=20):
     axes[0].grid(axis='y', linestyle='--', alpha=0.3)
 
     # Annotate genes (Max < threshold)
-    bad_genes_count = (max_counts_before < GENE_MAGNITUDE_THRESHOLD).sum()
-    axes[0].text(0.5, 0.9, f"Genes with max < {GENE_MAGNITUDE_THRESHOLD}:\n{bad_genes_count}",
+    bad_genes_count = (max_counts_before < MIN_GENE_MAX_COUNT).sum()
+    axes[0].text(0.5, 0.9, f"Genes with max < {MIN_GENE_MAX_COUNT}:\n{bad_genes_count}",
                  transform=axes[0].transAxes, ha='center', color='red', fontweight='bold',
                  bbox=dict(facecolor='white', alpha=0.8, edgecolor='red'))
 
@@ -59,8 +59,8 @@ def plot_gene_magnitude_distribution(data_before, data_after, x_limit=20):
     axes[1].grid(axis='y', linestyle='--', alpha=0.3)
 
     # Add a line to show the cutoff
-    axes[1].axvline(GENE_MAGNITUDE_THRESHOLD - 0.5, color='black', linestyle='--',
-                    linewidth=2, label=f'Cutoff ({GENE_MAGNITUDE_THRESHOLD})')
+    axes[1].axvline(MIN_GENE_MAX_COUNT - 0.5, color='black', linestyle='--',
+                    linewidth=2, label=f'Cutoff ({MIN_GENE_MAX_COUNT})')
     axes[1].legend()
 
     plt.tight_layout()

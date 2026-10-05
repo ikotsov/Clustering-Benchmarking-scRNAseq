@@ -50,7 +50,7 @@ def parse_preprocessing_config(config: DatasetConfig) -> PreprocessingConfig:
     mito_value = cutoffs.get("mito_threshold")
     rrna_value = cutoffs.get("rrna_threshold")
     apoptosis_value = cutoffs.get("apoptosis_threshold")
-    gene_magnitude_value = cutoffs.get("gene_magnitude_threshold")
+    min_gene_max_count_value = cutoffs.get("min_gene_max_count")
 
     mito_threshold = float(mito_value) if isinstance(
         mito_value, (int, float)) else defaults.mito_threshold
@@ -58,14 +58,14 @@ def parse_preprocessing_config(config: DatasetConfig) -> PreprocessingConfig:
         rrna_value, (int, float)) else defaults.rrna_threshold
     apoptosis_threshold = float(apoptosis_value) if isinstance(
         apoptosis_value, (int, float)) else defaults.apoptosis_threshold
-    gene_magnitude_threshold = int(gene_magnitude_value) if isinstance(
-        gene_magnitude_value, (int, float)) else defaults.gene_magnitude_threshold
+    min_gene_max_count = int(min_gene_max_count_value) if isinstance(
+        min_gene_max_count_value, (int, float)) else defaults.min_gene_max_count
 
     return PreprocessingConfig(
         mito_threshold=mito_threshold,
         rrna_threshold=rrna_threshold,
         apoptosis_threshold=apoptosis_threshold,
-        gene_magnitude_threshold=gene_magnitude_threshold,
+        min_gene_max_count=min_gene_max_count,
     )
 
 
