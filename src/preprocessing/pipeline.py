@@ -2,7 +2,7 @@ import logging
 
 import pandas as pd
 from .types import PreprocessingConfig
-from .filters import filter_high_mito_cells, filter_high_rrna_cells, filter_high_apoptosis_cells, filter_low_magnitude_genes
+from .filters import apoptosis_genes, filter_low_magnitude_genes, high_fraction_mask, mito_genes, rrna_genes
 from .transforms import select_hvgs, normalize_with_log_cpm, normalize_with_pearson
 from src.types import NormMethod, Species
 
@@ -61,11 +61,24 @@ def run_filtering_pipeline(raw_data: pd.DataFrame, config: PreprocessingConfig, 
     logger.info("Input: %s cells x %s genes",
                 raw_data.shape[0], raw_data.shape[1])
 
-    data = filter_high_apoptosis_cells(
-        raw_data, species=species, threshold=config.apoptosis_threshold)
-    data = filter_high_rrna_cells(
-        data, species=species, threshold=config.rrna_threshold)
-    data = filter_high_mito_cells(data, threshold=config.mito_threshold)
+    # Compute every cell QC mask on the raw matrix so each count reflects that
+    # filter alone, independent of the order the filters are listed in.
+    qc_failures = {
+        "apoptosis": high_fraction_mask(
+            raw_data, apoptosis_genes(species), config.apoptosis_threshold),
+        "rRNA": high_fraction_mask(
+            raw_data, rrna_genes(species), config.rrna_threshold),
+        "mitochondrial": high_fraction_mask(
+            raw_data, mito_genes(raw_data), config.mito_threshold),
+    }
+    for name, mask in qc_failures.items():
+        logger.info("High %s: %s cells", name, int(mask.sum()))
+
+    failed_any = pd.concat(qc_failures.values(), axis=1).any(axis=1)
+    logger.info("Dropped %s cells failing at least one QC filter",
+                int(failed_any.sum()))
+
+    data = raw_data.loc[~failed_any]
     data = filter_low_magnitude_genes(
         data, min_count=config.gene_magnitude_threshold)
 

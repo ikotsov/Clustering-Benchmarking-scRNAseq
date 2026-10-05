@@ -59,15 +59,17 @@ def filter_high_mito_cells(data: pd.DataFrame, threshold: float = 0.05) -> pd.Da
     """
     Removes cells with high mitochondrial expression (indicative of broken cells).
     """
-    # By transforming gene names to uppercase, we can catch both "MT-" and "mt-" prefixes. "mt-" is common in mouse datasets.
-    mt_genes = [gene for gene in data.columns if gene.upper().startswith("MT-")]
-
     return filter_cells_by_fraction(
         data,
-        gene_list=mt_genes,
+        gene_list=mito_genes(data),
         threshold=threshold,
         filter_name="mitochondrial"
     )
+
+
+def mito_genes(data: pd.DataFrame) -> List[str]:
+    # By transforming gene names to uppercase, we can catch both "MT-" and "mt-" prefixes. "mt-" is common in mouse datasets.
+    return [gene for gene in data.columns if gene.upper().startswith("MT-")]
 
 
 def filter_high_apoptosis_cells(data: pd.DataFrame, threshold: float = 0.05, species: Species = "human") -> pd.DataFrame:
@@ -76,10 +78,14 @@ def filter_high_apoptosis_cells(data: pd.DataFrame, threshold: float = 0.05, spe
     """
     return filter_cells_by_fraction(
         data,
-        gene_list=HUMAN_APOPTOSIS_GENES if species == "human" else MOUSE_APOPTOSIS_GENES,
+        gene_list=apoptosis_genes(species),
         threshold=threshold,
         filter_name="apoptosis"
     )
+
+
+def apoptosis_genes(species: Species = "human") -> List[str]:
+    return HUMAN_APOPTOSIS_GENES if species == "human" else MOUSE_APOPTOSIS_GENES
 
 
 def filter_high_rrna_cells(data: pd.DataFrame, threshold: float = 0.05, species: Species = "human") -> pd.DataFrame:
@@ -88,31 +94,22 @@ def filter_high_rrna_cells(data: pd.DataFrame, threshold: float = 0.05, species:
     """
     return filter_cells_by_fraction(
         data,
-        gene_list=HUMAN_RRNA_GENES if species == "human" else MOUSE_RRNA_GENES,
+        gene_list=rrna_genes(species),
         threshold=threshold,
         filter_name="rRNA"
     )
+
+
+def rrna_genes(species: Species = "human") -> List[str]:
+    return HUMAN_RRNA_GENES if species == "human" else MOUSE_RRNA_GENES
 
 
 def filter_cells_by_fraction(data: pd.DataFrame, gene_list: List[str], threshold: float, filter_name: str = "generic") -> pd.DataFrame:
     """
     Removes cells with high expression of a specific gene set.
     """
-    uppercase_genes = {gene.upper() for gene in gene_list}
-    valid_genes = [col for col in data.columns if col.upper()
-                   in uppercase_genes]
-
-    if len(valid_genes) == 0:
-        return data
-
-    subset_counts = data[valid_genes].sum(axis=1)
-    total_counts = data.sum(axis=1)
-
-    # Avoid division by zero by replacing 0 total counts with 1 (these cells will be dropped anyway or have 0 fraction)
-    expression_ratio = subset_counts / total_counts.replace(0, 1)
-
     # Keep cells where ratio is less than or equal to the threshold
-    data_filtered = data.loc[expression_ratio <= threshold]
+    data_filtered = data.loc[~high_fraction_mask(data, gene_list, threshold)]
 
     dropped = data.shape[0] - data_filtered.shape[0]
     if dropped > 0:
@@ -124,6 +121,27 @@ def filter_cells_by_fraction(data: pd.DataFrame, gene_list: List[str], threshold
         )
 
     return data_filtered
+
+
+def high_fraction_mask(data: pd.DataFrame, gene_list: List[str], threshold: float) -> pd.Series:
+    """
+    Returns a boolean Series (indexed by cell) that is True for cells whose
+    fraction of counts in gene_list exceeds the threshold.
+    """
+    uppercase_genes = {gene.upper() for gene in gene_list}
+    valid_genes = [col for col in data.columns if col.upper()
+                   in uppercase_genes]
+
+    if len(valid_genes) == 0:
+        return pd.Series(False, index=data.index)
+
+    subset_counts = data[valid_genes].sum(axis=1)
+    total_counts = data.sum(axis=1)
+
+    # Avoid division by zero by replacing 0 total counts with 1 (these cells will be dropped anyway or have 0 fraction)
+    expression_ratio = subset_counts / total_counts.replace(0, 1)
+
+    return expression_ratio > threshold
 
 
 def filter_doublets(data: pd.DataFrame, expected_doublet_rate: float = 0.05, threshold: Optional[float] = None) -> pd.DataFrame:
