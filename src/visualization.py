@@ -6,6 +6,9 @@ import pandas as pd
 from typing import cast, List, Optional
 
 from src.constants import SEED, MIN_GENE_MAX_COUNT
+from src.preprocessing.filters import apoptosis_genes, gene_set_fraction, matching_genes, mito_genes, rrna_genes
+from src.preprocessing.types import PreprocessingConfig
+from src.types import Species
 
 
 logger = logging.getLogger(__name__)
@@ -14,6 +17,258 @@ logger = logging.getLogger(__name__)
 BLUE = '#3498db'
 # To warn about dirty or noisy data - Red is associated with attention.
 RED = '#e74c3c'
+
+
+def plot_qc_overview(
+    data: pd.DataFrame,
+    count_threshold: Optional[float] = None,
+    gene_threshold: Optional[float] = None,
+    zoom_below: Optional[float] = None,
+    color_by: Optional[pd.Series] = None,
+    color_label: str = "Fraction of mitochondrial counts",
+):
+    """
+    Plots the 2x2 cell QC overview from Luecken & Theis (2019), Fig. 2:
+    (A) count depth histogram, (B) genes per cell histogram,
+    (C) count depth ranked from high to low, (D) genes vs count depth coloured by color_by.
+
+    Draw candidate thresholds on every panel to judge where to cut before
+    setting them in the dataset config.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Raw counts (cells x genes), before any filtering.
+    count_threshold, gene_threshold : float, optional
+        Candidate minimum count depth / genes per cell, drawn as dashed lines.
+    zoom_below : float, optional
+        If given, panel A gets an inset histogram of the count depths below this value.
+    color_by : pd.Series, optional
+        Per-cell values for the colour of panel D. Defaults to the mitochondrial fraction;
+        pass e.g. gene_set_fraction(data, rrna_genes(species)) to colour by rRNA instead.
+    color_label : str
+        Colour bar label for panel D.
+    """
+    fig, axes = plt.subplots(2, 2, figsize=(12, 10))
+
+    plot_count_depth_histogram(
+        data, threshold=count_threshold, zoom_below=zoom_below, ax=axes[0, 0])
+    plot_genes_per_cell_histogram(
+        data, threshold=gene_threshold, ax=axes[0, 1])
+    plot_count_depth_rank(data, threshold=count_threshold, ax=axes[1, 0])
+    plot_genes_vs_count_depth(
+        data,
+        color_by=color_by,
+        color_label=color_label,
+        count_threshold=count_threshold,
+        gene_threshold=gene_threshold,
+        ax=axes[1, 1],
+    )
+
+    for ax, letter in zip(axes.flat, "ABCD"):
+        ax.text(-0.1, 1.05, letter, transform=ax.transAxes,
+                fontsize=14, fontweight='bold')
+
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_count_depth_histogram(data: pd.DataFrame, threshold: Optional[float] = None, zoom_below: Optional[float] = None, bins: int = 50, ax=None):
+    """
+    Histogram of count depth (total counts) per cell, optionally with a zoomed-in
+    inset of the count depths below zoom_below.
+    """
+    is_standalone = ax is None
+    if is_standalone:
+        _, ax = plt.subplots(figsize=(7, 5))
+
+    count_depth = data.sum(axis=1)
+
+    ax.hist(count_depth, bins=bins, color=BLUE, edgecolor='black', alpha=0.7)
+    ax.set_title(f"Count depth per cell\n(n={len(count_depth)})", fontweight='bold')
+    ax.set_xlabel("Count depth")
+    ax.set_ylabel("Number of cells")
+    ax.grid(axis='y', linestyle='--', alpha=0.3)
+    draw_threshold(ax, threshold, vertical=True)
+
+    if zoom_below is not None:
+        inset = ax.inset_axes((0.45, 0.4, 0.5, 0.45))
+        inset.hist(count_depth[count_depth < zoom_below], bins=bins,
+                   color=BLUE, edgecolor='black', alpha=0.7)
+        inset.set_title(f"Count depth < {zoom_below:g}", fontsize=9)
+        inset.tick_params(labelsize=8)
+        if threshold is not None and threshold < zoom_below:
+            inset.axvline(threshold, color=RED, linestyle='--', linewidth=2)
+
+    return finish_plot(ax, is_standalone)
+
+
+def plot_genes_per_cell_histogram(data: pd.DataFrame, threshold: Optional[float] = None, bins: int = 50, ax=None):
+    """
+    Histogram of the number of genes detected (count > 0) per cell.
+    """
+    is_standalone = ax is None
+    if is_standalone:
+        _, ax = plt.subplots(figsize=(7, 5))
+
+    genes_per_cell = (data > 0).sum(axis=1)
+
+    ax.hist(genes_per_cell, bins=bins, color=BLUE, edgecolor='black', alpha=0.7)
+    ax.set_title(f"Genes detected per cell\n(n={len(genes_per_cell)})", fontweight='bold')
+    ax.set_xlabel("Number of genes")
+    ax.set_ylabel("Number of cells")
+    ax.grid(axis='y', linestyle='--', alpha=0.3)
+    draw_threshold(ax, threshold, vertical=True)
+
+    return finish_plot(ax, is_standalone)
+
+
+def plot_count_depth_rank(data: pd.DataFrame, threshold: Optional[float] = None, ax=None):
+    """
+    Count depth per cell sorted from high to low on log-log axes (the Cell Ranger
+    "knee" plot). A sharp drop ("elbow") suggests where low-quality cells begin.
+    """
+    is_standalone = ax is None
+    if is_standalone:
+        _, ax = plt.subplots(figsize=(7, 5))
+
+    count_depth = np.sort(data.sum(axis=1).to_numpy())[::-1]
+    cell_rank = np.arange(1, len(count_depth) + 1)
+
+    ax.plot(cell_rank, count_depth, color=BLUE, linewidth=2)
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    ax.set_title("Count depth by cell rank", fontweight='bold')
+    ax.set_xlabel("Cell rank")
+    ax.set_ylabel("Count depth")
+    ax.grid(True, which='both', linestyle='--', alpha=0.3)
+    draw_threshold(ax, threshold, vertical=False)
+
+    return finish_plot(ax, is_standalone)
+
+
+def plot_genes_vs_count_depth(
+    data: pd.DataFrame,
+    color_by: Optional[pd.Series] = None,
+    color_label: str = "Fraction of mitochondrial counts",
+    count_threshold: Optional[float] = None,
+    gene_threshold: Optional[float] = None,
+    ax=None,
+):
+    """
+    Scatter of genes detected vs count depth per cell, coloured by a per-cell value
+    (mitochondrial fraction by default), with both thresholds drawn to show their joint effect.
+    """
+    is_standalone = ax is None
+    if is_standalone:
+        _, ax = plt.subplots(figsize=(8, 6))
+
+    if color_by is None:
+        color_by = gene_set_fraction(data, mito_genes(data))
+
+    points = ax.scatter(
+        data.sum(axis=1),
+        (data > 0).sum(axis=1),
+        c=color_by.reindex(data.index),
+        cmap='viridis',
+        s=12,
+        alpha=0.8,
+    )
+    ax.figure.colorbar(points, ax=ax, label=color_label)
+    ax.set_title("Genes detected vs count depth", fontweight='bold')
+    ax.set_xlabel("Count depth")
+    ax.set_ylabel("Number of genes")
+    ax.grid(True, linestyle='--', alpha=0.3)
+    draw_threshold(ax, count_threshold, vertical=True, name="Count threshold")
+    draw_threshold(ax, gene_threshold, vertical=False, name="Gene threshold")
+
+    return finish_plot(ax, is_standalone)
+
+
+def plot_gene_set_qc(data: pd.DataFrame, species: Species = "human", config: PreprocessingConfig = PreprocessingConfig()):
+    """
+    Plots the mitochondrial, rRNA and apoptosis fractions against count depth in a row,
+    each with its threshold from config. Cells above a threshold are the ones that filter removes.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        Raw counts (cells x genes), before any filtering.
+    species : Species
+        Selects the rRNA and apoptosis gene sets.
+    config : PreprocessingConfig
+        Candidate thresholds, e.g. parse_preprocessing_config(load_dataset_config(dataset_dir)).
+    """
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+
+    gene_sets = [
+        ("Mitochondrial", mito_genes(data), config.mito_threshold),
+        ("rRNA", rrna_genes(species), config.rrna_threshold),
+        ("Apoptosis", apoptosis_genes(species), config.apoptosis_threshold),
+    ]
+    for ax, (name, gene_list, threshold) in zip(axes, gene_sets):
+        plot_gene_set_fraction_vs_count_depth(
+            data, gene_list, name, threshold=threshold, ax=ax)
+
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_gene_set_fraction_vs_count_depth(data: pd.DataFrame, gene_list: List[str], name: str, threshold: Optional[float] = None, ax=None):
+    """
+    Scatter of the fraction of counts from gene_list against count depth per cell.
+    Cells above the threshold are drawn in red. High fractions only in low-count cells
+    point to damaged cells; high fractions across all count depths may be biology.
+    """
+    is_standalone = ax is None
+    if is_standalone:
+        _, ax = plt.subplots(figsize=(7, 5))
+
+    ax.set_xlabel("Count depth")
+    ax.set_ylabel(f"Fraction of {name} counts")
+    ax.grid(True, linestyle='--', alpha=0.3)
+
+    n_genes = len(matching_genes(data, gene_list))
+    if n_genes == 0:
+        ax.set_title(f"{name} (0 genes found)", fontweight='bold')
+        ax.text(0.5, 0.5, "No genes from this set found in the data",
+                transform=ax.transAxes, ha='center', va='center', color=RED, fontweight='bold')
+        return finish_plot(ax, is_standalone)
+
+    count_depth = data.sum(axis=1)
+    fraction = gene_set_fraction(data, gene_list)
+    is_above = fraction > threshold if threshold is not None else pd.Series(False, index=data.index)
+
+    ax.scatter(count_depth[~is_above], fraction[~is_above], color=BLUE, s=12, alpha=0.7)
+    ax.scatter(count_depth[is_above], fraction[is_above], color=RED, s=12, alpha=0.9)
+
+    title = f"{name} ({n_genes} genes found)"
+    if threshold is not None:
+        title += f"\n{int(is_above.sum())} of {len(fraction)} cells > {threshold:g}"
+    ax.set_title(title, fontweight='bold')
+    draw_threshold(ax, threshold, vertical=False)
+
+    return finish_plot(ax, is_standalone)
+
+
+def draw_threshold(ax, threshold: Optional[float], vertical: bool, name: str = "Threshold"):
+    if threshold is None:
+        return
+
+    line = ax.axvline if vertical else ax.axhline
+    line(threshold, color=RED, linestyle='--', linewidth=2,
+         label=f"{name}: {threshold:g}")
+    ax.legend()
+
+
+def finish_plot(ax, is_standalone: bool):
+    """Shows standalone figures; returns the axes when drawing into a caller's grid."""
+    if is_standalone:
+        plt.tight_layout()
+        plt.show()
+        return None
+
+    return ax
 
 
 def plot_gene_max_count_distribution(data_before, data_after, x_limit=20):
@@ -92,10 +347,7 @@ def plot_filtering_effect(data_before, data_after, gene_list, metric_name):
 
 def calculate_gene_fraction(df: pd.DataFrame, gene_list: list) -> pd.Series:
     """Helper to calculate the fraction of total counts for a gene set."""
-    valid_genes = [g for g in gene_list if g in df.columns]
-    if not valid_genes:
-        return pd.Series(0, index=df.index)
-    return df[valid_genes].sum(axis=1) / df.sum(axis=1).replace(0, 1)
+    return gene_set_fraction(df, gene_list)
 
 
 def plot_metric_distribution(values: pd.Series, title: str, cutoff: Optional[float] = None, color: str = BLUE, ax=None, label="Fraction of counts", bins=50):

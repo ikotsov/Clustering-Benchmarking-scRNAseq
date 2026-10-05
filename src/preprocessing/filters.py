@@ -128,20 +128,32 @@ def high_fraction_mask(data: pd.DataFrame, gene_list: List[str], threshold: floa
     Returns a boolean Series (indexed by cell) that is True for cells whose
     fraction of counts in gene_list exceeds the threshold.
     """
-    uppercase_genes = {gene.upper() for gene in gene_list}
-    valid_genes = [col for col in data.columns if col.upper()
-                   in uppercase_genes]
+    return gene_set_fraction(data, gene_list) > threshold
+
+
+def gene_set_fraction(data: pd.DataFrame, gene_list: List[str]) -> pd.Series:
+    """
+    Returns, for each cell, the fraction of its total counts coming from genes in gene_list.
+    Genes are matched case-insensitively; cells get 0 when no gene in the list is present.
+    """
+    valid_genes = matching_genes(data, gene_list)
 
     if len(valid_genes) == 0:
-        return pd.Series(False, index=data.index)
+        return pd.Series(0.0, index=data.index)
 
     subset_counts = data[valid_genes].sum(axis=1)
     total_counts = data.sum(axis=1)
 
     # Avoid division by zero by replacing 0 total counts with 1 (these cells will be dropped anyway or have 0 fraction)
-    expression_ratio = subset_counts / total_counts.replace(0, 1)
+    return subset_counts / total_counts.replace(0, 1)
 
-    return expression_ratio > threshold
+
+def matching_genes(data: pd.DataFrame, gene_list: List[str]) -> List[str]:
+    """
+    Returns the columns of data that appear in gene_list, matched case-insensitively.
+    """
+    uppercase_genes = {gene.upper() for gene in gene_list}
+    return [col for col in data.columns if col.upper() in uppercase_genes]
 
 
 def filter_doublets(data: pd.DataFrame, expected_doublet_rate: float = 0.05, threshold: Optional[float] = None) -> pd.DataFrame:
