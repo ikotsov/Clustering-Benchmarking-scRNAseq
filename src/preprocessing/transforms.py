@@ -53,7 +53,7 @@ def normalize_by_library_size(data: pd.DataFrame, rescale: int = CPM_RESCALE) ->
 
 def log_transform(data: pd.DataFrame, pseudocount: int = 1) -> pd.DataFrame:
     """
-    Applies log transformation: log(x + pseudocount).
+    Applies natural log transformation: ln(x + pseudocount).
 
     Parameters
     ----------
@@ -71,15 +71,15 @@ def log_transform(data: pd.DataFrame, pseudocount: int = 1) -> pd.DataFrame:
     Sample_1   100.0        0.0
 
     >>> log_transform(data, pseudocount=1)
-    # log(100 + 1) ~= 4.61, log(0 + 1) = 0
+    # ln(100 + 1) ~= 4.62, ln(0 + 1) = 0
                 Gene_A     Gene_B
     Sample_1  4.615121        0.0
     """
-    logger.debug("Applying log transform (log%s+x)", pseudocount)
+    logger.debug("Applying log transform (ln(x+%s))", pseudocount)
 
-    data_log = np.log10(data + pseudocount)
+    data_log = np.log(data + pseudocount)
 
-    # Cast because np.log10 is typed to return an ndarray,
+    # Cast because np.log is typed to return an ndarray,
     # but it returns a DataFrame when the input is a DataFrame.
     return cast(pd.DataFrame, data_log)
 
