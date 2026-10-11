@@ -36,17 +36,22 @@ def preprocess_data(
     clean_data = run_filtering_pipeline(
         raw_data, config=preprocessing_config, species=species)
 
-    # Then select HVGs
+    # Then select HVGs (both flavors expect raw counts)
     hvg_genes = select_hvgs(clean_data, norm_method)
-    hvg_data = clean_data.loc[:, hvg_genes]
 
     # Then normalize
     if norm_method == "log_cpm":
         logger.debug("Normalization (LogCPM)...")
-        normalized_data = normalize_with_log_cpm(hvg_data)
+        # Normalize on all genes first so library sizes reflect sequencing depth,
+        # then keep only the HVG columns.
+        log_cpm_all_genes = normalize_with_log_cpm(clean_data)
+        normalized_data = log_cpm_all_genes.loc[:, hvg_genes]
     elif norm_method == "pearson":
         logger.debug("Normalization (Pearson Residuals)...")
-        normalized_data = normalize_with_pearson(hvg_data)
+        # Keep only the HVG columns first, then compute residuals on them,
+        # as in Scanpy's Pearson residuals workflow.
+        hvg_counts = clean_data.loc[:, hvg_genes]
+        normalized_data = normalize_with_pearson(hvg_counts)
     else:
         raise ValueError(f"Unknown normalization method: {norm_method}")
 

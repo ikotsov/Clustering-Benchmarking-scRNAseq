@@ -137,8 +137,12 @@ def normalize_with_pearson(hvg_data: pd.DataFrame) -> pd.DataFrame:
     return adata.to_df()
 
 
-def normalize_with_log_cpm(hvg_data: pd.DataFrame) -> pd.DataFrame:
-    data = normalize_by_library_size(hvg_data)
+def normalize_with_log_cpm(filtered_data: pd.DataFrame) -> pd.DataFrame:
+    """
+    Receives the full filtered matrix (not an HVG subset) so library sizes 
+    reflect sequencing depth.
+    """
+    data = normalize_by_library_size(filtered_data)
     data = log_transform(data)
 
     return data
