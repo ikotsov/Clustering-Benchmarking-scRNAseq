@@ -10,7 +10,8 @@ from src.types import NormMethod
 
 logger = logging.getLogger(__name__)
 
-# Adjust as needed. Seurat uses 10_000 for normalization by default.
+# Note: Seurat's LogNormalize scales to 10_000 (CP10k) by default.
+# We use CPM (1_000_000)
 CPM_RESCALE = 1_000_000
 
 
@@ -97,7 +98,8 @@ def select_hvgs(filtered_data: pd.DataFrame, norm_method: NormMethod) -> list[st
     adata = sc.AnnData(filtered_data)
 
     if norm_method == "pearson":
-        logger.debug("Selecting top %s variable genes (Pearson residuals)", PEARSON_N_HVG)
+        logger.debug(
+            "Selecting top %s variable genes (Pearson residuals)", PEARSON_N_HVG)
         # Reference: https://scanpy.readthedocs.io/en/stable/generated/scanpy.experimental.pp.highly_variable_genes.html
         sc.experimental.pp.highly_variable_genes(
             adata,
@@ -105,7 +107,8 @@ def select_hvgs(filtered_data: pd.DataFrame, norm_method: NormMethod) -> list[st
             n_top_genes=PEARSON_N_HVG,
         )
     elif norm_method == "log_cpm":
-        logger.debug("Selecting top %s variable genes (Seurat v3)", LOG_CPM_N_HVG)
+        logger.debug(
+            "Selecting top %s variable genes (Seurat v3)", LOG_CPM_N_HVG)
         sc.pp.highly_variable_genes(
             adata,
             flavor="seurat_v3_paper",
