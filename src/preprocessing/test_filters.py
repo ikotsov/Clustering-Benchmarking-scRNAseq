@@ -1,9 +1,20 @@
 import pandas as pd
 import pytest
-from .filters import filter_low_magnitude_genes, filter_cells_by_fraction, filter_high_mito_cells
+from . import filters as filters_module
+from .gene_annotation import load_gene_annotation
+from .filters import (
+    filter_genes_by_max_count,
+    filter_cells_by_fraction,
+    filter_high_mito_cells,
+    filter_high_apoptosis_cells,
+    filter_high_rrna_cells,
+    filter_doublets,
+    gene_set_fraction,
+    high_fraction_mask,
+)
 
 
-def test_filter_low_magnitude_genes():
+def test_filter_genes_by_max_count():
     data = pd.DataFrame({
         'High_Expr': [10, 20, 0],   # Keep: Max is 20
         'Low_Expr':  [1,  1,  1],   # Drop: Only 1s (popular, but low signal)
@@ -11,7 +22,7 @@ def test_filter_low_magnitude_genes():
         'Zero':      [0,  0,  0]    # Drop: Only 0s
     }, index=['C1', 'C2', 'C3'])
 
-    filtered = filter_low_magnitude_genes(data)
+    filtered = filter_genes_by_max_count(data)
 
     # Only 'High_Expr' should remain
     assert list(filtered.columns) == ['High_Expr']
@@ -24,7 +35,7 @@ def test_filter_keeps_rare_but_high_genes():
         'Rare_But_Strong': [100, 0, 0],
     }, index=['C1', 'C2', 'C3'])
 
-    filtered = filter_low_magnitude_genes(data)
+    filtered = filter_genes_by_max_count(data)
 
     # Should stay because 100 > 1
     assert 'Rare_But_Strong' in filtered.columns
@@ -83,6 +94,39 @@ def test_fraction_handles_zero_total_counts():
     assert 'Zero_Cell' in filtered.index
 
 
+def test_fraction_matches_genes_case_insensitively(fraction_data):
+    # Gene list casing differs from the data columns (e.g. mouse list on uppercased data).
+    filtered = filter_cells_by_fraction(
+        fraction_data,
+        gene_list=['target_1'],
+        threshold=0.5
+    )
+
+    assert 'Cell_Bad' not in filtered.index
+    assert filtered.shape[0] == 2
+
+
+def test_gene_set_fraction_per_cell(fraction_data):
+    fractions = gene_set_fraction(fraction_data, ['target_1'])
+
+    assert fractions.to_dict() == {
+        'Cell_Bad': 1.0, 'Cell_Border': 0.5, 'Cell_Good': 0.0}
+
+
+def test_high_fraction_mask_flags_cells_above_threshold(fraction_data):
+    mask = high_fraction_mask(fraction_data, ['Target_1'], threshold=0.5)
+
+    assert mask.to_dict() == {
+        'Cell_Bad': True, 'Cell_Border': False, 'Cell_Good': False}
+
+
+def test_high_fraction_mask_without_matching_genes_flags_nothing(fraction_data):
+    mask = high_fraction_mask(fraction_data, ['Ghost_Gene'], threshold=0.5)
+
+    assert not mask.any()
+    assert mask.index.equals(fraction_data.index)
+
+
 def test_mito_wrapper_finds_mt_genes():
     df_mito = pd.DataFrame({
         'MT-CO1': [100, 0],  # 100% Mito in Cell 1
@@ -93,3 +137,114 @@ def test_mito_wrapper_finds_mt_genes():
 
     assert 'High_Mito' not in filtered.index
     assert 'Low_Mito' in filtered.index
+
+
+def test_mito_wrapper_is_case_insensitive():
+    # Lowercase "mt-" prefix is common in mouse datasets.
+    df_mito = pd.DataFrame({
+        'mt-co1': [100, 0],
+        'Actb':   [0, 100]
+    }, index=['High_Mito', 'Low_Mito'])
+
+    filtered = filter_high_mito_cells(df_mito, threshold=0.05)
+
+    assert 'High_Mito' not in filtered.index
+    assert 'Low_Mito' in filtered.index
+
+
+def test_fraction_filtering_empty_gene_list_is_noop(fraction_data):
+    filtered = filter_cells_by_fraction(
+        fraction_data,
+        gene_list=[],
+        threshold=0.5
+    )
+
+    pd.testing.assert_frame_equal(filtered, fraction_data)
+
+
+def test_apoptosis_wrapper_filters_high_expression():
+    df_apoptosis = pd.DataFrame({
+        'BAX': [100, 0],   # 100% apoptosis-gene expression in Cell 1
+        'ACTB': [0, 100]
+    }, index=['High_Apoptosis', 'Low_Apoptosis'])
+
+    filtered = filter_high_apoptosis_cells(
+        df_apoptosis, threshold=0.05, species="human")
+
+    assert 'High_Apoptosis' not in filtered.index
+    assert 'Low_Apoptosis' in filtered.index
+
+
+def test_rrna_wrapper_filters_high_expression():
+    df_rrna = pd.DataFrame({
+        'RNA5S1': [100, 0],  # 100% rRNA expression in Cell 1
+        'ACTB':   [0, 100]
+    }, index=['High_rRNA', 'Low_rRNA'])
+
+    filtered = filter_high_rrna_cells(df_rrna, threshold=0.05, species="human")
+
+    assert 'High_rRNA' not in filtered.index
+    assert 'Low_rRNA' in filtered.index
+
+
+def test_filter_doublets_removes_predicted_doublets(monkeypatch):
+    """
+    Mocks scanpy's Scrublet call so the test exercises only
+    filter_doublets' own filtering logic, not Scrublet's stochastic
+    detection algorithm.
+    """
+    data = pd.DataFrame({
+        'Gene_A': [10, 20, 30, 40],
+        'Gene_B': [5, 15, 25, 35],
+    }, index=['C1', 'C2', 'C3', 'C4'])
+
+    def fake_scrublet(adata, expected_doublet_rate=0.05, threshold=None):
+        adata.obs['predicted_doublet'] = [False, True, False, True]
+
+    monkeypatch.setattr(filters_module.sc.pp, 'scrublet', fake_scrublet)
+    monkeypatch.setattr(
+        filters_module.sc.pl, 'scrublet_score_distribution', lambda adata: None)
+
+    filtered = filter_doublets(data)
+
+    assert list(filtered.index) == ['C1', 'C3']
+
+
+def test_mito_wrapper_matches_ensembl_ids():
+    # ENSG00000198804 is MT-CO1; the version suffix must not prevent the match.
+    df_mito = pd.DataFrame({
+        'ENSG00000198804.2': [100, 0],
+        'ENSG00000075624':   [0, 100]   # ACTB
+    }, index=['High_Mito', 'Low_Mito'])
+
+    filtered = filter_high_mito_cells(df_mito, threshold=0.05, species="human")
+
+    assert 'High_Mito' not in filtered.index
+    assert 'Low_Mito' in filtered.index
+
+
+def test_apoptosis_wrapper_matches_mouse_ensembl_ids():
+    df_apoptosis = pd.DataFrame({
+        'ENSMUSG00000003873': [100, 0],  # Bax
+        'ENSMUSG00000029580': [0, 100]   # Actb
+    }, index=['High_Apoptosis', 'Low_Apoptosis'])
+
+    filtered = filter_high_apoptosis_cells(
+        df_apoptosis, threshold=0.05, species="mouse")
+
+    assert 'High_Apoptosis' not in filtered.index
+    assert 'Low_Apoptosis' in filtered.index
+
+
+def test_rrna_wrapper_matches_ensembl_ids():
+    rrna_id = load_gene_annotation("human").set_index(
+        "gene_name").loc["RNA5S1", "gene_id"]
+    df_rrna = pd.DataFrame({
+        rrna_id: [100, 0],
+        'ENSG00000075624': [0, 100]
+    }, index=['High_rRNA', 'Low_rRNA'])
+
+    filtered = filter_high_rrna_cells(df_rrna, threshold=0.05, species="human")
+
+    assert 'High_rRNA' not in filtered.index
+    assert 'Low_rRNA' in filtered.index

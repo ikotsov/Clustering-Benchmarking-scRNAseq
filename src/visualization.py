@@ -6,7 +6,8 @@ import pandas as pd
 from typing import cast, List, Optional
 
 from src.constants import SEED, MIN_GENE_MAX_COUNT
-from src.preprocessing.filters import apoptosis_genes, gene_set_fraction, matching_genes, mito_genes, rrna_genes
+from src.preprocessing.filters import gene_set_fraction
+from src.preprocessing.gene_sets import apoptosis_genes, matching_genes, mito_genes, rrna_genes
 from src.preprocessing.types import PreprocessingConfig
 from src.types import Species
 
@@ -26,6 +27,7 @@ def plot_qc_overview(
     zoom_below: Optional[float] = None,
     color_by: Optional[pd.Series] = None,
     color_label: str = "Fraction of mitochondrial counts",
+    species: Species = "human",
 ):
     """
     Plots the 2x2 cell QC overview from Luecken & Theis (2019), Fig. 2:
@@ -48,6 +50,8 @@ def plot_qc_overview(
         pass e.g. gene_set_fraction(data, rrna_genes(species)) to colour by rRNA instead.
     color_label : str
         Colour bar label for panel D.
+    species : Species
+        Selects the mitochondrial gene set for the default colour of panel D.
     """
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 
@@ -62,6 +66,7 @@ def plot_qc_overview(
         color_label=color_label,
         count_threshold=count_threshold,
         gene_threshold=gene_threshold,
+        species=species,
         ax=axes[1, 1],
     )
 
@@ -153,6 +158,7 @@ def plot_genes_vs_count_depth(
     color_label: str = "Fraction of mitochondrial counts",
     count_threshold: Optional[float] = None,
     gene_threshold: Optional[float] = None,
+    species: Species = "human",
     ax=None,
 ):
     """
@@ -164,7 +170,7 @@ def plot_genes_vs_count_depth(
         _, ax = plt.subplots(figsize=(8, 6))
 
     if color_by is None:
-        color_by = gene_set_fraction(data, mito_genes(data))
+        color_by = gene_set_fraction(data, mito_genes(species))
 
     points = ax.scatter(
         data.sum(axis=1),
@@ -195,14 +201,14 @@ def plot_gene_set_qc(data: pd.DataFrame, species: Species = "human", config: Pre
     data : pd.DataFrame
         Raw counts (cells x genes), before any filtering.
     species : Species
-        Selects the rRNA and apoptosis gene sets.
+        Selects the mitochondrial, rRNA and apoptosis gene sets.
     config : PreprocessingConfig
         Candidate thresholds, e.g. parse_preprocessing_config(load_dataset_config(dataset_dir)).
     """
     fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
     gene_sets = [
-        ("Mitochondrial", mito_genes(data), config.mito_threshold),
+        ("Mitochondrial", mito_genes(species), config.mito_threshold),
         ("rRNA", rrna_genes(species), config.rrna_threshold),
         ("Apoptosis", apoptosis_genes(species), config.apoptosis_threshold),
     ]

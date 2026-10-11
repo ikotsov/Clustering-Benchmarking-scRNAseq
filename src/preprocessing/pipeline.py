@@ -2,7 +2,8 @@ import logging
 
 import pandas as pd
 from .types import PreprocessingConfig
-from .filters import apoptosis_genes, filter_genes_by_max_count, high_fraction_mask, mito_genes, rrna_genes
+from .filters import filter_genes_by_max_count, high_fraction_mask
+from .gene_sets import apoptosis_genes, mito_genes, rrna_genes
 from .transforms import select_hvgs, normalize_with_log_cpm, normalize_with_pearson
 from src.types import NormMethod, Species
 
@@ -74,7 +75,7 @@ def run_filtering_pipeline(raw_data: pd.DataFrame, config: PreprocessingConfig, 
         "rRNA": high_fraction_mask(
             raw_data, rrna_genes(species), config.rrna_threshold),
         "mitochondrial": high_fraction_mask(
-            raw_data, mito_genes(raw_data), config.mito_threshold),
+            raw_data, mito_genes(species), config.mito_threshold),
     }
     for name, mask in qc_failures.items():
         logger.info("High %s: %s cells", name, int(mask.sum()))

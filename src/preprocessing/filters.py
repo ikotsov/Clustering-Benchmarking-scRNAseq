@@ -5,7 +5,7 @@ import pandas as pd
 import scanpy as sc
 
 from ..types import Species
-from .genes import HUMAN_APOPTOSIS_GENES, HUMAN_RRNA_GENES, MOUSE_APOPTOSIS_GENES, MOUSE_RRNA_GENES
+from .gene_sets import apoptosis_genes, matching_genes, mito_genes, rrna_genes
 from ..constants import MIN_GENE_MAX_COUNT
 
 
@@ -55,21 +55,16 @@ def filter_genes_by_max_count(data: pd.DataFrame, min_count: int = MIN_GENE_MAX_
     return data_filtered
 
 
-def filter_high_mito_cells(data: pd.DataFrame, threshold: float = 0.05) -> pd.DataFrame:
+def filter_high_mito_cells(data: pd.DataFrame, threshold: float = 0.05, species: Species = "human") -> pd.DataFrame:
     """
     Removes cells with high mitochondrial expression (indicative of broken cells).
     """
     return filter_cells_by_fraction(
         data,
-        gene_list=mito_genes(data),
+        gene_list=mito_genes(species),
         threshold=threshold,
         filter_name="mitochondrial"
     )
-
-
-def mito_genes(data: pd.DataFrame) -> List[str]:
-    # By transforming gene names to uppercase, we can catch both "MT-" and "mt-" prefixes. "mt-" is common in mouse datasets.
-    return [gene for gene in data.columns if gene.upper().startswith("MT-")]
 
 
 def filter_high_apoptosis_cells(data: pd.DataFrame, threshold: float = 0.05, species: Species = "human") -> pd.DataFrame:
@@ -84,10 +79,6 @@ def filter_high_apoptosis_cells(data: pd.DataFrame, threshold: float = 0.05, spe
     )
 
 
-def apoptosis_genes(species: Species = "human") -> List[str]:
-    return HUMAN_APOPTOSIS_GENES if species == "human" else MOUSE_APOPTOSIS_GENES
-
-
 def filter_high_rrna_cells(data: pd.DataFrame, threshold: float = 0.05, species: Species = "human") -> pd.DataFrame:
     """
     Removes cells with high rRNA expression (indicative of technical noise).
@@ -98,10 +89,6 @@ def filter_high_rrna_cells(data: pd.DataFrame, threshold: float = 0.05, species:
         threshold=threshold,
         filter_name="rRNA"
     )
-
-
-def rrna_genes(species: Species = "human") -> List[str]:
-    return HUMAN_RRNA_GENES if species == "human" else MOUSE_RRNA_GENES
 
 
 def filter_cells_by_fraction(data: pd.DataFrame, gene_list: List[str], threshold: float, filter_name: str = "generic") -> pd.DataFrame:
@@ -138,7 +125,9 @@ def gene_set_fraction(data: pd.DataFrame, gene_list: List[str]) -> pd.Series:
     """
     valid_genes = matching_genes(data, gene_list)
 
-    if len(valid_genes) == 0:
+    if len(valid_genes) == 0 and len(gene_list) > 0:
+        logger.warning(
+            "None of the %s genes in the gene set were found in the data columns", len(gene_list))
         return pd.Series(0.0, index=data.index)
 
     subset_counts = data[valid_genes].sum(axis=1)
@@ -146,14 +135,6 @@ def gene_set_fraction(data: pd.DataFrame, gene_list: List[str]) -> pd.Series:
 
     # Avoid division by zero by replacing 0 total counts with 1 (these cells will be dropped anyway or have 0 fraction)
     return subset_counts / total_counts.replace(0, 1)
-
-
-def matching_genes(data: pd.DataFrame, gene_list: List[str]) -> List[str]:
-    """
-    Returns the columns of data that appear in gene_list, matched case-insensitively.
-    """
-    uppercase_genes = {gene.upper() for gene in gene_list}
-    return [col for col in data.columns if col.upper() in uppercase_genes]
 
 
 def filter_doublets(data: pd.DataFrame, expected_doublet_rate: float = 0.05, threshold: Optional[float] = None) -> pd.DataFrame:
