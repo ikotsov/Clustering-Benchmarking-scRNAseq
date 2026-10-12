@@ -3,7 +3,7 @@ from itertools import product
 
 from src.constants import DATASETS, NORM_METHODS
 from src.logging_config import configure_logging
-from src.scripts import run_preprocessing
+from src.runner import run_preprocessing
 
 
 logger = logging.getLogger(__name__)
