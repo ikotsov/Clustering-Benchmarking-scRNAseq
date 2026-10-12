@@ -1,11 +1,11 @@
 import json
 import anndata as ad
-from pathlib import Path
 import pandas as pd
 import scanpy as sc
 from typing import Literal, TypeAlias, cast
 
 from .types import EnrichmentSetName
+from src.constants import DATA_DIR
 from src.types import Species
 
 # Configuration for DEG-based enrichment sets.
@@ -14,8 +14,7 @@ DEFAULT_DEG_POSITIVE_LOGFC = 1.0
 DEFAULT_DEG_NEGATIVE_LOGFC = -1.0
 DEFAULT_DEG_METHOD = "wilcoxon"
 
-MARKER_DATABASE_DIR = Path(__file__).resolve(
-).parents[3] / "data" / "gene_markers"
+MARKER_DATABASE_DIR = DATA_DIR / "gene_markers"
 GENE_MARKER_INDEX_FILENAME = "gene_marker_index.json"
 GENE_MARKER_INDEX_PATH = MARKER_DATABASE_DIR / \
     "outputs" / GENE_MARKER_INDEX_FILENAME

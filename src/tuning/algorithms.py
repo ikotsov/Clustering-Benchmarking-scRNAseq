@@ -7,7 +7,7 @@ import pandas as pd
 from optuna.samplers import TPESampler
 
 from src.clustering.registry import ClusteringAlgorithm, get_clustering_strategy
-from src.constants import SEED
+from src.constants import DATASETS_DIR, SEED
 from src.data_loading import load_ground_truth_labels
 from src.tuning.common import (
     DEFAULT_NORM_METHOD,
@@ -62,9 +62,7 @@ def run_tuning(
 
     data = load_preprocessed_data(accession, norm_method=norm_method)
 
-    project_root = os.path.dirname(os.path.dirname(
-        os.path.dirname(os.path.abspath(__file__))))
-    dataset_dir = os.path.join(project_root, "data", "datasets", accession)
+    dataset_dir = os.path.join(DATASETS_DIR, accession)
     labels_true = load_ground_truth_labels(dataset_dir)
 
     study = optuna.create_study(

@@ -1,4 +1,10 @@
+from pathlib import Path
+
 from src.types import NormMethod
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DATA_DIR = PROJECT_ROOT / "data"
+DATASETS_DIR = DATA_DIR / "datasets"
 
 SEED = 42
 PCA_VARIANCE_RATIO = 0.80

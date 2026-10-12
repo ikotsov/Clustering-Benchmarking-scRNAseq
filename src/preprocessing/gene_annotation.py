@@ -1,11 +1,11 @@
-from pathlib import Path
 
 import pandas as pd
 
+from ..constants import DATA_DIR
 from ..types import Species
 
 
-ANNOTATIONS_DIR = Path(__file__).resolve().parents[2] / "data" / "annotations"
+ANNOTATIONS_DIR = DATA_DIR / "annotations"
 
 # Status columns hold the gene name when the gene belongs to the set, and a "NO_..." placeholder otherwise.
 MITO_STATUS_COLUMN = "MT_status"

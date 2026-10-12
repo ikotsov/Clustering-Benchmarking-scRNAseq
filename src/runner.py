@@ -20,7 +20,7 @@ from src.evaluation import (
     save_biological_evaluation_results,
     save_evaluation_results,
 )
-from src.constants import PCA_VARIANCE_RATIO
+from src.constants import DATASETS_DIR, PCA_VARIANCE_RATIO
 from src.types import NormMethod, Species
 from src.utils import get_pca_label
 from src.evaluation.biological.types import EnrichmentSetName
@@ -51,8 +51,7 @@ def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", pca_v
     pca_variance_ratio : float, default=PCA_VARIANCE_RATIO
         Fraction of variance to preserve when PCA is applied
     """
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    dataset_dir = os.path.join(project_root, "data", "datasets", accession)
+    dataset_dir = os.path.join(DATASETS_DIR, accession)
 
     raw_file_path = os.path.join(dataset_dir, "raw", f"{accession}.csv.gz")
 
@@ -135,9 +134,7 @@ def run_experiment(
     norm_method : NormMethod, default="pearson"
         Normalization method ("pearson" or "log_cpm")
     """
-    # 1. Dynamic path resolution
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    dataset_dir = os.path.join(project_root, "data", "datasets", accession)
+    dataset_dir = os.path.join(DATASETS_DIR, accession)
 
     pca_tag = get_pca_label(with_pca).upper()
     logger.info("EXPERIMENT: %s + %s + %s",
@@ -251,8 +248,7 @@ def run_biological_evaluation(
     enrichment_set_names: list[EnrichmentSetName] | None = None,
 ):
     """Run the biological evaluation stage and persist the results."""
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    dataset_dir = os.path.join(project_root, "data", "datasets", accession)
+    dataset_dir = os.path.join(DATASETS_DIR, accession)
 
     logger.info("Biological evaluation...")
     biological_input_filename = _processed_filename(

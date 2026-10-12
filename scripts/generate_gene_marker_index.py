@@ -22,6 +22,7 @@ from typing import Literal, cast
 
 import pandas as pd
 
+from src.constants import DATA_DIR, PROJECT_ROOT
 from src.logging_config import configure_logging
 
 
@@ -71,15 +72,12 @@ def main() -> None:
     logger.info("Wrote gene marker index to %s", rel)
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DATA_DIR_NAME = "data"
 GENE_MARKERS_DIR_NAME = "gene_markers"
 GENE_MARKER_INDEX_FILENAME = "gene_marker_index.json"
 
 
 def get_marker_paths() -> tuple[Path, Path]:
-    data_dir = PROJECT_ROOT / DATA_DIR_NAME
-    gene_markers_dir = data_dir / GENE_MARKERS_DIR_NAME
+    gene_markers_dir = DATA_DIR / GENE_MARKERS_DIR_NAME
     outputs_dir = gene_markers_dir / "outputs"
     gene_marker_index_path = outputs_dir / GENE_MARKER_INDEX_FILENAME
     return gene_markers_dir, gene_marker_index_path

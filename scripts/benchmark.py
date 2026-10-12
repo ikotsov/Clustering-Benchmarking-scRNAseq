@@ -4,7 +4,7 @@ from itertools import product
 from src.clustering.registry import AVAILABLE_ALGORITHMS, ClusteringAlgorithm
 from src.constants import DATASETS, NORM_METHODS
 from src.logging_config import configure_logging
-from src.scripts import run_experiment
+from src.runner import run_experiment
 
 
 ALGORITHMS: tuple[ClusteringAlgorithm, ...] = tuple(AVAILABLE_ALGORITHMS)
