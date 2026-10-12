@@ -1,4 +1,4 @@
-format: "to check"
+protocol: "to check"
 n_clusters: 5
 species: "mouse"
 preprocessing:
