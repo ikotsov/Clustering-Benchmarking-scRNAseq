@@ -52,7 +52,7 @@ def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", pca_v
         Fraction of variance to preserve when PCA is applied
     """
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    dataset_dir = os.path.join(project_root, "data", accession)
+    dataset_dir = os.path.join(project_root, "data", "datasets", accession)
 
     raw_file_path = os.path.join(dataset_dir, "raw", f"{accession}.csv.gz")
 
@@ -137,7 +137,7 @@ def run_experiment(
     """
     # 1. Dynamic path resolution
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    dataset_dir = os.path.join(project_root, "data", accession)
+    dataset_dir = os.path.join(project_root, "data", "datasets", accession)
 
     pca_tag = get_pca_label(with_pca).upper()
     logger.info("EXPERIMENT: %s + %s + %s",
@@ -252,7 +252,7 @@ def run_biological_evaluation(
 ):
     """Run the biological evaluation stage and persist the results."""
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    dataset_dir = os.path.join(project_root, "data", accession)
+    dataset_dir = os.path.join(project_root, "data", "datasets", accession)
 
     logger.info("Biological evaluation...")
     biological_input_filename = _processed_filename(

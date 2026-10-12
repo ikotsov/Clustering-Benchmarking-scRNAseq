@@ -42,4 +42,4 @@ if __name__ == "__main__":
 
     logger.info("Tuning complete! Results in:")
     for dataset in DATASETS:
-        logger.info("data/%s/outputs/%s", dataset, CLUSTERING_PARAMS_FILENAME)
+        logger.info("data/datasets/%s/outputs/%s", dataset, CLUSTERING_PARAMS_FILENAME)

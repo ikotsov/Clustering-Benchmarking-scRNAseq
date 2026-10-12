@@ -18,7 +18,7 @@ def load_preprocessed_data(
     accession: str,
     norm_method: NormMethod = DEFAULT_NORM_METHOD,
 ) -> pd.DataFrame:
-    dataset_dir = os.path.join("data", accession)
+    dataset_dir = os.path.join("data", "datasets", accession)
     preprocessed_filename = f"{norm_method}_pca.csv.gz"
     preprocessed_file = os.path.join(
         dataset_dir, "processed", preprocessed_filename)
@@ -75,7 +75,7 @@ def save_tuning_results(
         Path to the saved results file
     """
     # Create output directory
-    dataset_dir = os.path.join("data", accession)
+    dataset_dir = os.path.join("data", "datasets", accession)
     output_dir = os.path.join(dataset_dir, "outputs")
     os.makedirs(output_dir, exist_ok=True)
 

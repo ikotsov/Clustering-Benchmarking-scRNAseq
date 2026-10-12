@@ -64,7 +64,7 @@ def run_tuning(
 
     project_root = os.path.dirname(os.path.dirname(
         os.path.dirname(os.path.abspath(__file__))))
-    dataset_dir = os.path.join(project_root, "data", accession)
+    dataset_dir = os.path.join(project_root, "data", "datasets", accession)
     labels_true = load_ground_truth_labels(dataset_dir)
 
     study = optuna.create_study(
