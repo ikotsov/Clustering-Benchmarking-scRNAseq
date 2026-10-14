@@ -1,10 +1,10 @@
 import logging
 from itertools import product
 
+from src import paths
 from src.constants import DATASETS, NORM_METHODS
 from src.logging_config import configure_logging
 from src.tuning.algorithms import ALGORITHM_PARAM_SPECS, run_tuning
-from src.tuning.common import CLUSTERING_PARAMS_FILENAME
 
 
 ALGORITHMS = tuple(ALGORITHM_PARAM_SPECS.keys())
@@ -31,8 +31,10 @@ if __name__ == "__main__":
         )
         try:
             run_tuning(
-                accession=dataset,
                 algorithm=algorithm,
+                data_path=paths.processed_data_path(dataset, norm_method, with_pca=True),
+                labels_path=paths.resolve(paths.GROUND_TRUTH_LABELS, accession=dataset),
+                output_path=paths.resolve(paths.CLUSTERING_PARAMS, accession=dataset),
                 norm_method=norm_method,
             )
         except Exception:
@@ -42,4 +44,4 @@ if __name__ == "__main__":
 
     logger.info("Tuning complete! Results in:")
     for dataset in DATASETS:
-        logger.info("data/datasets/%s/outputs/%s", dataset, CLUSTERING_PARAMS_FILENAME)
+        logger.info(paths.CLUSTERING_PARAMS.format(accession=dataset))

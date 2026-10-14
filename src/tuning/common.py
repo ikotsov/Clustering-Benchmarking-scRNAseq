@@ -1,5 +1,6 @@
 import json
 import os
+from pathlib import Path
 from typing import Literal, TypeAlias
 
 import pandas as pd
@@ -7,29 +8,20 @@ import pandas as pd
 from src.evaluation import compute_ari, compute_nmi, compute_jaccard
 from src.data_loading import load_csv_data
 from src.clustering.registry import ClusteringAlgorithm
-from src.types import NormMethod
+from src.types import NormMethod, PathLike
 
 
 DEFAULT_NORM_METHOD: NormMethod = 'log_cpm'
-CLUSTERING_PARAMS_FILENAME = "clustering_params.json"
 
 
-def load_preprocessed_data(
-    accession: str,
-    norm_method: NormMethod = DEFAULT_NORM_METHOD,
-) -> pd.DataFrame:
-    dataset_dir = os.path.join("data", "datasets", accession)
-    preprocessed_filename = f"{norm_method}_pca.csv.gz"
-    preprocessed_file = os.path.join(
-        dataset_dir, "processed", preprocessed_filename)
-
-    if not os.path.exists(preprocessed_file):
+def load_preprocessed_data(data_path: PathLike) -> pd.DataFrame:
+    if not os.path.exists(data_path):
         raise FileNotFoundError(
-            f"Preprocessed file not found: {preprocessed_filename}\n"
-            f"Run preprocessing first with: run_preprocessing('{accession}', '{norm_method}')"
+            f"Preprocessed file not found: {data_path}\n"
+            "Run preprocessing first with run_preprocessing."
         )
 
-    return load_csv_data(preprocessed_file)
+    return load_csv_data(data_path)
 
 
 ObjectiveMetric = Literal["ari", "nmi", "jaccard", "mean_external_score"]
@@ -52,7 +44,7 @@ def compute_clustering_metrics(pred: pd.Series, true: pd.Series) -> ClusteringMe
 
 
 def save_tuning_results(
-    accession: str,
+    output_path: PathLike,
     algorithm: ClusteringAlgorithm,
     norm_method: NormMethod,
     best_params: dict,
@@ -64,7 +56,7 @@ def save_tuning_results(
     Results are organized hierarchically by norm_method > algorithm.
 
     Args:
-        accession: Dataset accession ID
+        output_path: Path to clustering_params.json (created if missing)
         algorithm: Clustering algorithm name
         norm_method: Normalization method used
         best_params: Best hyperparameters found
@@ -74,13 +66,7 @@ def save_tuning_results(
     Returns:
         Path to the saved results file
     """
-    # Create output directory
-    dataset_dir = os.path.join("data", "datasets", accession)
-    output_dir = os.path.join(dataset_dir, "outputs")
-    os.makedirs(output_dir, exist_ok=True)
-
-    # Path to clustering params file
-    output_path = os.path.join(output_dir, CLUSTERING_PARAMS_FILENAME)
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
     # Load existing results or start fresh
     if os.path.exists(output_path):

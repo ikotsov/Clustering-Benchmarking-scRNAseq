@@ -1,5 +1,5 @@
 import re
-from typing import Iterable, List, Set
+from typing import Iterable, List, Optional, Set
 
 import pandas as pd
 
@@ -8,19 +8,19 @@ from .gene_annotation import MITO_STATUS_COLUMN, load_gene_annotation
 from .genes import HUMAN_APOPTOSIS_GENES, HUMAN_RRNA_GENES, MOUSE_APOPTOSIS_GENES, MOUSE_RRNA_GENES
 
 
-def mito_genes(species: Species = "human") -> List[str]:
+def mito_genes(species: Species = "human", annotation: Optional[pd.DataFrame] = None) -> List[str]:
     # Names ("MT-CO1" / "mt-Co1") and Ensembl IDs of all mitochondrially encoded genes.
-    return _flagged_genes(MITO_STATUS_COLUMN, species)
+    return _flagged_genes(MITO_STATUS_COLUMN, species, annotation)
 
 
-def apoptosis_genes(species: Species = "human") -> List[str]:
+def apoptosis_genes(species: Species = "human", annotation: Optional[pd.DataFrame] = None) -> List[str]:
     gene_names = HUMAN_APOPTOSIS_GENES if species == "human" else MOUSE_APOPTOSIS_GENES
-    return _with_ensembl_ids(gene_names, species)
+    return _with_ensembl_ids(gene_names, species, annotation)
 
 
-def rrna_genes(species: Species = "human") -> List[str]:
+def rrna_genes(species: Species = "human", annotation: Optional[pd.DataFrame] = None) -> List[str]:
     gene_names = HUMAN_RRNA_GENES if species == "human" else MOUSE_RRNA_GENES
-    return _with_ensembl_ids(gene_names, species)
+    return _with_ensembl_ids(gene_names, species, annotation)
 
 
 def matching_genes(data: pd.DataFrame, gene_list: List[str]) -> List[str]:
@@ -62,21 +62,23 @@ def ensembl_id(gene: str) -> str:
     return match.group(1).upper()
 
 
-def _flagged_genes(status_column: str, species: Species) -> List[str]:
+def _flagged_genes(status_column: str, species: Species, annotation: Optional[pd.DataFrame]) -> List[str]:
     """
     Returns the gene names and Ensembl IDs of all genes flagged in a status column of the annotation.
     """
-    annotation = load_gene_annotation(species)
+    if annotation is None:
+        annotation = load_gene_annotation(species)
     flagged = annotation[~annotation[status_column].str.startswith("NO_")]
     return flagged["gene_name"].tolist() + flagged["gene_id"].tolist()
 
 
-def _with_ensembl_ids(gene_names: Iterable[str], species: Species) -> List[str]:
+def _with_ensembl_ids(gene_names: Iterable[str], species: Species, annotation: Optional[pd.DataFrame]) -> List[str]:
     """
     Returns gene_names extended with their Ensembl IDs (names matched case-insensitively).
     """
     gene_names = list(gene_names)
     uppercase_names = {gene.upper() for gene in gene_names}
-    annotation = load_gene_annotation(species)
+    if annotation is None:
+        annotation = load_gene_annotation(species)
     is_listed = annotation["gene_name"].str.upper().isin(uppercase_names)
     return gene_names + annotation.loc[is_listed, "gene_id"].tolist()

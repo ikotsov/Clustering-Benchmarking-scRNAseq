@@ -1,6 +1,7 @@
 import logging
 import os
 from collections.abc import Mapping
+from pathlib import Path
 
 import pandas as pd
 from src.data_loading import (
@@ -10,8 +11,10 @@ from src.data_loading import (
     load_ground_truth_labels,
     parse_n_clusters,
     parse_preprocessing_config,
+    parse_species,
 )
 from src.preprocessing import apply_pca, preprocess_data
+from src.preprocessing.gene_annotation import load_gene_annotation
 from src.clustering.registry import ClusteringAlgorithm, ClusteringFunc, get_clustering_strategy
 from src.evaluation import (
     evaluate_clustering_biologically,
@@ -21,14 +24,14 @@ from src.evaluation import (
     save_evaluation_results,
 )
 from src.constants import DATASETS_DIR, PCA_VARIANCE_RATIO
-from src.types import NormMethod, Species
+from src.paths import processed_data_path
+from src.types import NormMethod, PathLike, Species
 from src.utils import get_pca_label
 from src.evaluation.biological.types import EnrichmentSetName
 
 logger = logging.getLogger(__name__)
 
 
-VALID_SPECIES: tuple[Species, Species] = ("human", "mouse")
 ALGORITHMS_REQUIRING_N_CLUSTERS: tuple[ClusteringAlgorithm, ...] = (
     "agglomerative",
     "birch",
@@ -37,40 +40,54 @@ ALGORITHMS_REQUIRING_N_CLUSTERS: tuple[ClusteringAlgorithm, ...] = (
 )
 
 
-def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", pca_variance_ratio: float = PCA_VARIANCE_RATIO):
+def run_preprocessing(
+    *,
+    raw_path: PathLike,
+    config_path: PathLike,
+    annotation_path: PathLike,
+    pca_output_path: PathLike,
+    no_pca_output_path: PathLike,
+    hvg_output_path: PathLike,
+    norm_method: NormMethod = "pearson",
+    pca_variance_ratio: float = PCA_VARIANCE_RATIO,
+):
     """
     Runs only the preprocessing step and saves the result.
     Useful for exploring preprocessing outputs or running multiple preprocessing strategies for all datasets at once.
 
     Parameters
     ----------
-    accession : str
-        Dataset accession ID
+    raw_path : PathLike
+        Raw counts matrix (cells x genes, gzipped CSV)
+    config_path : PathLike
+        Dataset config.yaml (species and QC thresholds)
+    annotation_path : PathLike
+        Gene annotation table of the dataset's species
+    pca_output_path, no_pca_output_path : PathLike
+        Where to save the PCA and non-PCA representations (gzipped CSV)
+    hvg_output_path : PathLike
+        Where to save the selected HVG names (TSV)
     norm_method : NormMethod, default="pearson"
         Normalization method ("pearson" or "log_cpm")
     pca_variance_ratio : float, default=PCA_VARIANCE_RATIO
         Fraction of variance to preserve when PCA is applied
     """
-    dataset_dir = os.path.join(DATASETS_DIR, accession)
+    if not os.path.exists(raw_path):
+        raise FileNotFoundError(f"Expected file not found: {raw_path}")
 
-    raw_file_path = os.path.join(dataset_dir, "raw", f"{accession}.csv.gz")
-
-    if not os.path.exists(raw_file_path):
-        raise FileNotFoundError(f"Expected file not found: {raw_file_path}")
-
-    config = load_dataset_config(dataset_dir)
-    species_value = config.get("species")
-    species = species_value if species_value in VALID_SPECIES else "human"
+    config = load_dataset_config(config_path)
+    species = parse_species(config)
     preprocessing_config = parse_preprocessing_config(config)
+    annotation = load_gene_annotation(species, annotation_path)
 
     # Load & preprocess
     logger.info(
         "PREPROCESSING: %s, norm_method=%s, pca_variance_ratio=%.0f%%",
-        accession,
+        raw_path,
         norm_method,
         pca_variance_ratio * 100,
     )
-    raw_data = load_csv_data(raw_file_path)
+    raw_data = load_csv_data(raw_path)
 
     logger.info("Building non-PCA representation...")
     preprocessed_no_pca, hvg_genes_no_pca = preprocess_data(
@@ -78,6 +95,7 @@ def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", pca_v
         norm_method=norm_method,
         species=species,
         preprocessing_config=preprocessing_config,
+        annotation=annotation,
     )
 
     logger.info("Building PCA representation from non-PCA data...")
@@ -87,35 +105,38 @@ def run_preprocessing(accession: str, norm_method: NormMethod = "pearson", pca_v
     )
 
     # Save both representations
-    output_dir = os.path.join(dataset_dir, "processed")
-    os.makedirs(output_dir, exist_ok=True)
-
-    for with_pca in (True, False):
-        preprocessed_data = preprocessed_pca if with_pca else preprocessed_no_pca
-        filename = _processed_filename(norm_method, with_pca)
-        save_path = os.path.join(output_dir, filename)
+    for preprocessed_data, save_path in (
+        (preprocessed_pca, pca_output_path),
+        (preprocessed_no_pca, no_pca_output_path),
+    ):
+        Path(save_path).parent.mkdir(parents=True, exist_ok=True)
         preprocessed_data.to_csv(save_path, compression='gzip')
         logger.info(
             "Saved to: %s (%s × %s features)",
-            filename,
+            save_path,
             preprocessed_data.shape[0],
             preprocessed_data.shape[1],
         )
 
-    hvg_filename = _hvg_filename(norm_method)
-    hvg_path = os.path.join(output_dir, hvg_filename)
+    Path(hvg_output_path).parent.mkdir(parents=True, exist_ok=True)
     pd.Series(hvg_genes_no_pca, name="gene").to_csv(
-        hvg_path,
+        hvg_output_path,
         sep="\t",
         index=False,
     )
     logger.info("Saved HVGs to: %s (%s genes)",
-                hvg_filename, len(hvg_genes_no_pca))
+                hvg_output_path, len(hvg_genes_no_pca))
 
 
 def run_experiment(
     accession: str,
     algo_name: ClusteringAlgorithm,
+    *,
+    data_path: PathLike,
+    config_path: PathLike,
+    params_path: PathLike,
+    labels_path: PathLike,
+    results_path: PathLike,
     norm_method: NormMethod = "pearson",
     with_pca: bool = True,
     enrichment_set_names: list[EnrichmentSetName] | None = None,
@@ -128,41 +149,44 @@ def run_experiment(
     Parameters
     ----------
     accession : str
-        Dataset accession ID
+        Dataset accession ID (recorded in the results)
     algo_name : str
         Clustering algorithm name
+    data_path : PathLike
+        Preprocessed data to cluster (output of run_preprocessing)
+    config_path : PathLike
+        Dataset config.yaml (species and n_clusters)
+    params_path : PathLike
+        Tuned clustering parameters (clustering_params.json); defaults are used when it is missing
+    labels_path : PathLike
+        Ground truth labels CSV
+    results_path : PathLike
+        results.json to record the evaluation metrics in
     norm_method : NormMethod, default="pearson"
         Normalization method ("pearson" or "log_cpm")
     """
-    dataset_dir = os.path.join(DATASETS_DIR, accession)
-
     pca_tag = get_pca_label(with_pca).upper()
     logger.info("EXPERIMENT: %s + %s + %s",
                 accession, algo_name.upper(), pca_tag)
 
     # 2. Load preprocessed data
-    preprocessed_filename = _processed_filename(norm_method, with_pca)
-    preprocessed_file = os.path.join(
-        dataset_dir, "processed", preprocessed_filename)
-
-    if not os.path.exists(preprocessed_file):
+    if not os.path.exists(data_path):
         raise FileNotFoundError(
-            f"Preprocessed file not found: {preprocessed_filename}\n"
-            f"Run preprocessing first with: run_preprocessing('{accession}', '{norm_method}')"
+            f"Preprocessed file not found: {data_path}\n"
+            "Run preprocessing first with run_preprocessing."
         )
 
-    logger.info("Loading preprocessed data: %s", preprocessed_filename)
-    target_data = load_csv_data(preprocessed_file)
+    logger.info("Loading preprocessed data: %s", data_path)
+    target_data = load_csv_data(data_path)
 
     # 3. Clustering
-    config = load_dataset_config(dataset_dir)
-    species_value = config.get("species")
-    species = species_value if species_value in VALID_SPECIES else "human"
+    config = load_dataset_config(config_path)
+    species = parse_species(config)
     logger.info("Clustering (%s)...", algo_name)
     cluster_func = get_clustering_strategy(algo_name)
 
     cluster_kwargs = load_clustering_params(
-        dataset_dir=dataset_dir,
+        params_path=params_path,
         norm_method=norm_method,
         algorithm=algo_name,
     )
@@ -175,12 +199,8 @@ def run_experiment(
 
     # 4. Load ground truth labels
     logger.info("Loading ground truth labels...")
-    try:
-        ground_truth = load_ground_truth_labels(dataset_dir)
-        logger.info("Loaded %s ground truth labels", len(ground_truth))
-    except FileNotFoundError as e:
-        logger.warning("%s -- skipping evaluation.", e)
-        return
+    ground_truth = load_ground_truth_labels(labels_path)
+    logger.info("Loaded %s ground truth labels", len(ground_truth))
 
     # 5. Evaluate and save results
     logger.info("Evaluation...")
@@ -207,16 +227,13 @@ def run_experiment(
 
     metrics = {**external_metrics, **internal_metrics}
 
-    output_dir = os.path.join(dataset_dir, "outputs")
-    os.makedirs(output_dir, exist_ok=True)
-
     save_evaluation_results(
         dataset=accession,
         algorithm=algo_name,
         preprocessing=norm_method,
         with_pca=with_pca,
         metrics=metrics,
-        output_dir=output_dir,
+        results_path=results_path,
     )
 
     run_biological_evaluation(
@@ -251,13 +268,11 @@ def run_biological_evaluation(
     dataset_dir = os.path.join(DATASETS_DIR, accession)
 
     logger.info("Biological evaluation...")
-    biological_input_filename = _processed_filename(
-        norm_method, with_pca=False)
-    biological_input_path = os.path.join(
-        dataset_dir, "processed", biological_input_filename)
+    biological_input_path = processed_data_path(
+        accession, norm_method, with_pca=False)
     if not os.path.exists(biological_input_path):
         raise FileNotFoundError(
-            f"Biological input not found: {biological_input_filename}"
+            f"Biological input not found: {biological_input_path}"
         )
 
     biological_data = load_csv_data(biological_input_path)
@@ -284,11 +299,3 @@ def run_biological_evaluation(
         comparison_records=biological_results,
         output_dir=output_dir,
     )
-
-
-def _processed_filename(norm_method: NormMethod, with_pca: bool) -> str:
-    return f"{norm_method}_{get_pca_label(with_pca)}.csv.gz"
-
-
-def _hvg_filename(norm_method: NormMethod) -> str:
-    return f"hvgs_{norm_method}.tsv"

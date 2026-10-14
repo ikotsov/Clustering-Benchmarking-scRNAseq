@@ -4,11 +4,14 @@ import os
 import pandas as pd
 from typing import cast, NotRequired, TypedDict
 
-from src.types import NormMethod, Species
+from src.types import NormMethod, PathLike, Species
 from src.preprocessing.types import PreprocessingConfig
 
 
-def load_csv_data(file_path: str) -> pd.DataFrame:
+VALID_SPECIES: tuple[Species, Species] = ("human", "mouse")
+
+
+def load_csv_data(file_path: PathLike) -> pd.DataFrame:
     return pd.read_csv(file_path, compression='gzip', index_col=0)
 
 
@@ -19,13 +22,12 @@ class DatasetConfig(TypedDict):
     clustering_params: NotRequired[dict[str, dict[str, object]]]
 
 
-def load_dataset_config(dataset_dir: str) -> DatasetConfig:
+def load_dataset_config(config_path: PathLike) -> DatasetConfig:
     default_config: DatasetConfig = {
         "species": "human",
         "n_clusters": 0,
     }
 
-    config_path = os.path.join(dataset_dir, "config.yaml")
     if not os.path.exists(config_path):
         return default_config
 
@@ -99,15 +101,16 @@ def parse_n_clusters(config: DatasetConfig) -> int | None:
     return None
 
 
+def parse_species(config: DatasetConfig) -> Species:
+    species = config.get("species")
+    return species if species in VALID_SPECIES else "human"
+
+
 def load_clustering_params(
-    dataset_dir: str,
+    params_path: PathLike,
     norm_method: NormMethod,
     algorithm: str,
 ) -> dict[str, ClusteringParamValue]:
-    from src.tuning.common import CLUSTERING_PARAMS_FILENAME
-
-    outputs_dir = os.path.join(dataset_dir, "outputs")
-    params_path = os.path.join(outputs_dir, CLUSTERING_PARAMS_FILENAME)
     if not os.path.exists(params_path):
         return {}
 
@@ -129,22 +132,20 @@ def load_clustering_params(
     return parsed
 
 
-def load_ground_truth_labels(dataset_dir: str) -> pd.Series:
+def load_ground_truth_labels(labels_path: PathLike) -> pd.Series:
     """
     Load ground truth labels from saved CSV file.
 
     Parameters
     ----------
-    dataset_dir : str
-        Path to the dataset directory
+    labels_path : PathLike
+        Path to the ground truth labels CSV (cell identifiers in the first column)
 
     Returns
     -------
     labels : pd.Series
         Series with cell identifiers as index and true labels as values
     """
-    labels_path = os.path.join(dataset_dir, "raw", "ground_truth_labels.csv")
-
     if not os.path.exists(labels_path):
         raise FileNotFoundError(
             f"Ground truth labels not found: {labels_path}\n"

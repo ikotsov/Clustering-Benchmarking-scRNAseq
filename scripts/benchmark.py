@@ -1,6 +1,7 @@
 import logging
 from itertools import product
 
+from src import paths
 from src.clustering.registry import AVAILABLE_ALGORITHMS, ClusteringAlgorithm
 from src.constants import DATASETS, NORM_METHODS
 from src.logging_config import configure_logging
@@ -26,6 +27,11 @@ if __name__ == "__main__":
         run_experiment(
             accession=dataset,
             algo_name=algo_name,
+            data_path=paths.processed_data_path(dataset, norm_method, with_pca),
+            config_path=paths.resolve(paths.DATASET_CONFIG, accession=dataset),
+            params_path=paths.resolve(paths.CLUSTERING_PARAMS, accession=dataset),
+            labels_path=paths.resolve(paths.GROUND_TRUTH_LABELS, accession=dataset),
+            results_path=paths.resolve(paths.RESULTS, accession=dataset),
             norm_method=norm_method,
             with_pca=with_pca,
         )

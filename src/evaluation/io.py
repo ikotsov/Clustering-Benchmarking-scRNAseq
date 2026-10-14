@@ -2,8 +2,10 @@ import json
 import logging
 import os
 from datetime import datetime
+from pathlib import Path
 
 from src.evaluation.biological.types import BiologicalComparisonRecord
+from src.types import PathLike
 from src.utils import get_pca_label
 
 
@@ -16,7 +18,7 @@ def save_evaluation_results(
     preprocessing: str,
     with_pca: bool,
     metrics: dict[str, float | None],
-    output_dir: str,
+    results_path: PathLike,
 ) -> None:
     """
     Save evaluation results into a shared results.json file.
@@ -51,10 +53,10 @@ def save_evaluation_results(
         Whether PCA was applied
     metrics : dict
         Dictionary of metric names and values (e.g., {"ari": 0.85, "nmi": 0.78})
-    output_dir : str
-        Directory containing results.json
+    results_path : PathLike
+        Path to results.json (created if missing)
     """
-    results_file = os.path.join(output_dir, "results.json")
+    results_file = results_path
     now_iso = datetime.now().isoformat()
 
     all_results: dict[str, object]
@@ -102,6 +104,7 @@ def save_evaluation_results(
     all_results.setdefault("dataset", dataset)
     all_results["updated_at"] = now_iso
 
+    Path(results_file).parent.mkdir(parents=True, exist_ok=True)
     with open(results_file, 'w') as f:
         json.dump(all_results, f, indent=2, allow_nan=False)
 

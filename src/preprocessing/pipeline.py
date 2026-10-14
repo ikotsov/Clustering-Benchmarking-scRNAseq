@@ -16,6 +16,7 @@ def preprocess_data(
     norm_method: NormMethod = "pearson",
     species: Species = "human",
     preprocessing_config: PreprocessingConfig = PreprocessingConfig(),
+    annotation: pd.DataFrame | None = None,
 ) -> tuple[pd.DataFrame, list[str]]:
     """
     Runs filtering and normalization.
@@ -28,6 +29,9 @@ def preprocess_data(
         Normalization method to use ("log_cpm" or "pearson")
     species : Species, default="human"
         Species for filtering (affects mitochondrial, ribosomal, apoptosis genes)
+    annotation : pd.DataFrame, optional
+        Gene annotation table of the species used to build the QC gene sets
+        (defaults to the project's annotation file for the species)
     Returns
     -------
     tuple[pd.DataFrame, list[str]]
@@ -35,7 +39,7 @@ def preprocess_data(
     """
     # Filter first
     clean_data = run_filtering_pipeline(
-        raw_data, config=preprocessing_config, species=species)
+        raw_data, config=preprocessing_config, species=species, annotation=annotation)
 
     # Then select HVGs (both flavors expect raw counts)
     hvg_genes = select_hvgs(clean_data, norm_method)
@@ -59,7 +63,12 @@ def preprocess_data(
     return normalized_data, hvg_genes
 
 
-def run_filtering_pipeline(raw_data: pd.DataFrame, config: PreprocessingConfig, species: Species = "human") -> pd.DataFrame:
+def run_filtering_pipeline(
+    raw_data: pd.DataFrame,
+    config: PreprocessingConfig,
+    species: Species = "human",
+    annotation: pd.DataFrame | None = None,
+) -> pd.DataFrame:
     """
     Runs the full filtering pipeline.
     """
@@ -71,11 +80,11 @@ def run_filtering_pipeline(raw_data: pd.DataFrame, config: PreprocessingConfig, 
     # filter alone, independent of the order the filters are listed in.
     qc_failures = {
         "apoptosis": high_fraction_mask(
-            raw_data, apoptosis_genes(species), config.apoptosis_threshold),
+            raw_data, apoptosis_genes(species, annotation), config.apoptosis_threshold),
         "rRNA": high_fraction_mask(
-            raw_data, rrna_genes(species), config.rrna_threshold),
+            raw_data, rrna_genes(species, annotation), config.rrna_threshold),
         "mitochondrial": high_fraction_mask(
-            raw_data, mito_genes(species), config.mito_threshold),
+            raw_data, mito_genes(species, annotation), config.mito_threshold),
     }
     for name, mask in qc_failures.items():
         logger.info("High %s: %s cells", name, int(mask.sum()))

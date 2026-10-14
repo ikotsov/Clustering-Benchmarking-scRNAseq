@@ -1,5 +1,4 @@
 import logging
-import os
 from typing import Literal, TypedDict
 
 import optuna
@@ -7,7 +6,7 @@ import pandas as pd
 from optuna.samplers import TPESampler
 
 from src.clustering.registry import ClusteringAlgorithm, get_clustering_strategy
-from src.constants import DATASETS_DIR, SEED
+from src.constants import SEED
 from src.data_loading import load_ground_truth_labels
 from src.tuning.common import (
     DEFAULT_NORM_METHOD,
@@ -16,7 +15,7 @@ from src.tuning.common import (
     load_preprocessed_data,
     save_tuning_results,
 )
-from src.types import NormMethod
+from src.types import NormMethod, PathLike
 
 
 logger = logging.getLogger(__name__)
@@ -47,8 +46,11 @@ ALGORITHM_PARAM_SPECS: dict[ClusteringAlgorithm, dict[str, ParamSpec]] = {
 
 
 def run_tuning(
-    accession: str,
     algorithm: ClusteringAlgorithm,
+    *,
+    data_path: PathLike,
+    labels_path: PathLike,
+    output_path: PathLike,
     n_trials: int = 50,
     norm_method: NormMethod = DEFAULT_NORM_METHOD,
     objective_metric: ObjectiveMetric = 'mean_external_score',
@@ -60,14 +62,12 @@ def run_tuning(
         raise ValueError(
             f"Tuning is not configured for '{algorithm}'. Supported: {supported}")
 
-    data = load_preprocessed_data(accession, norm_method=norm_method)
-
-    dataset_dir = os.path.join(DATASETS_DIR, accession)
-    labels_true = load_ground_truth_labels(dataset_dir)
+    data = load_preprocessed_data(data_path)
+    labels_true = load_ground_truth_labels(labels_path)
 
     study = optuna.create_study(
         direction="maximize",
-        study_name=f"{accession}_{algorithm}_tuning",
+        study_name=f"{algorithm}_{norm_method}_tuning",
         sampler=TPESampler(seed=SEED),
     )
     study.optimize(
@@ -86,7 +86,7 @@ def run_tuning(
     logger.info("Best %s: %.4f", objective_metric, best_value)
 
     save_tuning_results(
-        accession=accession,
+        output_path=output_path,
         algorithm=algorithm,
         norm_method=norm_method,
         best_params=best_trial.params,

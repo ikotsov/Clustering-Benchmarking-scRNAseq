@@ -203,7 +203,7 @@ def plot_gene_set_qc(data: pd.DataFrame, species: Species = "human", config: Pre
     species : Species
         Selects the mitochondrial, rRNA and apoptosis gene sets.
     config : PreprocessingConfig
-        Candidate thresholds, e.g. parse_preprocessing_config(load_dataset_config(dataset_dir)).
+        Candidate thresholds, e.g. parse_preprocessing_config(load_dataset_config(config_path)).
     """
     fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
