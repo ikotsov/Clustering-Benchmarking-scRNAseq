@@ -4,7 +4,7 @@ import os
 import pandas as pd
 from typing import cast, NotRequired, TypedDict
 
-from src.types import NormMethod, PathLike, Species
+from src.types import PathLike, Species
 from src.preprocessing.types import PreprocessingConfig
 
 
@@ -106,19 +106,18 @@ def parse_species(config: DatasetConfig) -> Species:
     return species if species in VALID_SPECIES else "human"
 
 
-def load_clustering_params(
-    params_path: PathLike,
-    norm_method: NormMethod,
-    algorithm: str,
-) -> dict[str, ClusteringParamValue]:
-    if not os.path.exists(params_path):
+def load_tuned_params(params_path: PathLike | None) -> dict[str, ClusteringParamValue]:
+    """
+    Loads the best parameters from a tuning result file (see save_tuning_results).
+    Returns no parameters when params_path is None, i.e. for algorithms that are not tuned.
+    """
+    if params_path is None:
         return {}
 
     with open(params_path, "r") as f:
         loaded = json.load(f)
 
-    raw_best_params = loaded.get(norm_method, {}).get(
-        algorithm, {}).get("best_params", {})
+    raw_best_params = loaded.get("best_params", {})
     if not isinstance(raw_best_params, dict):
         return {}
 

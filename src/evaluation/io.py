@@ -1,8 +1,11 @@
 import json
 import logging
 import os
+from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
+
+import pandas as pd
 
 from src.evaluation.biological.types import BiologicalComparisonRecord
 from src.types import PathLike
@@ -12,39 +15,27 @@ from src.utils import get_pca_label
 logger = logging.getLogger(__name__)
 
 
-def save_evaluation_results(
-    dataset: str,
+def save_run_result(
     algorithm: str,
     preprocessing: str,
     with_pca: bool,
     metrics: dict[str, float | None],
-    results_path: PathLike,
+    output_path: PathLike,
 ) -> None:
     """
-    Save evaluation results into a shared results.json file.
+    Save the evaluation result of a single run into its own JSON file, overwriting any previous result.
 
-    Results are stored in a flat runs structure:
+    The file holds one run, and becomes one row of the results table (see aggregate_run_results):
         {
-          "dataset": "...",
-          "updated_at": "...",
-          "runs": [
-            {
-              "algorithm": "kmeans",
-              "normalization": "pearson",
-              "with_pca": true,
-              "metrics": {...},
-              "timestamp": "..."
-            }
-          ]
+          "algorithm": "kmeans",
+          "normalization": "pearson",
+          "with_pca": true,
+          "metrics": {...},
+          "timestamp": "..."
         }
-
-    Re-running an experiment overwrites the matching run entry
-    (algorithm + normalization + with_pca).
 
     Parameters
     ----------
-    dataset : str
-        Dataset accession ID
     algorithm : str
         Clustering algorithm name
     preprocessing : str
@@ -53,68 +44,60 @@ def save_evaluation_results(
         Whether PCA was applied
     metrics : dict
         Dictionary of metric names and values (e.g., {"ari": 0.85, "nmi": 0.78})
-    results_path : PathLike
-        Path to results.json (created if missing)
+    output_path : PathLike
+        Path to the run's result file
     """
-    results_file = results_path
-    now_iso = datetime.now().isoformat()
-
-    all_results: dict[str, object]
-    if os.path.exists(results_file):
-        with open(results_file, 'r') as f:
-            loaded = json.load(f)
-
-        all_results = loaded
-    else:
-        all_results = {
-            "dataset": dataset,
-            "updated_at": now_iso,
-            "runs": [],
-        }
-
-    runs = all_results["runs"]
-    if not isinstance(runs, list):
-        raise ValueError("Invalid results.json format: 'runs' must be a list.")
-
     run_entry = {
         "algorithm": algorithm,
         "normalization": preprocessing,
         "with_pca": with_pca,
         "metrics": metrics,
-        "timestamp": now_iso,
+        "timestamp": datetime.now().isoformat(),
     }
 
-    replaced = False
-    for idx, existing in enumerate(runs):
-        if not isinstance(existing, dict):
-            continue
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, 'w') as f:
+        json.dump(run_entry, f, indent=2, allow_nan=False)
 
-        if (
-            existing.get("algorithm") == algorithm
-            and existing.get("normalization") == preprocessing
-            and bool(existing.get("with_pca", False)) == with_pca
-        ):
-            runs[idx] = run_entry
-            replaced = True
-            break
-
-    if not replaced:
-        runs.append(run_entry)
-
-    all_results.setdefault("dataset", dataset)
-    all_results["updated_at"] = now_iso
-
-    Path(results_file).parent.mkdir(parents=True, exist_ok=True)
-    with open(results_file, 'w') as f:
-        json.dump(all_results, f, indent=2, allow_nan=False)
-
-    pca_key = get_pca_label(with_pca)
     logger.info(
-        "Evaluation saved: %s -> %s -> %s in results.json",
+        "Evaluation saved: %s -> %s -> %s in %s",
         algorithm,
         preprocessing,
-        pca_key,
+        get_pca_label(with_pca),
+        output_path,
     )
+
+
+def aggregate_run_results(
+    dataset: str,
+    run_result_paths: Iterable[PathLike],
+    results_path: PathLike,
+) -> None:
+    """
+    Collect the per-run result files (see save_run_result) of a dataset into a results table (TSV)
+    with one row per run:
+        dataset  algorithm  normalization  with_pca  ari  nmi  ...  timestamp
+
+    Rows keep the order of run_result_paths, and the table is rewritten from scratch,
+    so it holds exactly the given runs.
+    """
+    rows = []
+    for run_result_path in run_result_paths:
+        with open(run_result_path, 'r') as f:
+            run = json.load(f)
+        rows.append({
+            "dataset": dataset,
+            "algorithm": run["algorithm"],
+            "normalization": run["normalization"],
+            "with_pca": run["with_pca"],
+            **run["metrics"],
+            "timestamp": run["timestamp"],
+        })
+
+    Path(results_path).parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(rows).to_csv(results_path, sep="\t", index=False)
+
+    logger.info("Aggregated %s runs into %s", len(rows), results_path)
 
 
 def save_biological_evaluation_results(

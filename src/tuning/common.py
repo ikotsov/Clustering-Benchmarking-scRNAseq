@@ -1,5 +1,6 @@
 import json
 import os
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Literal, TypeAlias
 
@@ -50,13 +51,13 @@ def save_tuning_results(
     best_params: dict,
     best_value: float,
     objective_metric: ObjectiveMetric,
-) -> str:
+) -> PathLike:
     """
-    Save tuning results to a JSON file (clustering_params.json).
-    Results are organized hierarchically by norm_method > algorithm.
+    Save the tuning result of one algorithm + normalization into its own JSON file,
+    overwriting any previous result.
 
     Args:
-        output_path: Path to clustering_params.json (created if missing)
+        output_path: Path to the tuning result file
         algorithm: Clustering algorithm name
         norm_method: Normalization method used
         best_params: Best hyperparameters found
@@ -66,28 +67,41 @@ def save_tuning_results(
     Returns:
         Path to the saved results file
     """
-    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-
-    # Load existing results or start fresh
-    if os.path.exists(output_path):
-        with open(output_path, "r") as f:
-            all_results = json.load(f)
-    else:
-        all_results = {}
-
-    # Ensure nested structure exists
-    if norm_method not in all_results:
-        all_results[norm_method] = {}
-
-    # Add/update result for this algorithm
-    all_results[norm_method][algorithm] = {
+    result = {
+        "algorithm": algorithm,
+        "normalization": norm_method,
         "objective_metric": objective_metric,
         "best_params": best_params,
         "best_value": best_value,
     }
 
-    # Save back to JSON
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w") as f:
-        json.dump(all_results, f, indent=2)
+        json.dump(result, f, indent=2)
 
     return output_path
+
+
+def aggregate_tuning_results(
+    tuning_result_paths: Iterable[PathLike],
+    output_path: PathLike,
+) -> None:
+    """
+    Collect per-job tuning result files (see save_tuning_results) into clustering_params.json,
+    organized hierarchically by norm_method > algorithm. The file is rewritten from scratch,
+    so it holds exactly the given results.
+    """
+    all_results: dict[str, dict[str, dict]] = {}
+    for tuning_result_path in tuning_result_paths:
+        with open(tuning_result_path, "r") as f:
+            result = json.load(f)
+
+        all_results.setdefault(result["normalization"], {})[result["algorithm"]] = {
+            "objective_metric": result["objective_metric"],
+            "best_params": result["best_params"],
+            "best_value": result["best_value"],
+        }
+
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w") as f:
+        json.dump(all_results, f, indent=2)

@@ -221,3 +221,4 @@ data/**
 !data/**/
 !data/**/config.yaml
 !data/**/outputs/*.json
+!data/**/outputs/*.tsv

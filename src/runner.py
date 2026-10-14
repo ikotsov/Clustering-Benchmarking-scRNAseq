@@ -6,9 +6,9 @@ from pathlib import Path
 import pandas as pd
 from src.data_loading import (
     load_csv_data,
-    load_clustering_params,
     load_dataset_config,
     load_ground_truth_labels,
+    load_tuned_params,
     parse_n_clusters,
     parse_preprocessing_config,
     parse_species,
@@ -21,7 +21,7 @@ from src.evaluation import (
     evaluate_clustering_externally,
     evaluate_clustering_internally,
     save_biological_evaluation_results,
-    save_evaluation_results,
+    save_run_result,
 )
 from src.constants import DATASETS_DIR, PCA_VARIANCE_RATIO
 from src.paths import processed_data_path
@@ -134,9 +134,9 @@ def run_experiment(
     *,
     data_path: PathLike,
     config_path: PathLike,
-    params_path: PathLike,
+    params_path: PathLike | None,
     labels_path: PathLike,
-    results_path: PathLike,
+    result_path: PathLike,
     norm_method: NormMethod = "pearson",
     with_pca: bool = True,
     enrichment_set_names: list[EnrichmentSetName] | None = None,
@@ -156,12 +156,12 @@ def run_experiment(
         Preprocessed data to cluster (output of run_preprocessing)
     config_path : PathLike
         Dataset config.yaml (species and n_clusters)
-    params_path : PathLike
-        Tuned clustering parameters (clustering_params.json); defaults are used when it is missing
+    params_path : PathLike or None
+        Tuning result of this algorithm + normalization; None runs the algorithm with its defaults
     labels_path : PathLike
         Ground truth labels CSV
-    results_path : PathLike
-        results.json to record the evaluation metrics in
+    result_path : PathLike
+        Where to save this run's evaluation metrics (collected into results.tsv by aggregate_run_results)
     norm_method : NormMethod, default="pearson"
         Normalization method ("pearson" or "log_cpm")
     """
@@ -185,11 +185,7 @@ def run_experiment(
     logger.info("Clustering (%s)...", algo_name)
     cluster_func = get_clustering_strategy(algo_name)
 
-    cluster_kwargs = load_clustering_params(
-        params_path=params_path,
-        norm_method=norm_method,
-        algorithm=algo_name,
-    )
+    cluster_kwargs = load_tuned_params(params_path)
 
     n_clusters = parse_n_clusters(config)
     if algo_name in ALGORITHMS_REQUIRING_N_CLUSTERS and n_clusters is not None:
@@ -227,13 +223,12 @@ def run_experiment(
 
     metrics = {**external_metrics, **internal_metrics}
 
-    save_evaluation_results(
-        dataset=accession,
+    save_run_result(
         algorithm=algo_name,
         preprocessing=norm_method,
         with_pca=with_pca,
         metrics=metrics,
-        results_path=results_path,
+        output_path=result_path,
     )
 
     run_biological_evaluation(
