@@ -1,37 +1,60 @@
-import logging
-from itertools import product
+"""
+Preprocess one dataset with one normalization method.
 
-from src import paths
-from src.constants import DATASETS, NORM_METHODS
-from src.data_loading import load_dataset_config, parse_species
+Filters and normalizes the raw counts, then saves the non-PCA and PCA representations
+and the selected HVGs, e.g.:
+
+    python scripts/preprocess.py \\
+        --raw data/datasets/E-MTAB-3321/raw/E-MTAB-3321.csv.gz \\
+        --config data/datasets/E-MTAB-3321/config.yaml \\
+        --annotation data/annotations/gene_annotation_mouse.csv \\
+        --norm-method log_cpm \\
+        --out-pca data/datasets/E-MTAB-3321/processed/log_cpm_pca.csv.gz \\
+        --out-no-pca data/datasets/E-MTAB-3321/processed/log_cpm_no_pca.csv.gz \\
+        --out-hvgs data/datasets/E-MTAB-3321/processed/hvgs_log_cpm.tsv
+"""
+import argparse
+from pathlib import Path
+from typing import get_args
+
+from src.constants import PCA_VARIANCE_RATIO
 from src.logging_config import configure_logging
 from src.runner import run_preprocessing
+from src.types import NormMethod
 
 
-logger = logging.getLogger(__name__)
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--raw", type=Path, required=True,
+                        help="Raw counts matrix (cells x genes, gzipped CSV)")
+    parser.add_argument("--config", type=Path, required=True,
+                        help="Dataset config.yaml (species and QC thresholds)")
+    parser.add_argument("--annotation", type=Path, required=True,
+                        help="Gene annotation table of the dataset's species")
+    parser.add_argument("--norm-method", choices=get_args(NormMethod), required=True)
+    parser.add_argument("--pca-variance-ratio", type=float, default=PCA_VARIANCE_RATIO,
+                        help="Fraction of variance kept by PCA (default: %(default)s)")
+    parser.add_argument("--out-pca", type=Path, required=True)
+    parser.add_argument("--out-no-pca", type=Path, required=True)
+    parser.add_argument("--out-hvgs", type=Path, required=True)
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = parse_args(argv)
+    configure_logging()
+    run_preprocessing(
+        raw_path=args.raw,
+        config_path=args.config,
+        annotation_path=args.annotation,
+        pca_output_path=args.out_pca,
+        no_pca_output_path=args.out_no_pca,
+        hvg_output_path=args.out_hvgs,
+        norm_method=args.norm_method,
+        pca_variance_ratio=args.pca_variance_ratio,
+    )
+
 
 if __name__ == "__main__":
-    configure_logging()
-    total_runs = len(DATASETS) * len(NORM_METHODS)
-    logger.info("Total runs: %s", total_runs)
-
-    run_count = 0
-    for dataset, norm_method in product(DATASETS, NORM_METHODS):
-        run_count += 1
-        logger.info("[%s/%s] Preprocessing %s + %s...",
-                    run_count, total_runs, dataset, norm_method)
-        try:
-            config_path = paths.resolve(paths.DATASET_CONFIG, accession=dataset)
-            species = parse_species(load_dataset_config(config_path))
-            run_preprocessing(
-                raw_path=paths.resolve(paths.RAW_COUNTS, accession=dataset),
-                config_path=config_path,
-                annotation_path=paths.resolve(paths.GENE_ANNOTATION, species=species),
-                pca_output_path=paths.processed_data_path(dataset, norm_method, with_pca=True),
-                no_pca_output_path=paths.processed_data_path(dataset, norm_method, with_pca=False),
-                hvg_output_path=paths.resolve(paths.HVGS, accession=dataset, norm_method=norm_method),
-                norm_method=norm_method,
-            )
-        except Exception:
-            logger.exception("Failed preprocessing %s + %s", dataset, norm_method)
-            continue
+    main()

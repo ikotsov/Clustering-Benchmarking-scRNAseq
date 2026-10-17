@@ -1,58 +1,57 @@
-import logging
-from itertools import product
+"""
+Tune the parameters of one clustering algorithm on one preprocessed dataset.
 
-from src import paths
-from src.constants import DATASETS, NORM_METHODS
+Runs an Optuna search on the PCA representation and saves the best parameters, e.g.:
+
+    python scripts/tune.py \\
+        --data data/datasets/E-MTAB-3321/processed/log_cpm_pca.csv.gz \\
+        --labels data/datasets/E-MTAB-3321/raw/ground_truth_labels.csv \\
+        --algorithm leiden \\
+        --norm-method log_cpm \\
+        --out data/datasets/E-MTAB-3321/outputs/tuning/log_cpm/leiden.json
+"""
+import argparse
+from pathlib import Path
+from typing import get_args
+
 from src.logging_config import configure_logging
 from src.tuning.algorithms import ALGORITHM_PARAM_SPECS, run_tuning
-from src.tuning.common import aggregate_tuning_results
+from src.tuning.common import ObjectiveMetric
+from src.types import NormMethod
 
 
-ALGORITHMS = tuple(ALGORITHM_PARAM_SPECS.keys())
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--data", type=Path, required=True,
+                        help="Preprocessed data to tune on (gzipped CSV)")
+    parser.add_argument("--labels", type=Path, required=True,
+                        help="Ground truth labels CSV")
+    parser.add_argument("--algorithm", choices=tuple(ALGORITHM_PARAM_SPECS), required=True)
+    parser.add_argument("--norm-method", choices=get_args(NormMethod), required=True,
+                        help="Normalization the data was preprocessed with (recorded in the result)")
+    parser.add_argument("--n-trials", type=int, default=50,
+                        help="Number of Optuna trials (default: %(default)s)")
+    parser.add_argument("--objective-metric", choices=get_args(ObjectiveMetric), default="mean_external_score",
+                        help="Metric to maximize (default: %(default)s)")
+    parser.add_argument("--out", type=Path, required=True,
+                        help="Where to save the tuning result (JSON)")
+    return parser.parse_args(argv)
 
 
-logger = logging.getLogger(__name__)
+def main(argv: list[str] | None = None) -> None:
+    args = parse_args(argv)
+    configure_logging()
+    run_tuning(
+        algorithm=args.algorithm,
+        data_path=args.data,
+        labels_path=args.labels,
+        output_path=args.out,
+        n_trials=args.n_trials,
+        norm_method=args.norm_method,
+        objective_metric=args.objective_metric,
+    )
 
 
 if __name__ == "__main__":
-    configure_logging()
-    total_runs = len(DATASETS) * len(ALGORITHMS) * len(NORM_METHODS)
-    logger.info("Total runs: %s", total_runs)
-
-    run_count = 0
-    for dataset, algorithm, norm_method in product(DATASETS, ALGORITHMS, NORM_METHODS):
-        run_count += 1
-        logger.info(
-            "[%s/%s] Tuning %s + %s + %s...",
-            run_count,
-            total_runs,
-            dataset,
-            algorithm,
-            norm_method,
-        )
-        try:
-            run_tuning(
-                algorithm=algorithm,
-                data_path=paths.processed_data_path(dataset, norm_method, with_pca=True),
-                labels_path=paths.resolve(paths.GROUND_TRUTH_LABELS, accession=dataset),
-                output_path=paths.resolve(
-                    paths.TUNING_RESULT, accession=dataset, norm_method=norm_method, algorithm=algorithm),
-                norm_method=norm_method,
-            )
-        except Exception:
-            logger.exception(
-                "Failed tuning %s + %s + %s", dataset, algorithm, norm_method)
-            continue
-
-    logger.info("Tuning complete! Results in:")
-    for dataset in DATASETS:
-        # Failed jobs leave no tuning result, so only the existing ones are collected.
-        tuning_result_paths = [
-            path
-            for norm_method, algorithm in product(NORM_METHODS, ALGORITHMS)
-            if (path := paths.resolve(
-                paths.TUNING_RESULT, accession=dataset, norm_method=norm_method, algorithm=algorithm)).exists()
-        ]
-        clustering_params_path = paths.resolve(paths.CLUSTERING_PARAMS, accession=dataset)
-        aggregate_tuning_results(tuning_result_paths, clustering_params_path)
-        logger.info("%s", clustering_params_path)
+    main()

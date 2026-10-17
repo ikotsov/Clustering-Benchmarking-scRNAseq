@@ -1,52 +1,67 @@
-import logging
-from itertools import product
+"""
+Run one benchmark: cluster one preprocessed dataset with one algorithm, evaluate it and save the metrics, e.g.:
 
-from src import paths
-from src.clustering.registry import AVAILABLE_ALGORITHMS, ClusteringAlgorithm
-from src.constants import DATASETS, NORM_METHODS
-from src.evaluation import aggregate_run_results
+    python scripts/benchmark.py \\
+        --dataset E-MTAB-3321 \\
+        --algorithm leiden \\
+        --norm-method log_cpm \\
+        --pca \\
+        --data data/datasets/E-MTAB-3321/processed/log_cpm_pca.csv.gz \\
+        --config data/datasets/E-MTAB-3321/config.yaml \\
+        --labels data/datasets/E-MTAB-3321/raw/ground_truth_labels.csv \\
+        --params data/datasets/E-MTAB-3321/outputs/tuning/log_cpm/leiden.json \\
+        --out data/datasets/E-MTAB-3321/outputs/runs/log_cpm/pca/leiden.json
+
+Leave out --params for algorithms that are not tuned; they run with their defaults.
+"""
+import argparse
+from pathlib import Path
+from typing import get_args
+
+from src.clustering.registry import AVAILABLE_ALGORITHMS
 from src.logging_config import configure_logging
 from src.runner import run_experiment
-from src.tuning.algorithms import ALGORITHM_PARAM_SPECS
+from src.types import NormMethod
 
 
-ALGORITHMS: tuple[ClusteringAlgorithm, ...] = tuple(AVAILABLE_ALGORITHMS)
-PCA_OPTIONS: tuple[bool, bool] = (True, False)
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--dataset", required=True,
+                        help="Dataset accession ID (recorded in the results)")
+    parser.add_argument("--algorithm", choices=AVAILABLE_ALGORITHMS, required=True)
+    parser.add_argument("--norm-method", choices=get_args(NormMethod), required=True,
+                        help="Normalization the data was preprocessed with (recorded in the result)")
+    parser.add_argument("--pca", action=argparse.BooleanOptionalAction, required=True,
+                        help="Whether --data is the PCA representation (--pca / --no-pca)")
+    parser.add_argument("--data", type=Path, required=True,
+                        help="Preprocessed data to cluster (gzipped CSV)")
+    parser.add_argument("--config", type=Path, required=True,
+                        help="Dataset config.yaml (species and n_clusters)")
+    parser.add_argument("--labels", type=Path, required=True,
+                        help="Ground truth labels CSV")
+    parser.add_argument("--params", type=Path, default=None,
+                        help="Tuning result of this algorithm + normalization (JSON)")
+    parser.add_argument("--out", type=Path, required=True,
+                        help="Where to save the run's metrics (JSON)")
+    return parser.parse_args(argv)
 
 
-logger = logging.getLogger(__name__)
+def main(argv: list[str] | None = None) -> None:
+    args = parse_args(argv)
+    configure_logging()
+    run_experiment(
+        accession=args.dataset,
+        algo_name=args.algorithm,
+        data_path=args.data,
+        config_path=args.config,
+        params_path=args.params,
+        labels_path=args.labels,
+        result_path=args.out,
+        norm_method=args.norm_method,
+        with_pca=args.pca,
+    )
+
 
 if __name__ == "__main__":
-    configure_logging()
-    for algo_name, dataset, norm_method, with_pca in product(ALGORITHMS, DATASETS, NORM_METHODS, PCA_OPTIONS):
-        logger.info(
-            "Benchmarking %s + %s + %s + %s",
-            dataset,
-            algo_name,
-            norm_method,
-            "pca" if with_pca else "no_pca",
-        )
-        run_experiment(
-            accession=dataset,
-            algo_name=algo_name,
-            data_path=paths.processed_data_path(dataset, norm_method, with_pca),
-            config_path=paths.resolve(paths.DATASET_CONFIG, accession=dataset),
-            # Untuned algorithms run with their defaults.
-            params_path=paths.resolve(
-                paths.TUNING_RESULT, accession=dataset, norm_method=norm_method, algorithm=algo_name)
-            if algo_name in ALGORITHM_PARAM_SPECS else None,
-            labels_path=paths.resolve(paths.GROUND_TRUTH_LABELS, accession=dataset),
-            result_path=paths.run_result_path(dataset, norm_method, with_pca, algo_name),
-            norm_method=norm_method,
-            with_pca=with_pca,
-        )
-
-    for dataset in DATASETS:
-        aggregate_run_results(
-            dataset=dataset,
-            run_result_paths=[
-                paths.run_result_path(dataset, norm_method, with_pca, algo_name)
-                for algo_name, norm_method, with_pca in product(ALGORITHMS, NORM_METHODS, PCA_OPTIONS)
-            ],
-            results_path=paths.resolve(paths.RESULTS, accession=dataset),
-        )
+    main()
