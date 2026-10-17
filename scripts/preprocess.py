@@ -5,7 +5,7 @@ Filters and normalizes the raw counts, then saves the non-PCA and PCA representa
 and the selected HVGs, e.g.:
 
     python scripts/preprocess.py \\
-        --raw data/datasets/E-MTAB-3321/raw/E-MTAB-3321.csv.gz \\
+        --raw data/datasets/E-MTAB-3321/interim/counts.csv.gz \\
         --config data/datasets/E-MTAB-3321/config.yaml \\
         --annotation data/annotations/gene_annotation_mouse.csv \\
         --norm-method log_cpm \\

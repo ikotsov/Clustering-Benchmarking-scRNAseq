@@ -8,7 +8,7 @@ Run one benchmark: cluster one preprocessed dataset with one algorithm, evaluate
         --pca \\
         --data data/datasets/E-MTAB-3321/processed/log_cpm_pca.csv.gz \\
         --config data/datasets/E-MTAB-3321/config.yaml \\
-        --labels data/datasets/E-MTAB-3321/raw/ground_truth_labels.csv \\
+        --labels data/datasets/E-MTAB-3321/interim/ground_truth_labels.csv \\
         --params data/datasets/E-MTAB-3321/outputs/tuning/log_cpm/leiden.json \\
         --out data/datasets/E-MTAB-3321/outputs/runs/log_cpm/pca/leiden.json
 

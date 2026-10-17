@@ -12,8 +12,8 @@ from src.utils import get_pca_label
 
 DATASET_DIR = "data/datasets/{accession}"
 DATASET_CONFIG = DATASET_DIR + "/config.yaml"
-RAW_COUNTS = DATASET_DIR + "/raw/{accession}.csv.gz"
-GROUND_TRUTH_LABELS = DATASET_DIR + "/raw/ground_truth_labels.csv"
+RAW_COUNTS = DATASET_DIR + "/interim/counts.csv.gz"
+GROUND_TRUTH_LABELS = DATASET_DIR + "/interim/ground_truth_labels.csv"
 PROCESSED_DATA = DATASET_DIR + "/processed/{norm_method}_{pca}.csv.gz"
 HVGS = DATASET_DIR + "/processed/hvgs_{norm_method}.tsv"
 TUNING_RESULT = DATASET_DIR + "/outputs/tuning/{norm_method}/{algorithm}.json"

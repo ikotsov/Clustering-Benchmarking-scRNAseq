@@ -1,0 +1,11 @@
+# Source files of each dataset, read by its scripts/prepare/<accession>.py.
+# Each key becomes an argument of that script (counts -> --counts), so every dataset
+# lists exactly the files its script expects.
+
+E-MTAB-3321:
+  counts: data/datasets/E-MTAB-3321/raw/Goolam_et_al_2015_count_table.tsv
+  metadata: data/datasets/E-MTAB-3321/raw/E-MTAB-3321.sdrf.txt
+
+GSE36552:
+  counts: data/datasets/GSE36552/raw/GSE36552.csv.gz
+  metadata: data/datasets/GSE36552/raw/GSE36552.metadata.bminty.txt.gz

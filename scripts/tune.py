@@ -5,7 +5,7 @@ Runs an Optuna search on the PCA representation and saves the best parameters, e
 
     python scripts/tune.py \\
         --data data/datasets/E-MTAB-3321/processed/log_cpm_pca.csv.gz \\
-        --labels data/datasets/E-MTAB-3321/raw/ground_truth_labels.csv \\
+        --labels data/datasets/E-MTAB-3321/interim/ground_truth_labels.csv \\
         --algorithm leiden \\
         --norm-method log_cpm \\
         --out data/datasets/E-MTAB-3321/outputs/tuning/log_cpm/leiden.json
