@@ -1,0 +1,22 @@
+# Run settings of the benchmarking workflow.
+# Per-dataset settings (species, n_clusters, QC thresholds) live in data/datasets/<accession>/config.yaml.
+
+datasets:
+  - E-MTAB-3321
+  # - GSE36552
+  # - GSE45719
+  # - GSE57249
+
+norm_methods: [log_cpm, pearson]
+
+# Fraction of variance kept by PCA in preprocessing, in (0, 1).
+pca_variance_ratio: 0.8
+
+# Benchmarked on every dataset x normalization x PCA option.
+algorithms: [agglomerative, birch, hdbscan, kmeans, leiden, optics, spectral]
+
+tuning:
+  # Tuned before benchmarking; the other algorithms run with their defaults.
+  algorithms: [leiden, birch, hdbscan, optics]
+  n_trials: 50
+  objective_metric: mean_external_score
