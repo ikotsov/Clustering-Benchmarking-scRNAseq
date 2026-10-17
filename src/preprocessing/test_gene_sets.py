@@ -34,7 +34,7 @@ def test_mito_genes_holds_names_and_ensembl_ids():
     assert any(gene.startswith('ENSMUSG') for gene in mouse)
 
 
-def test_curated_gene_sets_are_extended_with_ensembl_ids():
+def test_annotated_gene_sets_hold_names_and_ensembl_ids():
     assert 'BAX' in apoptosis_genes("human")
     assert 'ENSMUSG00000003873' in apoptosis_genes("mouse")  # Bax
     assert 'RNA5S1' in rrna_genes("human")

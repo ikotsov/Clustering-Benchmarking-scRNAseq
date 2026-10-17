@@ -1,11 +1,10 @@
 import re
-from typing import Iterable, List, Optional, Set
+from typing import List, Optional, Set
 
 import pandas as pd
 
 from ..types import Species
-from .gene_annotation import MITO_STATUS_COLUMN, load_gene_annotation
-from .genes import HUMAN_APOPTOSIS_GENES, HUMAN_RRNA_GENES, MOUSE_APOPTOSIS_GENES, MOUSE_RRNA_GENES
+from .gene_annotation import APOPTOSIS_STATUS_COLUMN, MITO_STATUS_COLUMN, RRNA_STATUS_COLUMN, load_gene_annotation
 
 
 def mito_genes(species: Species = "human", annotation: Optional[pd.DataFrame] = None) -> List[str]:
@@ -14,13 +13,11 @@ def mito_genes(species: Species = "human", annotation: Optional[pd.DataFrame] = 
 
 
 def apoptosis_genes(species: Species = "human", annotation: Optional[pd.DataFrame] = None) -> List[str]:
-    gene_names = HUMAN_APOPTOSIS_GENES if species == "human" else MOUSE_APOPTOSIS_GENES
-    return _with_ensembl_ids(gene_names, species, annotation)
+    return _flagged_genes(APOPTOSIS_STATUS_COLUMN, species, annotation)
 
 
 def rrna_genes(species: Species = "human", annotation: Optional[pd.DataFrame] = None) -> List[str]:
-    gene_names = HUMAN_RRNA_GENES if species == "human" else MOUSE_RRNA_GENES
-    return _with_ensembl_ids(gene_names, species, annotation)
+    return _flagged_genes(RRNA_STATUS_COLUMN, species, annotation)
 
 
 def matching_genes(data: pd.DataFrame, gene_list: List[str]) -> List[str]:
@@ -70,15 +67,3 @@ def _flagged_genes(status_column: str, species: Species, annotation: Optional[pd
         annotation = load_gene_annotation(species)
     flagged = annotation[~annotation[status_column].str.startswith("NO_")]
     return flagged["gene_name"].tolist() + flagged["gene_id"].tolist()
-
-
-def _with_ensembl_ids(gene_names: Iterable[str], species: Species, annotation: Optional[pd.DataFrame]) -> List[str]:
-    """
-    Returns gene_names extended with their Ensembl IDs (names matched case-insensitively).
-    """
-    gene_names = list(gene_names)
-    uppercase_names = {gene.upper() for gene in gene_names}
-    if annotation is None:
-        annotation = load_gene_annotation(species)
-    is_listed = annotation["gene_name"].str.upper().isin(uppercase_names)
-    return gene_names + annotation.loc[is_listed, "gene_id"].tolist()

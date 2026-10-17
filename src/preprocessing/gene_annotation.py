@@ -6,6 +6,8 @@ from ..types import PathLike, Species
 
 # Status columns hold the gene name when the gene belongs to the set, and a "NO_..." placeholder otherwise.
 MITO_STATUS_COLUMN = "MT_status"
+RRNA_STATUS_COLUMN = "RB_status"
+APOPTOSIS_STATUS_COLUMN = "APOPT_status"
 
 
 def load_gene_annotation(species: Species = "human", annotation_path: PathLike | None = None) -> pd.DataFrame:
