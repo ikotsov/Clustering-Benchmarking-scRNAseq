@@ -6,13 +6,11 @@ from pathlib import Path
 import pandas as pd
 from src.data_loading import (
     load_csv_data,
-    load_dataset_config,
     load_ground_truth_labels,
     load_tuned_params,
-    parse_n_clusters,
     parse_preprocessing_config,
-    parse_species,
 )
+from src.dataset_config import load_dataset_config, parse_n_clusters, parse_species
 from src.preprocessing import apply_pca, preprocess_data
 from src.preprocessing.gene_annotation import load_gene_annotation
 from src.clustering.registry import ClusteringAlgorithm, ClusteringFunc, get_clustering_strategy
@@ -24,9 +22,8 @@ from src.evaluation import (
     save_run_result,
 )
 from src.constants import DATASETS_DIR, PCA_VARIANCE_RATIO
-from src.paths import processed_data_path
+from src.paths import get_pca_label, processed_data_path
 from src.types import NormMethod, PathLike, Species
-from src.utils import get_pca_label
 from src.evaluation.biological.types import EnrichmentSetName
 
 logger = logging.getLogger(__name__)
@@ -139,10 +136,11 @@ def run_experiment(
     result_path: PathLike,
     norm_method: NormMethod = "pearson",
     with_pca: bool = True,
-    enrichment_set_names: list[EnrichmentSetName] | None = None,
 ):
     """
     Orchestrates the clustering flow: Load preprocessed data -> Cluster -> Evaluate -> Save.
+    Computes the external and internal metrics only; the biological evaluation is a separate step
+    (run_biological_evaluation).
     Expects preprocessed data to already exist (use run_preprocessing first).
     PCA is applied during preprocessing.
 
@@ -155,7 +153,7 @@ def run_experiment(
     data_path : PathLike
         Preprocessed data to cluster (output of run_preprocessing)
     config_path : PathLike
-        Dataset config.yaml (species and n_clusters)
+        Dataset config.yaml (n_clusters)
     params_path : PathLike or None
         Tuning result of this algorithm + normalization; None runs the algorithm with its defaults
     labels_path : PathLike
@@ -181,7 +179,6 @@ def run_experiment(
 
     # 3. Clustering
     config = load_dataset_config(config_path)
-    species = parse_species(config)
     logger.info("Clustering (%s)...", algo_name)
     cluster_func = get_clustering_strategy(algo_name)
 
@@ -229,18 +226,6 @@ def run_experiment(
         with_pca=with_pca,
         metrics=metrics,
         output_path=result_path,
-    )
-
-    run_biological_evaluation(
-        accession=accession,
-        algo_name=algo_name,
-        norm_method=norm_method,
-        with_pca=with_pca,
-        ground_truth=ground_truth,
-        species=species,
-        clustering_strategy=cluster_func,
-        clustering_kwargs=cluster_kwargs,
-        enrichment_set_names=enrichment_set_names,
     )
 
 

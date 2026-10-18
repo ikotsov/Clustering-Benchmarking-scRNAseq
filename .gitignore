@@ -222,3 +222,7 @@ data/**
 !data/**/config.yaml
 !data/**/outputs/*.json
 !data/**/outputs/*.tsv
+
+# Snakemake
+.snakemake/
+logs/

@@ -7,7 +7,6 @@ can use them directly as rule patterns, while scripts and notebooks fill them in
 from pathlib import Path
 
 from src.constants import PROJECT_ROOT
-from src.utils import get_pca_label
 
 
 DATASET_DIR = "data/datasets/{accession}"
@@ -31,6 +30,10 @@ def resolve(template: str, **wildcards: object) -> Path:
     -> <project root>/data/datasets/E-MTAB-3321/processed/log_cpm_pca.csv.gz
     """
     return PROJECT_ROOT / template.format(**wildcards)
+
+
+def get_pca_label(with_pca: bool) -> str:
+    return "pca" if with_pca else "no_pca"
 
 
 def processed_data_path(accession: str, norm_method: str, with_pca: bool) -> Path:

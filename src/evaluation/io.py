@@ -9,7 +9,7 @@ import pandas as pd
 
 from src.evaluation.biological.types import BiologicalComparisonRecord
 from src.types import PathLike
-from src.utils import get_pca_label
+from src.paths import get_pca_label
 
 
 logger = logging.getLogger(__name__)
