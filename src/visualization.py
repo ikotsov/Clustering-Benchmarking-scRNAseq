@@ -6,7 +6,7 @@ import pandas as pd
 from typing import cast, List, Optional
 
 from src.constants import SEED, MIN_GENE_MAX_COUNT
-from src.preprocessing.filters import gene_set_fraction
+from src.preprocessing.qc_metrics import gene_set_fraction
 from src.preprocessing.gene_sets import apoptosis_genes, matching_genes, mito_genes, rrna_genes
 from src.preprocessing.types import PreprocessingConfig
 from src.types import Species

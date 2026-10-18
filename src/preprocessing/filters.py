@@ -5,7 +5,8 @@ import pandas as pd
 import scanpy as sc
 
 from ..types import Species
-from .gene_sets import apoptosis_genes, matching_genes, mito_genes, rrna_genes
+from .gene_sets import apoptosis_genes, mito_genes, rrna_genes
+from .qc_metrics import gene_set_fraction
 from ..constants import MIN_GENE_MAX_COUNT
 
 
@@ -116,25 +117,6 @@ def high_fraction_mask(data: pd.DataFrame, gene_list: List[str], threshold: floa
     fraction of counts in gene_list exceeds the threshold.
     """
     return gene_set_fraction(data, gene_list) > threshold
-
-
-def gene_set_fraction(data: pd.DataFrame, gene_list: List[str]) -> pd.Series:
-    """
-    Returns, for each cell, the fraction of its total counts coming from genes in gene_list.
-    Genes are matched case-insensitively; cells get 0 when no gene in the list is present.
-    """
-    valid_genes = matching_genes(data, gene_list)
-
-    if len(valid_genes) == 0 and len(gene_list) > 0:
-        logger.warning(
-            "None of the %s genes in the gene set were found in the data columns", len(gene_list))
-        return pd.Series(0.0, index=data.index)
-
-    subset_counts = data[valid_genes].sum(axis=1)
-    total_counts = data.sum(axis=1)
-
-    # Avoid division by zero by replacing 0 total counts with 1 (these cells will be dropped anyway or have 0 fraction)
-    return subset_counts / total_counts.replace(0, 1)
 
 
 def filter_doublets(data: pd.DataFrame, expected_doublet_rate: float = 0.05, threshold: Optional[float] = None) -> pd.DataFrame:

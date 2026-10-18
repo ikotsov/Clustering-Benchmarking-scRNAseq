@@ -1,0 +1,54 @@
+import logging
+
+from typing import List
+import pandas as pd
+
+from ..types import Species
+from .gene_sets import apoptosis_genes, matching_genes, mito_genes, rrna_genes
+
+
+logger = logging.getLogger(__name__)
+
+
+def gene_set_fraction(data: pd.DataFrame, gene_list: List[str]) -> pd.Series:
+    """
+    Returns, for each cell, the fraction of its total counts coming from genes in gene_list.
+    Genes are matched case-insensitively; cells get 0 when no gene in the list is present.
+    """
+    valid_genes = matching_genes(data, gene_list)
+
+    if len(valid_genes) == 0 and len(gene_list) > 0:
+        logger.warning(
+            "None of the %s genes in the gene set were found in the data columns", len(gene_list))
+        return pd.Series(0.0, index=data.index)
+
+    subset_counts = data[valid_genes].sum(axis=1)
+    total_counts = data.sum(axis=1)
+
+    # Avoid division by zero by replacing 0 total counts with 1 (these cells will be dropped anyway or have 0 fraction)
+    return subset_counts / total_counts.replace(0, 1)
+
+
+def cell_qc_metrics(data: pd.DataFrame, species: Species = "human") -> pd.DataFrame:
+    """
+    Returns one row per cell with the metrics the cell QC filters look at,
+    sorted by count depth from high to low.
+
+    Columns: count_depth (total counts), n_genes (genes with at least one count),
+    and the fraction of counts from mitochondrial, rRNA and apoptosis genes.
+
+    Example
+    -------
+    >>> metrics = cell_qc_metrics(raw_data, species="mouse")
+    >>> metrics.head()   # deepest cells
+    >>> metrics.tail()   # shallowest cells
+    """
+    metrics = pd.DataFrame({
+        "count_depth": data.sum(axis=1),
+        "n_genes": (data > 0).sum(axis=1),
+        "mito_fraction": gene_set_fraction(data, mito_genes(species)),
+        "rrna_fraction": gene_set_fraction(data, rrna_genes(species)),
+        "apoptosis_fraction": gene_set_fraction(data, apoptosis_genes(species)),
+    })
+
+    return metrics.sort_values("count_depth", ascending=False)

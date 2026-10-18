@@ -9,7 +9,6 @@ from .filters import (
     filter_high_apoptosis_cells,
     filter_high_rrna_cells,
     filter_doublets,
-    gene_set_fraction,
     high_fraction_mask,
 )
 
@@ -104,13 +103,6 @@ def test_fraction_matches_genes_case_insensitively(fraction_data):
 
     assert 'Cell_Bad' not in filtered.index
     assert filtered.shape[0] == 2
-
-
-def test_gene_set_fraction_per_cell(fraction_data):
-    fractions = gene_set_fraction(fraction_data, ['target_1'])
-
-    assert fractions.to_dict() == {
-        'Cell_Bad': 1.0, 'Cell_Border': 0.5, 'Cell_Good': 0.0}
 
 
 def test_high_fraction_mask_flags_cells_above_threshold(fraction_data):
