@@ -90,7 +90,8 @@ def plot_count_depth_histogram(data: pd.DataFrame, threshold: Optional[float] = 
     count_depth = data.sum(axis=1)
 
     ax.hist(count_depth, bins=bins, color=BLUE, edgecolor='black', alpha=0.7)
-    ax.set_title(f"Count depth per cell\n(n={len(count_depth)})", fontweight='bold')
+    ax.set_title(
+        f"Count depth per cell\n(n={len(count_depth)})", fontweight='bold')
     ax.set_xlabel("Count depth")
     ax.set_ylabel("Number of cells")
     ax.grid(axis='y', linestyle='--', alpha=0.3)
@@ -118,8 +119,10 @@ def plot_genes_per_cell_histogram(data: pd.DataFrame, threshold: Optional[float]
 
     genes_per_cell = (data > 0).sum(axis=1)
 
-    ax.hist(genes_per_cell, bins=bins, color=BLUE, edgecolor='black', alpha=0.7)
-    ax.set_title(f"Genes detected per cell\n(n={len(genes_per_cell)})", fontweight='bold')
+    ax.hist(genes_per_cell, bins=bins, color=BLUE,
+            edgecolor='black', alpha=0.7)
+    ax.set_title(
+        f"Genes detected per cell\n(n={len(genes_per_cell)})", fontweight='bold')
     ax.set_xlabel("Number of genes")
     ax.set_ylabel("Number of cells")
     ax.grid(axis='y', linestyle='--', alpha=0.3)
@@ -185,8 +188,10 @@ def plot_genes_vs_count_depth(
     ax.set_xlabel("Count depth")
     ax.set_ylabel("Number of genes")
     ax.grid(True, linestyle='--', alpha=0.3)
-    draw_threshold(ax, count_threshold, vertical=True, name="Count threshold")
-    draw_threshold(ax, gene_threshold, vertical=False, name="Gene threshold")
+    draw_threshold(ax, count_threshold, vertical=True,
+                   name="Count threshold", legend_loc='lower right')
+    draw_threshold(ax, gene_threshold, vertical=False,
+                   name="Gene threshold", legend_loc='lower right')
 
     return finish_plot(ax, is_standalone)
 
@@ -243,10 +248,13 @@ def plot_gene_set_fraction_vs_count_depth(data: pd.DataFrame, gene_list: List[st
 
     count_depth = data.sum(axis=1)
     fraction = gene_set_fraction(data, gene_list)
-    is_above = fraction > threshold if threshold is not None else pd.Series(False, index=data.index)
+    is_above = fraction > threshold if threshold is not None else pd.Series(
+        False, index=data.index)
 
-    ax.scatter(count_depth[~is_above], fraction[~is_above], color=BLUE, s=12, alpha=0.7)
-    ax.scatter(count_depth[is_above], fraction[is_above], color=RED, s=12, alpha=0.9)
+    ax.scatter(count_depth[~is_above],
+               fraction[~is_above], color=BLUE, s=12, alpha=0.7)
+    ax.scatter(count_depth[is_above], fraction[is_above],
+               color=RED, s=12, alpha=0.9)
 
     title = f"{name} ({n_genes} genes found)"
     if threshold is not None:
@@ -257,14 +265,14 @@ def plot_gene_set_fraction_vs_count_depth(data: pd.DataFrame, gene_list: List[st
     return finish_plot(ax, is_standalone)
 
 
-def draw_threshold(ax, threshold: Optional[float], vertical: bool, name: str = "Threshold"):
+def draw_threshold(ax, threshold: Optional[float], vertical: bool, name: str = "Threshold", legend_loc: str = 'best'):
     if threshold is None:
         return
 
     line = ax.axvline if vertical else ax.axhline
     line(threshold, color=RED, linestyle='--', linewidth=2,
          label=f"{name}: {threshold:g}")
-    ax.legend()
+    ax.legend(loc=legend_loc)
 
 
 def finish_plot(ax, is_standalone: bool):
