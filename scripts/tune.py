@@ -5,6 +5,7 @@ Runs an Optuna search on the PCA representation and saves the best parameters, e
 
     python scripts/tune.py \\
         --data data/datasets/E-MTAB-3321/processed/log_cpm_pca.csv.gz \\
+        --config data/datasets/E-MTAB-3321/config.yaml \\
         --labels data/datasets/E-MTAB-3321/interim/ground_truth_labels.csv \\
         --algorithm leiden \\
         --norm-method log_cpm \\
@@ -25,6 +26,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--data", type=Path, required=True,
                         help="Preprocessed data to tune on (gzipped CSV)")
+    parser.add_argument("--config", type=Path, required=True,
+                        help="Dataset config.yaml (n_clusters)")
     parser.add_argument("--labels", type=Path, required=True,
                         help="Ground truth labels CSV")
     parser.add_argument("--algorithm", choices=tuple(ALGORITHM_PARAM_SPECS), required=True)
@@ -45,6 +48,7 @@ def main(argv: list[str] | None = None) -> None:
     run_tuning(
         algorithm=args.algorithm,
         data_path=args.data,
+        config_path=args.config,
         labels_path=args.labels,
         output_path=args.out,
         n_trials=args.n_trials,

@@ -34,6 +34,13 @@ STRATEGY_REGISTRY: Dict[ClusteringAlgorithm, ClusteringFunc] = {
 AVAILABLE_ALGORITHMS: tuple[ClusteringAlgorithm, ...] = tuple(
     STRATEGY_REGISTRY.keys())
 
+ALGORITHMS_REQUIRING_N_CLUSTERS: tuple[ClusteringAlgorithm, ...] = (
+    "agglomerative",
+    "birch",
+    "kmeans",
+    "spectral",
+)
+
 
 def get_clustering_strategy(name: ClusteringAlgorithm) -> ClusteringFunc:
     if name not in STRATEGY_REGISTRY:

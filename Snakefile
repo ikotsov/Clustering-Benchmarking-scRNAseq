@@ -110,6 +110,7 @@ rule tune:
     input:
         # Tuning always uses the PCA representation.
         data=expand(paths.PROCESSED_DATA, pca="pca", allow_missing=True),
+        config=paths.DATASET_CONFIG,
         labels=paths.GROUND_TRUTH_LABELS,
     output:
         paths.TUNING_RESULT,
@@ -119,7 +120,7 @@ rule tune:
     log:
         "logs/tune/{accession}/{norm_method}/{algorithm}.log",
     shell:
-        "python {SCRIPTS}/tune.py --data {input.data} --labels {input.labels}"
+        "python {SCRIPTS}/tune.py --data {input.data} --config {input.config} --labels {input.labels}"
         " --algorithm {wildcards.algorithm} --norm-method {wildcards.norm_method}"
         " --n-trials {params.n_trials} --objective-metric {params.objective_metric}"
         " --out {output} 2> {log}"

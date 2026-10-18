@@ -5,9 +5,14 @@ import optuna
 import pandas as pd
 from optuna.samplers import TPESampler
 
-from src.clustering.registry import ClusteringAlgorithm, get_clustering_strategy
+from src.clustering.registry import (
+    ALGORITHMS_REQUIRING_N_CLUSTERS,
+    ClusteringAlgorithm,
+    get_clustering_strategy,
+)
 from src.constants import SEED
 from src.data_loading import load_ground_truth_labels
+from src.dataset_config import load_dataset_config, parse_n_clusters
 from src.tuning.common import (
     DEFAULT_NORM_METHOD,
     ObjectiveMetric,
@@ -49,6 +54,7 @@ def run_tuning(
     algorithm: ClusteringAlgorithm,
     *,
     data_path: PathLike,
+    config_path: PathLike,
     labels_path: PathLike,
     output_path: PathLike,
     n_trials: int = 50,
@@ -65,6 +71,11 @@ def run_tuning(
     data = load_preprocessed_data(data_path)
     labels_true = load_ground_truth_labels(labels_path)
 
+    fixed_params: dict[str, int] = {}
+    n_clusters = parse_n_clusters(load_dataset_config(config_path))
+    if algorithm in ALGORITHMS_REQUIRING_N_CLUSTERS and n_clusters is not None:
+        fixed_params["n_clusters"] = n_clusters
+
     study = optuna.create_study(
         direction="maximize",
         study_name=f"{algorithm}_{norm_method}_tuning",
@@ -72,7 +83,7 @@ def run_tuning(
     )
     study.optimize(
         lambda trial: _objective(
-            trial, data, labels_true, algorithm, objective_metric),
+            trial, data, labels_true, algorithm, objective_metric, fixed_params),
         n_trials=n_trials,
     )
 
@@ -101,12 +112,13 @@ def _objective(
     labels_true: pd.Series,
     algorithm: ClusteringAlgorithm,
     objective_metric: ObjectiveMetric,
+    fixed_params: dict[str, int],
 ) -> float:
     param_specs = ALGORITHM_PARAM_SPECS[algorithm]
     params = _suggest_params(trial, param_specs)
 
     strategy = get_clustering_strategy(algorithm)
-    labels_pred = strategy(data, **params)
+    labels_pred = strategy(data, **params, **fixed_params)
 
     common_cells = labels_pred.index.intersection(labels_true.index)
     y_pred = labels_pred.loc[common_cells]

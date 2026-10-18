@@ -13,7 +13,12 @@ from src.data_loading import (
 from src.dataset_config import load_dataset_config, parse_n_clusters, parse_species
 from src.preprocessing import apply_pca, preprocess_data
 from src.preprocessing.gene_annotation import load_gene_annotation
-from src.clustering.registry import ClusteringAlgorithm, ClusteringFunc, get_clustering_strategy
+from src.clustering.registry import (
+    ALGORITHMS_REQUIRING_N_CLUSTERS,
+    ClusteringAlgorithm,
+    ClusteringFunc,
+    get_clustering_strategy,
+)
 from src.evaluation import (
     evaluate_clustering_biologically,
     evaluate_clustering_externally,
@@ -27,14 +32,6 @@ from src.types import NormMethod, PathLike, Species
 from src.evaluation.biological.types import EnrichmentSetName
 
 logger = logging.getLogger(__name__)
-
-
-ALGORITHMS_REQUIRING_N_CLUSTERS: tuple[ClusteringAlgorithm, ...] = (
-    "agglomerative",
-    "birch",
-    "kmeans",
-    "spectral",
-)
 
 
 def run_preprocessing(
