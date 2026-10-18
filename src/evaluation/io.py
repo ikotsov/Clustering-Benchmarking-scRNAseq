@@ -9,7 +9,7 @@ import pandas as pd
 
 from src.evaluation.biological.types import BiologicalComparisonRecord
 from src.types import PathLike
-from src.paths import get_pca_label
+from src.paths import get_params_label, get_pca_label
 
 
 logger = logging.getLogger(__name__)
@@ -19,6 +19,7 @@ def save_run_result(
     algorithm: str,
     preprocessing: str,
     with_pca: bool,
+    tuned: bool,
     metrics: dict[str, float | None],
     output_path: PathLike,
 ) -> None:
@@ -30,6 +31,7 @@ def save_run_result(
           "algorithm": "kmeans",
           "normalization": "pearson",
           "with_pca": true,
+          "tuned": false,
           "metrics": {...},
           "timestamp": "..."
         }
@@ -42,6 +44,8 @@ def save_run_result(
         Normalization method used (e.g. "log_cpm", "pearson")
     with_pca : bool
         Whether PCA was applied
+    tuned : bool
+        Whether the algorithm ran with tuned parameters (False: its defaults)
     metrics : dict
         Dictionary of metric names and values (e.g., {"ari": 0.85, "nmi": 0.78})
     output_path : PathLike
@@ -51,6 +55,7 @@ def save_run_result(
         "algorithm": algorithm,
         "normalization": preprocessing,
         "with_pca": with_pca,
+        "tuned": tuned,
         "metrics": metrics,
         "timestamp": datetime.now().isoformat(),
     }
@@ -60,10 +65,11 @@ def save_run_result(
         json.dump(run_entry, f, indent=2, allow_nan=False)
 
     logger.info(
-        "Evaluation saved: %s -> %s -> %s in %s",
+        "Evaluation saved: %s -> %s -> %s -> %s in %s",
         algorithm,
         preprocessing,
         get_pca_label(with_pca),
+        get_params_label(tuned),
         output_path,
     )
 
@@ -76,7 +82,7 @@ def aggregate_run_results(
     """
     Collect the per-run result files (see save_run_result) of a dataset into a results table (TSV)
     with one row per run:
-        dataset  algorithm  normalization  with_pca  ari  nmi  ...  timestamp
+        dataset  algorithm  normalization  with_pca  tuned  ari  nmi  ...  timestamp
 
     Rows keep the order of run_result_paths, and the table is rewritten from scratch,
     so it holds exactly the given runs.
@@ -90,6 +96,7 @@ def aggregate_run_results(
             "algorithm": run["algorithm"],
             "normalization": run["normalization"],
             "with_pca": run["with_pca"],
+            "tuned": run["tuned"],
             **run["metrics"],
             "timestamp": run["timestamp"],
         })

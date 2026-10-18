@@ -4,8 +4,8 @@ Collect the per-run result files of one dataset into its results table (TSV), e.
     python scripts/aggregate_runs.py \\
         --dataset E-MTAB-3321 \\
         --out data/datasets/E-MTAB-3321/outputs/results.tsv \\
-        data/datasets/E-MTAB-3321/outputs/runs/log_cpm/pca/kmeans.json \\
-        data/datasets/E-MTAB-3321/outputs/runs/log_cpm/pca/leiden.json
+        data/datasets/E-MTAB-3321/outputs/runs/log_cpm/pca/default/kmeans.json \\
+        data/datasets/E-MTAB-3321/outputs/runs/log_cpm/pca/tuned/leiden.json
 """
 import argparse
 from pathlib import Path

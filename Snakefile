@@ -4,6 +4,9 @@ Clustering benchmark workflow:
     prepare -> preprocess -> tune -> aggregate_tuning
                           \\-> benchmark -> aggregate_runs
 
+Every algorithm is benchmarked with its default parameters; the tuned algorithms are benchmarked
+a second time with the parameters tuned on the same normalization + PCA representation.
+
 Run settings live in config/config.yaml, each dataset's source files in config/datasets.yaml,
 and each dataset's analysis parameters in data/datasets/<accession>/config.yaml.
 
@@ -38,6 +41,7 @@ wildcard_constraints:
     accession="|".join(DATASETS),
     norm_method="|".join(NORM_METHODS),
     pca="pca|no_pca",
+    params="tuned|default",
     algorithm="|".join(ALGORITHMS),
 
 
@@ -59,9 +63,11 @@ def benchmark_inputs(wildcards):
         "config": paths.DATASET_CONFIG.format(accession=wildcards.accession),
         "labels": paths.GROUND_TRUTH_LABELS.format(accession=wildcards.accession),
     }
-    # Untuned algorithms run with their defaults.
-    if wildcards.algorithm in TUNED_ALGORITHMS:
-        inputs["params"] = paths.TUNING_RESULT.format(**dict(wildcards.items()))
+    if wildcards.params == "default":
+        return inputs
+    if wildcards.algorithm not in TUNED_ALGORITHMS:
+        raise ValueError(f"'{wildcards.algorithm}' is not tuned, so it has no tuned run")
+    inputs["params"] = paths.TUNING_RESULT.format(**dict(wildcards.items()))
     return inputs
 
 
@@ -108,8 +114,7 @@ rule preprocess:
 
 rule tune:
     input:
-        # Tuning always uses the PCA representation.
-        data=expand(paths.PROCESSED_DATA, pca="pca", allow_missing=True),
+        data=paths.PROCESSED_DATA,
         config=paths.DATASET_CONFIG,
         labels=paths.GROUND_TRUTH_LABELS,
     output:
@@ -117,18 +122,22 @@ rule tune:
     params:
         n_trials=config["tuning"]["n_trials"],
         objective_metric=config["tuning"]["objective_metric"],
+        pca_flag=lambda wildcards: "--pca" if wildcards.pca == "pca" else "--no-pca",
     log:
-        "logs/tune/{accession}/{norm_method}/{algorithm}.log",
+        "logs/tune/{accession}/{norm_method}/{pca}/{algorithm}.log",
     shell:
         "python {SCRIPTS}/tune.py --data {input.data} --config {input.config} --labels {input.labels}"
-        " --algorithm {wildcards.algorithm} --norm-method {wildcards.norm_method}"
+        " --algorithm {wildcards.algorithm} --norm-method {wildcards.norm_method} {params.pca_flag}"
         " --n-trials {params.n_trials} --objective-metric {params.objective_metric}"
         " --out {output} 2> {log}"
 
 
 rule aggregate_tuning:
     input:
-        expand(paths.TUNING_RESULT, norm_method=NORM_METHODS, algorithm=TUNED_ALGORITHMS, allow_missing=True),
+        expand(
+            paths.TUNING_RESULT, norm_method=NORM_METHODS, pca=PCA_OPTIONS, algorithm=TUNED_ALGORITHMS,
+            allow_missing=True,
+        ),
     output:
         paths.CLUSTERING_PARAMS,
     log:
@@ -146,7 +155,7 @@ rule benchmark:
         pca_flag=lambda wildcards: "--pca" if wildcards.pca == "pca" else "--no-pca",
         params_arg=lambda wildcards, input: f"--params {input.params}" if "params" in input.keys() else "",
     log:
-        "logs/benchmark/{accession}/{norm_method}/{pca}/{algorithm}.log",
+        "logs/benchmark/{accession}/{norm_method}/{pca}/{params}/{algorithm}.log",
     shell:
         "python {SCRIPTS}/benchmark.py --dataset {wildcards.accession} --algorithm {wildcards.algorithm}"
         " --norm-method {wildcards.norm_method} {params.pca_flag}"
@@ -156,7 +165,14 @@ rule benchmark:
 
 rule aggregate_runs:
     input:
-        expand(paths.RUN_RESULT, algorithm=ALGORITHMS, norm_method=NORM_METHODS, pca=PCA_OPTIONS, allow_missing=True),
+        default=expand(
+            paths.RUN_RESULT, params="default", algorithm=ALGORITHMS,
+            norm_method=NORM_METHODS, pca=PCA_OPTIONS, allow_missing=True,
+        ),
+        tuned=expand(
+            paths.RUN_RESULT, params="tuned", algorithm=TUNED_ALGORITHMS,
+            norm_method=NORM_METHODS, pca=PCA_OPTIONS, allow_missing=True,
+        ),
     output:
         paths.RESULTS,
     log:

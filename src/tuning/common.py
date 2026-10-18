@@ -9,6 +9,7 @@ import pandas as pd
 from src.evaluation import compute_ari, compute_nmi, compute_jaccard
 from src.data_loading import load_csv_data
 from src.clustering.registry import ClusteringAlgorithm
+from src.paths import get_pca_label
 from src.types import NormMethod, PathLike
 
 
@@ -48,18 +49,20 @@ def save_tuning_results(
     output_path: PathLike,
     algorithm: ClusteringAlgorithm,
     norm_method: NormMethod,
+    with_pca: bool,
     best_params: dict,
     best_value: float,
     objective_metric: ObjectiveMetric,
 ) -> PathLike:
     """
-    Save the tuning result of one algorithm + normalization into its own JSON file,
+    Save the tuning result of one algorithm + normalization + PCA option into its own JSON file,
     overwriting any previous result.
 
     Args:
         output_path: Path to the tuning result file
         algorithm: Clustering algorithm name
         norm_method: Normalization method used
+        with_pca: Whether the PCA representation was tuned on
         best_params: Best hyperparameters found
         best_value: Best objective metric value
         objective_metric: Which metric was optimized
@@ -70,6 +73,7 @@ def save_tuning_results(
     result = {
         "algorithm": algorithm,
         "normalization": norm_method,
+        "with_pca": with_pca,
         "objective_metric": objective_metric,
         "best_params": best_params,
         "best_value": best_value,
@@ -88,15 +92,16 @@ def aggregate_tuning_results(
 ) -> None:
     """
     Collect per-job tuning result files (see save_tuning_results) into clustering_params.json,
-    organized hierarchically by norm_method > algorithm. The file is rewritten from scratch,
+    organized hierarchically by norm_method > pca > algorithm. The file is rewritten from scratch,
     so it holds exactly the given results.
     """
-    all_results: dict[str, dict[str, dict]] = {}
+    all_results: dict[str, dict[str, dict[str, dict]]] = {}
     for tuning_result_path in tuning_result_paths:
         with open(tuning_result_path, "r") as f:
             result = json.load(f)
 
-        all_results.setdefault(result["normalization"], {})[result["algorithm"]] = {
+        pca_label = get_pca_label(result["with_pca"])
+        all_results.setdefault(result["normalization"], {}).setdefault(pca_label, {})[result["algorithm"]] = {
             "objective_metric": result["objective_metric"],
             "best_params": result["best_params"],
             "best_value": result["best_value"],

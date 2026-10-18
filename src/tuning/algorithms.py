@@ -13,6 +13,7 @@ from src.clustering.registry import (
 from src.constants import SEED
 from src.data_loading import load_ground_truth_labels
 from src.dataset_config import load_dataset_config, parse_n_clusters
+from src.paths import get_pca_label
 from src.tuning.common import (
     DEFAULT_NORM_METHOD,
     ObjectiveMetric,
@@ -59,6 +60,7 @@ def run_tuning(
     output_path: PathLike,
     n_trials: int = 50,
     norm_method: NormMethod = DEFAULT_NORM_METHOD,
+    with_pca: bool = True,
     objective_metric: ObjectiveMetric = 'mean_external_score',
 ) -> None:
     if n_trials <= 0:
@@ -78,7 +80,7 @@ def run_tuning(
 
     study = optuna.create_study(
         direction="maximize",
-        study_name=f"{algorithm}_{norm_method}_tuning",
+        study_name=f"{algorithm}_{norm_method}_{get_pca_label(with_pca)}_tuning",
         sampler=TPESampler(seed=SEED),
     )
     study.optimize(
@@ -100,6 +102,7 @@ def run_tuning(
         output_path=output_path,
         algorithm=algorithm,
         norm_method=norm_method,
+        with_pca=with_pca,
         best_params=best_trial.params,
         best_value=best_value,
         objective_metric=objective_metric,

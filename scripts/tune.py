@@ -1,7 +1,7 @@
 """
 Tune the parameters of one clustering algorithm on one preprocessed dataset.
 
-Runs an Optuna search on the PCA representation and saves the best parameters, e.g.:
+Runs an Optuna search on the given representation (PCA or not) and saves the best parameters, e.g.:
 
     python scripts/tune.py \\
         --data data/datasets/E-MTAB-3321/processed/log_cpm_pca.csv.gz \\
@@ -9,7 +9,8 @@ Runs an Optuna search on the PCA representation and saves the best parameters, e
         --labels data/datasets/E-MTAB-3321/interim/ground_truth_labels.csv \\
         --algorithm leiden \\
         --norm-method log_cpm \\
-        --out data/datasets/E-MTAB-3321/outputs/tuning/log_cpm/leiden.json
+        --pca \\
+        --out data/datasets/E-MTAB-3321/outputs/tuning/log_cpm/pca/leiden.json
 """
 import argparse
 from pathlib import Path
@@ -33,6 +34,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--algorithm", choices=tuple(ALGORITHM_PARAM_SPECS), required=True)
     parser.add_argument("--norm-method", choices=get_args(NormMethod), required=True,
                         help="Normalization the data was preprocessed with (recorded in the result)")
+    parser.add_argument("--pca", action=argparse.BooleanOptionalAction, required=True,
+                        help="Whether --data is the PCA representation (--pca / --no-pca)")
     parser.add_argument("--n-trials", type=int, default=50,
                         help="Number of Optuna trials (default: %(default)s)")
     parser.add_argument("--objective-metric", choices=get_args(ObjectiveMetric), default="mean_external_score",
@@ -53,6 +56,7 @@ def main(argv: list[str] | None = None) -> None:
         output_path=args.out,
         n_trials=args.n_trials,
         norm_method=args.norm_method,
+        with_pca=args.pca,
         objective_metric=args.objective_metric,
     )
 

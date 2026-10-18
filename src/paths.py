@@ -15,8 +15,10 @@ RAW_COUNTS = DATASET_DIR + "/interim/counts.csv.gz"
 GROUND_TRUTH_LABELS = DATASET_DIR + "/interim/ground_truth_labels.csv"
 PROCESSED_DATA = DATASET_DIR + "/processed/{norm_method}_{pca}.csv.gz"
 HVGS = DATASET_DIR + "/processed/hvgs_{norm_method}.tsv"
-TUNING_RESULT = DATASET_DIR + "/outputs/tuning/{norm_method}/{algorithm}.json"
-RUN_RESULT = DATASET_DIR + "/outputs/runs/{norm_method}/{pca}/{algorithm}.json"
+TUNING_RESULT = DATASET_DIR + \
+    "/outputs/tuning/{norm_method}/{pca}/{algorithm}.json"
+RUN_RESULT = DATASET_DIR + \
+    "/outputs/runs/{norm_method}/{pca}/{params}/{algorithm}.json"
 CLUSTERING_PARAMS = DATASET_DIR + "/outputs/clustering_params.json"
 RESULTS = DATASET_DIR + "/outputs/results.tsv"
 
@@ -36,9 +38,20 @@ def get_pca_label(with_pca: bool) -> str:
     return "pca" if with_pca else "no_pca"
 
 
+def get_params_label(tuned: bool) -> str:
+    return "tuned" if tuned else "default"
+
+
 def processed_data_path(accession: str, norm_method: str, with_pca: bool) -> Path:
     return resolve(PROCESSED_DATA, accession=accession, norm_method=norm_method, pca=get_pca_label(with_pca))
 
 
-def run_result_path(accession: str, norm_method: str, with_pca: bool, algorithm: str) -> Path:
-    return resolve(RUN_RESULT, accession=accession, norm_method=norm_method, pca=get_pca_label(with_pca), algorithm=algorithm)
+def run_result_path(accession: str, norm_method: str, with_pca: bool, tuned: bool, algorithm: str) -> Path:
+    return resolve(
+        RUN_RESULT,
+        accession=accession,
+        norm_method=norm_method,
+        pca=get_pca_label(with_pca),
+        params=get_params_label(tuned),
+        algorithm=algorithm,
+    )

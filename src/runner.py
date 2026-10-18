@@ -27,7 +27,7 @@ from src.evaluation import (
     save_run_result,
 )
 from src.constants import DATASETS_DIR, PCA_VARIANCE_RATIO
-from src.paths import get_pca_label, processed_data_path
+from src.paths import get_params_label, get_pca_label, processed_data_path
 from src.types import NormMethod, PathLike, Species
 from src.evaluation.biological.types import EnrichmentSetName
 
@@ -152,7 +152,7 @@ def run_experiment(
     config_path : PathLike
         Dataset config.yaml (n_clusters)
     params_path : PathLike or None
-        Tuning result of this algorithm + normalization; None runs the algorithm with its defaults
+        Tuning result of this algorithm + normalization + PCA option; None runs the algorithm with its defaults
     labels_path : PathLike
         Ground truth labels CSV
     result_path : PathLike
@@ -160,9 +160,10 @@ def run_experiment(
     norm_method : NormMethod, default="pearson"
         Normalization method ("pearson" or "log_cpm")
     """
+    tuned = params_path is not None
     pca_tag = get_pca_label(with_pca).upper()
-    logger.info("EXPERIMENT: %s + %s + %s",
-                accession, algo_name.upper(), pca_tag)
+    logger.info("EXPERIMENT: %s + %s + %s + %s",
+                accession, algo_name.upper(), pca_tag, get_params_label(tuned).upper())
 
     # 2. Load preprocessed data
     if not os.path.exists(data_path):
@@ -221,6 +222,7 @@ def run_experiment(
         algorithm=algo_name,
         preprocessing=norm_method,
         with_pca=with_pca,
+        tuned=tuned,
         metrics=metrics,
         output_path=result_path,
     )

@@ -9,10 +9,10 @@ Run one benchmark: cluster one preprocessed dataset with one algorithm, evaluate
         --data data/datasets/E-MTAB-3321/processed/log_cpm_pca.csv.gz \\
         --config data/datasets/E-MTAB-3321/config.yaml \\
         --labels data/datasets/E-MTAB-3321/interim/ground_truth_labels.csv \\
-        --params data/datasets/E-MTAB-3321/outputs/tuning/log_cpm/leiden.json \\
-        --out data/datasets/E-MTAB-3321/outputs/runs/log_cpm/pca/leiden.json
+        --params data/datasets/E-MTAB-3321/outputs/tuning/log_cpm/pca/leiden.json \\
+        --out data/datasets/E-MTAB-3321/outputs/runs/log_cpm/pca/tuned/leiden.json
 
-Leave out --params for algorithms that are not tuned; they run with their defaults.
+Leave out --params to run the algorithm with its defaults.
 """
 import argparse
 from pathlib import Path
@@ -41,7 +41,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--labels", type=Path, required=True,
                         help="Ground truth labels CSV")
     parser.add_argument("--params", type=Path, default=None,
-                        help="Tuning result of this algorithm + normalization (JSON)")
+                        help="Tuning result of this algorithm + normalization + PCA option (JSON)")
     parser.add_argument("--out", type=Path, required=True,
                         help="Where to save the run's metrics (JSON)")
     return parser.parse_args(argv)
