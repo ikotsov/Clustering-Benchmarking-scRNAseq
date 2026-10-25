@@ -3,5 +3,4 @@ n_clusters: 5
 species: "mouse"
 preprocessing:
   mito_threshold: 0.5
-  apoptosis_threshold: 0.02
   min_gene_max_count: 2
