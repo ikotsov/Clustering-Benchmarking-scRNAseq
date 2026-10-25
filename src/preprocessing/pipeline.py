@@ -2,8 +2,8 @@ import logging
 
 import pandas as pd
 from .types import PreprocessingConfig
-from .filters import filter_genes_by_max_count, high_fraction_mask
-from .gene_sets import apoptosis_genes, mito_genes, rrna_genes
+from .filters import filter_genes_by_max_count, filter_rrna_genes, high_fraction_mask
+from .gene_sets import apoptosis_genes, mito_genes
 from .transforms import select_hvgs, normalize_with_log_cpm, normalize_with_pearson
 from src.types import NormMethod, Species
 
@@ -81,8 +81,6 @@ def run_filtering_pipeline(
     qc_failures = {
         "apoptosis": high_fraction_mask(
             raw_data, apoptosis_genes(species, annotation), config.apoptosis_threshold),
-        "rRNA": high_fraction_mask(
-            raw_data, rrna_genes(species, annotation), config.rrna_threshold),
         "mitochondrial": high_fraction_mask(
             raw_data, mito_genes(species, annotation), config.mito_threshold),
     }
@@ -94,6 +92,11 @@ def run_filtering_pipeline(
                 int(failed_any.sum()))
 
     data = raw_data.loc[~failed_any]
+
+    n_genes = data.shape[1]
+    data = filter_rrna_genes(data, species=species, annotation=annotation)
+    logger.info("Dropped %s rRNA genes", n_genes - data.shape[1])
+
     data = filter_genes_by_max_count(
         data, min_count=config.min_gene_max_count)
 

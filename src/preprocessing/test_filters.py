@@ -7,7 +7,7 @@ from .filters import (
     filter_cells_by_fraction,
     filter_high_mito_cells,
     filter_high_apoptosis_cells,
-    filter_high_rrna_cells,
+    filter_rrna_genes,
     filter_doublets,
     high_fraction_mask,
 )
@@ -167,16 +167,28 @@ def test_apoptosis_wrapper_filters_high_expression():
     assert 'Low_Apoptosis' in filtered.index
 
 
-def test_rrna_wrapper_filters_high_expression():
+def test_filter_rrna_genes_removes_rrna_columns():
     df_rrna = pd.DataFrame({
-        'RNA5S1': [100, 0],  # 100% rRNA expression in Cell 1
+        'RNA5S1': [100, 0],   # rRNA
+        'MT-RNR2': [5, 5],    # mitochondrial rRNA
         'ACTB':   [0, 100]
-    }, index=['High_rRNA', 'Low_rRNA'])
+    }, index=['C1', 'C2'])
 
-    filtered = filter_high_rrna_cells(df_rrna, threshold=0.05, species="human")
+    filtered = filter_rrna_genes(df_rrna, species="human")
 
-    assert 'High_rRNA' not in filtered.index
-    assert 'Low_rRNA' in filtered.index
+    assert list(filtered.columns) == ['ACTB']
+    assert filtered.index.equals(df_rrna.index)
+
+
+def test_filter_rrna_genes_handles_mouse_names():
+    df_rrna = pd.DataFrame({
+        'Rn5s': [100, 0],
+        'Actb': [0, 100]
+    }, index=['C1', 'C2'])
+
+    filtered = filter_rrna_genes(df_rrna, species="mouse")
+
+    assert list(filtered.columns) == ['Actb']
 
 
 def test_filter_doublets_removes_predicted_doublets(monkeypatch):
@@ -228,15 +240,14 @@ def test_apoptosis_wrapper_matches_mouse_ensembl_ids():
     assert 'Low_Apoptosis' in filtered.index
 
 
-def test_rrna_wrapper_matches_ensembl_ids():
+def test_filter_rrna_genes_matches_ensembl_ids():
     rrna_id = load_gene_annotation("human").set_index(
         "gene_name").loc["RNA5S1", "gene_id"]
     df_rrna = pd.DataFrame({
-        rrna_id: [100, 0],
-        'ENSG00000075624': [0, 100]
-    }, index=['High_rRNA', 'Low_rRNA'])
+        f"{rrna_id}.1": [100, 0],
+        'ENSG00000075624': [0, 100]   # ACTB
+    }, index=['C1', 'C2'])
 
-    filtered = filter_high_rrna_cells(df_rrna, threshold=0.05, species="human")
+    filtered = filter_rrna_genes(df_rrna, species="human")
 
-    assert 'High_rRNA' not in filtered.index
-    assert 'Low_rRNA' in filtered.index
+    assert list(filtered.columns) == ['ENSG00000075624']

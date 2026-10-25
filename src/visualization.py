@@ -199,7 +199,8 @@ def plot_genes_vs_count_depth(
 def plot_gene_set_qc(data: pd.DataFrame, species: Species = "human", config: PreprocessingConfig = PreprocessingConfig()):
     """
     Plots the mitochondrial, rRNA and apoptosis fractions against count depth in a row,
-    each with its threshold from config. Cells above a threshold are the ones that filter removes.
+    with the mitochondrial and apoptosis thresholds from config. Cells above a threshold
+    are the ones that filter removes.
 
     Parameters
     ----------
@@ -214,7 +215,8 @@ def plot_gene_set_qc(data: pd.DataFrame, species: Species = "human", config: Pre
 
     gene_sets = [
         ("Mitochondrial", mito_genes(species), config.mito_threshold),
-        ("rRNA", rrna_genes(species), config.rrna_threshold),
+        # rRNA genes are removed rather than used to filter cells, so this panel has no threshold.
+        ("rRNA", rrna_genes(species), None),
         ("Apoptosis", apoptosis_genes(species), config.apoptosis_threshold),
     ]
     for ax, (name, gene_list, threshold) in zip(axes, gene_sets):

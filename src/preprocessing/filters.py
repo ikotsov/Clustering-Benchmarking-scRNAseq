@@ -5,7 +5,7 @@ import pandas as pd
 import scanpy as sc
 
 from ..types import Species
-from .gene_sets import apoptosis_genes, mito_genes, rrna_genes
+from .gene_sets import apoptosis_genes, matching_genes, mito_genes, rrna_genes
 from .qc_metrics import gene_set_fraction
 from ..constants import MIN_GENE_MAX_COUNT
 
@@ -80,16 +80,17 @@ def filter_high_apoptosis_cells(data: pd.DataFrame, threshold: float = 0.05, spe
     )
 
 
-def filter_high_rrna_cells(data: pd.DataFrame, threshold: float = 0.05, species: Species = "human") -> pd.DataFrame:
+def filter_rrna_genes(data: pd.DataFrame, species: Species = "human", annotation: Optional[pd.DataFrame] = None) -> pd.DataFrame:
     """
-    Removes cells with high rRNA expression (indicative of technical noise).
+    Removes all rRNA genes (rRNA, rRNA pseudogenes and mitochondrial rRNA, as flagged in the
+    species' gene annotation). Columns are matched by gene name or Ensembl ID.
     """
-    return filter_cells_by_fraction(
-        data,
-        gene_list=rrna_genes(species),
-        threshold=threshold,
-        filter_name="rRNA"
-    )
+    rrna_columns = matching_genes(data, rrna_genes(species, annotation))
+    data_filtered = data.drop(columns=rrna_columns)
+
+    logger.debug("Dropped %s rRNA genes", len(rrna_columns))
+
+    return data_filtered
 
 
 def filter_cells_by_fraction(data: pd.DataFrame, gene_list: List[str], threshold: float, filter_name: str = "generic") -> pd.DataFrame:
