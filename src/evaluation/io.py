@@ -84,7 +84,10 @@ def aggregate_run_results(
     """
     Collect the per-run result files (see save_run_result) of a dataset into a results table (TSV)
     with one row per run:
-        dataset  algorithm  normalization  with_pca  tuned  ari  nmi  ...  timestamp
+        dataset  algorithm  normalization  pca  params  ari  nmi  ...
+
+    pca ("pca" / "no_pca") and params ("default" / "tuned") use the labels of the output paths
+    (see src.paths), so the table can be filtered with the same values the files are named by.
 
     With null_result_paths (the null distribution of each run, see save_null_distribution, in the order
     of run_result_paths), each row also gets {metric}_null_mean and {metric}_pvalue (see summarize_null).
@@ -108,19 +111,61 @@ def aggregate_run_results(
         )
         rows.append({
             "dataset": dataset,
-            "algorithm": run["algorithm"],
-            "normalization": run["normalization"],
-            "with_pca": run["with_pca"],
-            "tuned": run["tuned"],
+            **_run_columns(run),
             **run["metrics"],
             **null_summary,
-            "timestamp": run["timestamp"],
         })
 
     Path(results_path).parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(rows).to_csv(results_path, sep="\t", index=False)
 
     logger.info("Aggregated %s runs into %s", len(rows), results_path)
+
+
+def aggregate_run_labels(
+    run_result_paths: Iterable[PathLike],
+    run_labels_paths: Iterable[PathLike],
+    labels_path: PathLike,
+) -> None:
+    """
+    Collect the predicted labels of every run (run_labels_paths, in the order of run_result_paths)
+    into one long table (TSV) with one row per cell and run:
+        cell_id  algorithm  normalization  pca  params  cluster
+
+    The run columns are those of the results table (see aggregate_run_results).
+    """
+    run_result_paths = list(run_result_paths)
+    run_labels_paths = list(run_labels_paths)
+    if len(run_labels_paths) != len(run_result_paths):
+        raise ValueError(
+            f"Got {len(run_labels_paths)} label files for {len(run_result_paths)} runs; expected one per run"
+        )
+
+    tables = []
+    for run_result_path, run_labels_path in zip(run_result_paths, run_labels_paths):
+        with open(run_result_path, 'r') as f:
+            run = json.load(f)
+        labels = pd.read_csv(run_labels_path, index_col=0).iloc[:, 0]
+        tables.append(pd.DataFrame({
+            "cell_id": labels.index,
+            **_run_columns(run),
+            "cluster": labels.to_numpy(),
+        }))
+
+    Path(labels_path).parent.mkdir(parents=True, exist_ok=True)
+    pd.concat(tables, ignore_index=True).to_csv(labels_path, sep="\t", index=False)
+
+    logger.info("Aggregated the labels of %s runs into %s", len(tables), labels_path)
+
+
+def _run_columns(run: dict) -> dict[str, str]:
+    """The columns identifying a run (see save_run_result) in the results and labels tables."""
+    return {
+        "algorithm": run["algorithm"],
+        "normalization": run["normalization"],
+        "pca": get_pca_label(run["with_pca"]),
+        "params": get_params_label(run["tuned"]),
+    }
 
 
 def save_biological_evaluation_results(

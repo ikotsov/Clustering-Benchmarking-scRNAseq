@@ -77,6 +77,7 @@ def benchmark_inputs(wildcards):
 rule all:
     input:
         expand(paths.RESULTS, accession=DATASETS),
+        expand(paths.RUN_LABELS_TABLE, accession=DATASETS),
         expand(paths.UMAP, accession=DATASETS, norm_method=NORM_METHODS),
         expand(paths.CLUSTERING_PARAMS, accession=DATASETS) if TUNED_ALGORITHMS else [],
 
@@ -224,12 +225,15 @@ rule aggregate_runs:
     input:
         runs=expand_runs(paths.RUN_RESULT),
         nulls=expand_runs(paths.RUN_NULL),
+        labels=expand_runs(paths.RUN_LABELS),
     output:
-        paths.RESULTS,
+        results=paths.RESULTS,
+        labels=paths.RUN_LABELS_TABLE,
     log:
         "logs/aggregate_runs/{accession}.log",
     benchmark:
         "benchmarks/aggregate_runs/{accession}.tsv",
     shell:
-        "python {SCRIPTS}/aggregate_runs.py --dataset {wildcards.accession} --out {output} {input.runs}"
-        " --null-results {input.nulls} 2> {log}"
+        "python {SCRIPTS}/aggregate_runs.py --dataset {wildcards.accession}"
+        " --out {output.results} --out-labels {output.labels} {input.runs}"
+        " --null-results {input.nulls} --run-labels {input.labels} 2> {log}"
