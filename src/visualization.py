@@ -196,10 +196,16 @@ def plot_genes_vs_count_depth(
     return finish_plot(ax, is_standalone)
 
 
-def plot_gene_set_qc(data: pd.DataFrame, species: Species = "human", config: PreprocessingConfig = PreprocessingConfig()):
+def plot_gene_set_qc(
+    data: pd.DataFrame,
+    species: Species = "human",
+    config: PreprocessingConfig = PreprocessingConfig(),
+    rrna_threshold: Optional[float] = None,
+    apoptosis_threshold: Optional[float] = None,
+):
     """
-    Plots the mitochondrial, rRNA and apoptosis fractions against count depth in a row,
-    with the mitochondrial threshold from config. Cells above it are the ones that filter removes.
+    Plots the mitochondrial, rRNA and apoptosis fractions against count depth in a row.
+    The mitochondrial threshold comes from config, so cells above it are the ones the pipeline removes.
 
     Parameters
     ----------
@@ -209,14 +215,16 @@ def plot_gene_set_qc(data: pd.DataFrame, species: Species = "human", config: Pre
         Selects the mitochondrial, rRNA and apoptosis gene sets.
     config : PreprocessingConfig
         Candidate thresholds, e.g. parse_preprocessing_config(load_dataset_config(config_path)).
+    rrna_threshold, apoptosis_threshold : float, optional
+        Reference lines for inspection only; the pipeline does not filter cells on these.
+        Omitted panels are drawn without a threshold.
     """
     fig, axes = plt.subplots(1, 3, figsize=(18, 5))
 
     gene_sets = [
         ("Mitochondrial", mito_genes(species), config.mito_threshold),
-        # Only mitochondrial content filters cells, so the other panels have no threshold.
-        ("rRNA", rrna_genes(species), None),
-        ("Apoptosis", apoptosis_genes(species), None),
+        ("rRNA", rrna_genes(species), rrna_threshold),
+        ("Apoptosis", apoptosis_genes(species), apoptosis_threshold),
     ]
     for ax, (name, gene_list, threshold) in zip(axes, gene_sets):
         plot_gene_set_fraction_vs_count_depth(
