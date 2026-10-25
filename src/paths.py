@@ -22,6 +22,8 @@ RUN_RESULT = DATASET_DIR + \
     "/outputs/runs/{norm_method}/{pca}/{params}/{algorithm}.json"
 RUN_LABELS = DATASET_DIR + \
     "/outputs/runs/{norm_method}/{pca}/{params}/{algorithm}_labels.csv"
+RUN_NULL = DATASET_DIR + \
+    "/outputs/runs/{norm_method}/{pca}/{params}/{algorithm}_null.npz"
 CLUSTERING_PARAMS = DATASET_DIR + "/outputs/clustering_params.json"
 RESULTS = DATASET_DIR + "/outputs/results.tsv"
 

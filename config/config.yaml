@@ -20,3 +20,6 @@ tuning:
   algorithms: [leiden, birch, hdbscan, optics]
   n_trials: 50
   objective_metric: mean_external_score
+
+permutation_test:
+  n_permutations: 1000

@@ -23,6 +23,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help="Where to save the results table (TSV)")
     parser.add_argument("run_results", type=Path, nargs="+",
                         help="Per-run result files (JSON), in the order of the table rows")
+    parser.add_argument("--null-results", type=Path, nargs="+", default=None,
+                        help="Null distribution of each run (.npz), in the order of the run results;"
+                             " adds the null means and p-values to the table")
     return parser.parse_args(argv)
 
 
@@ -33,6 +36,7 @@ def main(argv: list[str] | None = None) -> None:
         dataset=args.dataset,
         run_result_paths=args.run_results,
         results_path=args.out,
+        null_result_paths=args.null_results,
     )
 
 

@@ -8,6 +8,7 @@ from pathlib import Path
 import pandas as pd
 
 from src.evaluation.biological.types import BiologicalComparisonRecord
+from src.evaluation.permutation import load_null_distribution, summarize_null
 from src.types import PathLike
 from src.paths import get_params_label, get_pca_label
 
@@ -78,19 +79,33 @@ def aggregate_run_results(
     dataset: str,
     run_result_paths: Iterable[PathLike],
     results_path: PathLike,
+    null_result_paths: Iterable[PathLike] | None = None,
 ) -> None:
     """
     Collect the per-run result files (see save_run_result) of a dataset into a results table (TSV)
     with one row per run:
         dataset  algorithm  normalization  with_pca  tuned  ari  nmi  ...  timestamp
 
+    With null_result_paths (the null distribution of each run, see save_null_distribution, in the order
+    of run_result_paths), each row also gets {metric}_null_mean and {metric}_pvalue (see summarize_null).
+
     Rows keep the order of run_result_paths, and the table is rewritten from scratch,
     so it holds exactly the given runs.
     """
+    run_result_paths = list(run_result_paths)
+    null_paths = None if null_result_paths is None else list(null_result_paths)
+    if null_paths is not None and len(null_paths) != len(run_result_paths):
+        raise ValueError(
+            f"Got {len(null_paths)} null results for {len(run_result_paths)} runs; expected one per run"
+        )
+
     rows = []
-    for run_result_path in run_result_paths:
+    for i, run_result_path in enumerate(run_result_paths):
         with open(run_result_path, 'r') as f:
             run = json.load(f)
+        null_summary = (
+            summarize_null(run["metrics"], load_null_distribution(null_paths[i])) if null_paths is not None else {}
+        )
         rows.append({
             "dataset": dataset,
             "algorithm": run["algorithm"],
@@ -98,6 +113,7 @@ def aggregate_run_results(
             "with_pca": run["with_pca"],
             "tuned": run["tuned"],
             **run["metrics"],
+            **null_summary,
             "timestamp": run["timestamp"],
         })
 

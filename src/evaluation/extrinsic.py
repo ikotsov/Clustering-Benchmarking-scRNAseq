@@ -1,6 +1,8 @@
 import logging
+from collections.abc import Callable
 
 import pandas as pd
+from numpy.typing import ArrayLike
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
 from sklearn.metrics.cluster import pair_confusion_matrix
 
@@ -27,22 +29,29 @@ def evaluate_clustering_externally(labels_pred: pd.Series, labels_true: pd.Serie
     y_pred = labels_pred.loc[common_cells]
     y_true = labels_true.loc[common_cells]
 
-    return {
-        "ari": compute_ari(y_true, y_pred),
-        "nmi": compute_nmi(y_true, y_pred),
-        "jaccard": compute_jaccard(y_true, y_pred),
-    }
+    return score_external(y_true, y_pred)
 
 
-def compute_ari(y_true: pd.Series, y_pred: pd.Series) -> float:
+def compute_ari(y_true: ArrayLike, y_pred: ArrayLike) -> float:
     return float(adjusted_rand_score(y_true, y_pred))
 
 
-def compute_nmi(y_true: pd.Series, y_pred: pd.Series) -> float:
+def compute_nmi(y_true: ArrayLike, y_pred: ArrayLike) -> float:
     return float(normalized_mutual_info_score(y_true, y_pred))
 
 
-def compute_jaccard(y_true: pd.Series, y_pred: pd.Series) -> float:
+def compute_jaccard(y_true: ArrayLike, y_pred: ArrayLike) -> float:
     C = pair_confusion_matrix(y_true, y_pred)
     tp, fp, fn = int(C[1, 1]), int(C[0, 1]), int(C[1, 0])
     return tp / (tp + fp + fn) if (tp + fp + fn) > 0 else 0.0
+
+
+EXTERNAL_METRICS: dict[str, Callable[[ArrayLike, ArrayLike], float]] = {
+    "ari": compute_ari,
+    "nmi": compute_nmi,
+    "jaccard": compute_jaccard,
+}
+
+
+def score_external(y_true: ArrayLike, y_pred: ArrayLike) -> dict[str, float]:
+    return {name: compute(y_true, y_pred) for name, compute in EXTERNAL_METRICS.items()}

@@ -2,11 +2,13 @@
 Clustering benchmark workflow:
 
     prepare -> preprocess -> tune -> aggregate_tuning
-                          \\-> benchmark -> aggregate_runs
+                          \\-> benchmark -> permutation_test -> aggregate_runs
                           \\-> embed (2D UMAP for plots only)
 
 Every algorithm is benchmarked with its default parameters; the tuned algorithms are benchmarked
 a second time with the parameters tuned on the same normalization + PCA representation.
+permutation_test scores shuffles of each run's predicted labels, so that results.tsv can compare
+every run with random labels of the same cluster sizes (null means and empirical p-values).
 
 Run settings live in config/config.yaml, each dataset's source files in config/datasets.yaml,
 and each dataset's analysis parameters in data/datasets/<accession>/config.yaml.
@@ -177,19 +179,41 @@ rule benchmark:
         " --out {output.result} --out-labels {output.labels} 2> {log}"
 
 
+rule permutation_test:
+    input:
+        data=paths.PROCESSED_DATA,
+        run_labels=paths.RUN_LABELS,
+        labels=paths.GROUND_TRUTH_LABELS,
+    output:
+        paths.RUN_NULL,
+    params:
+        n_permutations=config["permutation_test"]["n_permutations"],
+    log:
+        "logs/permutation_test/{accession}/{norm_method}/{pca}/{params}/{algorithm}.log",
+    shell:
+        "python {SCRIPTS}/permutation_test.py --data {input.data} --run-labels {input.run_labels}"
+        " --labels {input.labels} --n-permutations {params.n_permutations}"
+        " --out {output} 2> {log}"
+
+
+def expand_runs(template):
+    return expand(
+        template, params="default", algorithm=ALGORITHMS,
+        norm_method=NORM_METHODS, pca=PCA_OPTIONS, allow_missing=True,
+    ) + expand(
+        template, params="tuned", algorithm=TUNED_ALGORITHMS,
+        norm_method=NORM_METHODS, pca=PCA_OPTIONS, allow_missing=True,
+    )
+
+
 rule aggregate_runs:
     input:
-        default=expand(
-            paths.RUN_RESULT, params="default", algorithm=ALGORITHMS,
-            norm_method=NORM_METHODS, pca=PCA_OPTIONS, allow_missing=True,
-        ),
-        tuned=expand(
-            paths.RUN_RESULT, params="tuned", algorithm=TUNED_ALGORITHMS,
-            norm_method=NORM_METHODS, pca=PCA_OPTIONS, allow_missing=True,
-        ),
+        runs=expand_runs(paths.RUN_RESULT),
+        nulls=expand_runs(paths.RUN_NULL),
     output:
         paths.RESULTS,
     log:
         "logs/aggregate_runs/{accession}.log",
     shell:
-        "python {SCRIPTS}/aggregate_runs.py --dataset {wildcards.accession} --out {output} {input} 2> {log}"
+        "python {SCRIPTS}/aggregate_runs.py --dataset {wildcards.accession} --out {output} {input.runs}"
+        " --null-results {input.nulls} 2> {log}"

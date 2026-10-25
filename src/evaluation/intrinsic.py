@@ -1,9 +1,15 @@
+import numpy as np
 import pandas as pd
+from numpy.typing import ArrayLike
 from sklearn.metrics import (
     calinski_harabasz_score,
     davies_bouldin_score,
     silhouette_score,
 )
+
+
+INTERNAL_METRICS = ["silhouette", "calinski_harabasz", "davies_bouldin"]
+LOWER_IS_BETTER = {"davies_bouldin"}
 
 
 def evaluate_clustering_internally(data: pd.DataFrame, labels_pred: pd.Series) -> dict[str, float | None]:
@@ -30,16 +36,43 @@ def evaluate_clustering_internally(data: pd.DataFrame, labels_pred: pd.Series) -
     X = data.loc[common_cells]
     y = labels_pred.loc[common_cells]
 
-    # 2 <= n_clusters <= n_samples - 1 is documented only for silhouette_score,
-    # but calinski_harabasz_score/davies_bouldin_score enforce the same bound
-    # internally (both call sklearn's check_number_of_labels). If we omit this
-    # condition, all three raise ValueError outside that range.
-    n_unique = y.nunique()
-    if n_unique < 2 or n_unique >= len(y):
-        return {"silhouette": None, "calinski_harabasz": None, "davies_bouldin": None}
+    return score_internal(X, y)
 
+
+def score_internal(
+    X: np.ndarray | pd.DataFrame,
+    labels: ArrayLike,
+    distances: np.ndarray | None = None,
+) -> dict[str, float | None]:
+    """
+    Scores already aligned data and labels with every internal metric (INTERNAL_METRICS),
+    all None when they are undefined for the labels (see are_internal_metrics_defined).
+
+    distances : optional precomputed pairwise distances of X, so that scoring many labelings of
+    the same data (e.g. the shuffles of the permutation test) computes them only once.
+    """
+    if not are_internal_metrics_defined(labels):
+        return dict.fromkeys(INTERNAL_METRICS, None)
+
+    silhouette = (
+        silhouette_score(X, labels) if distances is None
+        else silhouette_score(distances, labels, metric="precomputed")
+    )
     return {
-        "silhouette": float(silhouette_score(X, y)),
-        "calinski_harabasz": float(calinski_harabasz_score(X, y)),
-        "davies_bouldin": float(davies_bouldin_score(X, y)),
+        "silhouette": float(silhouette),
+        "calinski_harabasz": float(calinski_harabasz_score(X, labels)),
+        "davies_bouldin": float(davies_bouldin_score(X, labels)),
     }
+
+
+def are_internal_metrics_defined(labels: ArrayLike) -> bool:
+    """
+    Whether the internal metrics are defined for the labels: 2 <= n_clusters <= n_samples - 1.
+
+    The bound is documented only for silhouette_score, but calinski_harabasz_score/davies_bouldin_score
+    enforce it internally too (both call sklearn's check_number_of_labels), and all three raise
+    ValueError outside it.
+    """
+    labels = np.asarray(labels)
+    n_unique = len(np.unique(labels))
+    return 2 <= n_unique < len(labels)

@@ -3,6 +3,7 @@ import os
 from collections.abc import Mapping
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from src.data_loading import (
     load_csv_data,
@@ -20,13 +21,15 @@ from src.clustering.registry import (
     get_clustering_strategy,
 )
 from src.evaluation import (
+    compute_null_distribution,
     evaluate_clustering_biologically,
     evaluate_clustering_externally,
     evaluate_clustering_internally,
     save_biological_evaluation_results,
+    save_null_distribution,
     save_run_result,
 )
-from src.constants import DATASETS_DIR, PCA_VARIANCE_RATIO
+from src.constants import DATASETS_DIR, PCA_VARIANCE_RATIO, SEED
 from src.paths import get_params_label, get_pca_label, processed_data_path
 from src.types import NormMethod, PathLike, Species
 from src.evaluation.biological.types import EnrichmentSetName
@@ -261,6 +264,46 @@ def run_experiment(
         metrics=metrics,
         output_path=result_path,
     )
+
+
+def run_permutation_test(
+    *,
+    data_path: PathLike,
+    run_labels_path: PathLike,
+    labels_path: PathLike,
+    n_permutations: int,
+    output_path: PathLike,
+    seed: int = SEED,
+):
+    """
+    Builds the null distribution of one benchmark run's metrics by shuffling its predicted labels
+    n_permutations times (see compute_null_distribution) and saves it.
+    Expects the run to already exist (use run_experiment first).
+
+    Parameters
+    ----------
+    data_path : PathLike
+        Preprocessed data the run clustered (scored by the internal metrics)
+    run_labels_path : PathLike
+        Predicted cluster of each cell (labels_output_path of run_experiment)
+    labels_path : PathLike
+        Ground truth labels CSV
+    n_permutations : int
+        Number of shuffles of the predicted labels
+    output_path : PathLike
+        Where to save the null distribution (.npz)
+    seed : int, default=SEED
+        Seed of the shuffles, so reruns give the same null distribution
+    """
+    logger.info("PERMUTATION TEST: %s (%s permutations, seed=%s)", run_labels_path, n_permutations, seed)
+    data = load_csv_data(data_path)
+    labels_pred = pd.read_csv(run_labels_path, index_col=0).iloc[:, 0]
+    ground_truth = load_ground_truth_labels(labels_path)
+
+    null = compute_null_distribution(data, labels_pred, ground_truth, n_permutations=n_permutations, seed=seed)
+    null_means = {metric: float(np.mean(null[metric].to_numpy())) for metric in null.columns}
+    logger.info("Null means: %s", ", ".join(f"{m}={_format_metric(v)}" for m, v in null_means.items()))
+    save_null_distribution(output_path, null, seed=seed)
 
 
 def _format_metric(value: float | None) -> str:
