@@ -2,8 +2,8 @@
 Embed one PCA representation in 2D with UMAP and save the coordinates, for visualization only, e.g.:
 
     python scripts/embed.py \\
-        --data data/datasets/E-MTAB-3321/processed/log_cpm_pca.csv.gz \\
-        --out data/datasets/E-MTAB-3321/processed/umap_log_cpm.csv.gz
+        --data data/datasets/E-MTAB-3321/processed/log_cpm/pca.csv.gz \\
+        --out data/datasets/E-MTAB-3321/processed/log_cpm/umap.csv.gz
 """
 import argparse
 from pathlib import Path

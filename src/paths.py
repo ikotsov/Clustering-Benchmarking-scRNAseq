@@ -13,9 +13,9 @@ DATASET_DIR = "data/datasets/{accession}"
 DATASET_CONFIG = DATASET_DIR + "/config.yaml"
 RAW_COUNTS = DATASET_DIR + "/interim/counts.csv.gz"
 GROUND_TRUTH_LABELS = DATASET_DIR + "/interim/ground_truth_labels.csv"
-PROCESSED_DATA = DATASET_DIR + "/processed/{norm_method}_{pca}.csv.gz"
-HVGS = DATASET_DIR + "/processed/hvgs_{norm_method}.tsv"
-UMAP = DATASET_DIR + "/processed/umap_{norm_method}.csv.gz"
+PROCESSED_DATA = DATASET_DIR + "/processed/{norm_method}/{pca}.csv.gz"
+HVGS = DATASET_DIR + "/processed/{norm_method}/hvgs.tsv"
+UMAP = DATASET_DIR + "/processed/{norm_method}/umap.csv.gz"
 TUNING_RESULT = DATASET_DIR + \
     "/outputs/tuning/{norm_method}/{pca}/{algorithm}.json"
 RUN_RESULT = DATASET_DIR + \
@@ -35,7 +35,7 @@ def resolve(template: str, **wildcards: object) -> Path:
     """
     Fills in a path template and anchors it at the project root, e.g.
     resolve(PROCESSED_DATA, accession="E-MTAB-3321", norm_method="log_cpm", pca="pca")
-    -> <project root>/data/datasets/E-MTAB-3321/processed/log_cpm_pca.csv.gz
+    -> <project root>/data/datasets/E-MTAB-3321/processed/log_cpm/pca.csv.gz
     """
     return PROJECT_ROOT / template.format(**wildcards)
 

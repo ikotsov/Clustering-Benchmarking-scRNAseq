@@ -6,7 +6,7 @@ Run one benchmark: cluster one preprocessed dataset with one algorithm, evaluate
         --algorithm leiden \\
         --norm-method log_cpm \\
         --pca \\
-        --data data/datasets/E-MTAB-3321/processed/log_cpm_pca.csv.gz \\
+        --data data/datasets/E-MTAB-3321/processed/log_cpm/pca.csv.gz \\
         --config data/datasets/E-MTAB-3321/config.yaml \\
         --labels data/datasets/E-MTAB-3321/interim/ground_truth_labels.csv \\
         --params data/datasets/E-MTAB-3321/outputs/tuning/log_cpm/pca/leiden.json \\

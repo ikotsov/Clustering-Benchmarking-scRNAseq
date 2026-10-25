@@ -2,7 +2,7 @@
 Build the null distribution of one benchmark run's metrics by shuffling its predicted labels, e.g.:
 
     python scripts/permutation_test.py \\
-        --data data/datasets/E-MTAB-3321/processed/log_cpm_pca.csv.gz \\
+        --data data/datasets/E-MTAB-3321/processed/log_cpm/pca.csv.gz \\
         --run-labels data/datasets/E-MTAB-3321/outputs/runs/log_cpm/pca/tuned/leiden_labels.csv \\
         --labels data/datasets/E-MTAB-3321/interim/ground_truth_labels.csv \\
         --n-permutations 1000 \\

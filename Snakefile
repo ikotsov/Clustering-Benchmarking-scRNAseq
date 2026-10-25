@@ -39,7 +39,8 @@ PCA_OPTIONS = ["pca", "no_pca"]
 SCRIPTS = f"{workflow.basedir}/scripts"
 
 
-# "{norm_method}_{pca}" in the processed file names could otherwise split "log_cpm_no_pca" the wrong way.
+# Wildcards match any text by default, slashes included. pca in particular must stay constrained:
+# otherwise processed/{norm_method}/umap.csv.gz would also match processed/{norm_method}/{pca}.csv.gz.
 wildcard_constraints:
     accession="|".join(DATASETS),
     norm_method="|".join(NORM_METHODS),

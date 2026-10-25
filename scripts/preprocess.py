@@ -9,9 +9,9 @@ and the selected HVGs, e.g.:
         --config data/datasets/E-MTAB-3321/config.yaml \\
         --annotation data/annotations/gene_annotation_mouse.csv \\
         --norm-method log_cpm \\
-        --out-pca data/datasets/E-MTAB-3321/processed/log_cpm_pca.csv.gz \\
-        --out-no-pca data/datasets/E-MTAB-3321/processed/log_cpm_no_pca.csv.gz \\
-        --out-hvgs data/datasets/E-MTAB-3321/processed/hvgs_log_cpm.tsv
+        --out-pca data/datasets/E-MTAB-3321/processed/log_cpm/pca.csv.gz \\
+        --out-no-pca data/datasets/E-MTAB-3321/processed/log_cpm/no_pca.csv.gz \\
+        --out-hvgs data/datasets/E-MTAB-3321/processed/log_cpm/hvgs.tsv
 """
 import argparse
 from pathlib import Path

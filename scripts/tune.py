@@ -4,7 +4,7 @@ Tune the parameters of one clustering algorithm on one preprocessed dataset.
 Runs an Optuna search on the given representation (PCA or not) and saves the best parameters, e.g.:
 
     python scripts/tune.py \\
-        --data data/datasets/E-MTAB-3321/processed/log_cpm_pca.csv.gz \\
+        --data data/datasets/E-MTAB-3321/processed/log_cpm/pca.csv.gz \\
         --config data/datasets/E-MTAB-3321/config.yaml \\
         --labels data/datasets/E-MTAB-3321/interim/ground_truth_labels.csv \\
         --algorithm leiden \\
