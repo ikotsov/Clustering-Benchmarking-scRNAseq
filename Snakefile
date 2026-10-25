@@ -91,6 +91,8 @@ rule prepare:
         sources=source_args,
     log:
         "logs/prepare/{accession}.log",
+    benchmark:
+        "benchmarks/prepare/{accession}.tsv",
     shell:
         "python {SCRIPTS}/prepare/{wildcards.accession}.py {params.sources}"
         " --out-counts {output.counts} --out-labels {output.labels} 2> {log}"
@@ -109,6 +111,8 @@ rule preprocess:
         pca_variance_ratio=config["pca_variance_ratio"],
     log:
         "logs/preprocess/{accession}/{norm_method}.log",
+    benchmark:
+        "benchmarks/preprocess/{accession}/{norm_method}.tsv",
     shell:
         "python {SCRIPTS}/preprocess.py --raw {input.raw} --config {input.config}"
         " --annotation {input.annotation} --norm-method {wildcards.norm_method}"
@@ -123,6 +127,8 @@ rule embed:
         paths.UMAP,
     log:
         "logs/embed/{accession}/{norm_method}.log",
+    benchmark:
+        "benchmarks/embed/{accession}/{norm_method}.tsv",
     shell:
         "python {SCRIPTS}/embed.py --data {input} --out {output} 2> {log}"
 
@@ -140,6 +146,8 @@ rule tune:
         pca_flag=lambda wildcards: "--pca" if wildcards.pca == "pca" else "--no-pca",
     log:
         "logs/tune/{accession}/{norm_method}/{pca}/{algorithm}.log",
+    benchmark:
+        "benchmarks/tune/{accession}/{norm_method}/{pca}/{algorithm}.tsv",
     shell:
         "python {SCRIPTS}/tune.py --data {input.data} --config {input.config} --labels {input.labels}"
         " --algorithm {wildcards.algorithm} --norm-method {wildcards.norm_method} {params.pca_flag}"
@@ -157,6 +165,8 @@ rule aggregate_tuning:
         paths.CLUSTERING_PARAMS,
     log:
         "logs/aggregate_tuning/{accession}.log",
+    benchmark:
+        "benchmarks/aggregate_tuning/{accession}.tsv",
     shell:
         "python {SCRIPTS}/aggregate_tuning.py --out {output} {input} 2> {log}"
 
@@ -172,6 +182,8 @@ rule benchmark:
         params_arg=lambda wildcards, input: f"--params {input.params}" if "params" in input.keys() else "",
     log:
         "logs/benchmark/{accession}/{norm_method}/{pca}/{params}/{algorithm}.log",
+    benchmark:
+        "benchmarks/benchmark/{accession}/{norm_method}/{pca}/{params}/{algorithm}.tsv",
     shell:
         "python {SCRIPTS}/benchmark.py --dataset {wildcards.accession} --algorithm {wildcards.algorithm}"
         " --norm-method {wildcards.norm_method} {params.pca_flag}"
@@ -190,6 +202,8 @@ rule permutation_test:
         n_permutations=config["permutation_test"]["n_permutations"],
     log:
         "logs/permutation_test/{accession}/{norm_method}/{pca}/{params}/{algorithm}.log",
+    benchmark:
+        "benchmarks/permutation_test/{accession}/{norm_method}/{pca}/{params}/{algorithm}.tsv",
     shell:
         "python {SCRIPTS}/permutation_test.py --data {input.data} --run-labels {input.run_labels}"
         " --labels {input.labels} --n-permutations {params.n_permutations}"
@@ -214,6 +228,8 @@ rule aggregate_runs:
         paths.RESULTS,
     log:
         "logs/aggregate_runs/{accession}.log",
+    benchmark:
+        "benchmarks/aggregate_runs/{accession}.tsv",
     shell:
         "python {SCRIPTS}/aggregate_runs.py --dataset {wildcards.accession} --out {output} {input.runs}"
         " --null-results {input.nulls} 2> {log}"

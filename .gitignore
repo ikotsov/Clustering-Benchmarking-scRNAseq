@@ -226,3 +226,4 @@ data/**
 # Snakemake
 .snakemake/
 logs/
+benchmarks/
