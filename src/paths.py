@@ -15,10 +15,13 @@ RAW_COUNTS = DATASET_DIR + "/interim/counts.csv.gz"
 GROUND_TRUTH_LABELS = DATASET_DIR + "/interim/ground_truth_labels.csv"
 PROCESSED_DATA = DATASET_DIR + "/processed/{norm_method}_{pca}.csv.gz"
 HVGS = DATASET_DIR + "/processed/hvgs_{norm_method}.tsv"
+UMAP = DATASET_DIR + "/processed/umap_{norm_method}.csv.gz"
 TUNING_RESULT = DATASET_DIR + \
     "/outputs/tuning/{norm_method}/{pca}/{algorithm}.json"
 RUN_RESULT = DATASET_DIR + \
     "/outputs/runs/{norm_method}/{pca}/{params}/{algorithm}.json"
+RUN_LABELS = DATASET_DIR + \
+    "/outputs/runs/{norm_method}/{pca}/{params}/{algorithm}_labels.csv"
 CLUSTERING_PARAMS = DATASET_DIR + "/outputs/clustering_params.json"
 RESULTS = DATASET_DIR + "/outputs/results.tsv"
 

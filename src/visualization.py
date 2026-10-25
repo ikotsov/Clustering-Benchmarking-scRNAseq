@@ -617,3 +617,54 @@ def plot_pearson_diagnostic(pearsons_data):
     # Health check
     logger.info("Mean variance: %.2f", gene_vars.mean())
     logger.info("Max variance: %.2f", gene_vars.max())
+
+
+def plot_umap(embedding: pd.DataFrame, labels: pd.Series, title: str = "", ax=None, legend: bool = True, point_size: float = 20):
+    """
+    Scatter of a UMAP embedding coloured by a categorical labelling of the cells,
+    e.g. the ground truth cell types or the clusters predicted by one run.
+
+    Parameters
+    ----------
+    embedding : pd.DataFrame
+        UMAP coordinates (cells x [UMAP1, UMAP2]), as saved by run_umap.
+    labels : pd.Series
+        One label per cell, indexed by cell ID; aligned to the embedding's cells.
+    title : str
+        Axes title, e.g. the algorithm name and its ARI.
+    legend : bool
+        Whether to draw the label legend to the right of the axes.
+    """
+    is_standalone = ax is None
+    if is_standalone:
+        _, ax = plt.subplots(figsize=(7, 5))
+
+    aligned = labels.reindex(embedding.index)
+    if aligned.isna().any():
+        logger.warning("%s cells of the embedding have no label",
+                       int(aligned.isna().sum()))
+    aligned = aligned.astype("string").fillna("unlabelled")
+
+    categories = sorted(aligned.unique())
+    colors = plt.get_cmap("tab20" if len(categories) > 10 else "tab10")
+    for i, category in enumerate(categories):
+        cells = aligned == category
+        ax.scatter(
+            embedding.loc[cells, "UMAP1"],
+            embedding.loc[cells, "UMAP2"],
+            s=point_size,
+            color=colors(i % colors.N),
+            label=category,
+            linewidths=0,
+        )
+
+    ax.set_xlabel("UMAP1")
+    ax.set_ylabel("UMAP2")
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_title(title, fontweight='bold')
+    if legend:
+        ax.legend(loc='center left', bbox_to_anchor=(1, 0.5),
+                  frameon=False, markerscale=1.5, fontsize='small')
+
+    return finish_plot(ax, is_standalone)

@@ -10,7 +10,8 @@ Run one benchmark: cluster one preprocessed dataset with one algorithm, evaluate
         --config data/datasets/E-MTAB-3321/config.yaml \\
         --labels data/datasets/E-MTAB-3321/interim/ground_truth_labels.csv \\
         --params data/datasets/E-MTAB-3321/outputs/tuning/log_cpm/pca/leiden.json \\
-        --out data/datasets/E-MTAB-3321/outputs/runs/log_cpm/pca/tuned/leiden.json
+        --out data/datasets/E-MTAB-3321/outputs/runs/log_cpm/pca/tuned/leiden.json \\
+        --out-labels data/datasets/E-MTAB-3321/outputs/runs/log_cpm/pca/tuned/leiden_labels.csv
 
 Leave out --params to run the algorithm with its defaults.
 """
@@ -44,6 +45,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help="Tuning result of this algorithm + normalization + PCA option (JSON)")
     parser.add_argument("--out", type=Path, required=True,
                         help="Where to save the run's metrics (JSON)")
+    parser.add_argument("--out-labels", type=Path, required=True,
+                        help="Where to save the predicted cluster of each cell (CSV)")
     return parser.parse_args(argv)
 
 
@@ -58,6 +61,7 @@ def main(argv: list[str] | None = None) -> None:
         params_path=args.params,
         labels_path=args.labels,
         result_path=args.out,
+        labels_output_path=args.out_labels,
         norm_method=args.norm_method,
         with_pca=args.pca,
     )

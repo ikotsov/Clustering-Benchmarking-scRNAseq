@@ -3,6 +3,7 @@ Clustering benchmark workflow:
 
     prepare -> preprocess -> tune -> aggregate_tuning
                           \\-> benchmark -> aggregate_runs
+                          \\-> embed (2D UMAP for plots only)
 
 Every algorithm is benchmarked with its default parameters; the tuned algorithms are benchmarked
 a second time with the parameters tuned on the same normalization + PCA representation.
@@ -74,6 +75,7 @@ def benchmark_inputs(wildcards):
 rule all:
     input:
         expand(paths.RESULTS, accession=DATASETS),
+        expand(paths.UMAP, accession=DATASETS, norm_method=NORM_METHODS),
         expand(paths.CLUSTERING_PARAMS, accession=DATASETS) if TUNED_ALGORITHMS else [],
 
 
@@ -110,6 +112,17 @@ rule preprocess:
         " --annotation {input.annotation} --norm-method {wildcards.norm_method}"
         " --pca-variance-ratio {params.pca_variance_ratio}"
         " --out-pca {output.pca} --out-no-pca {output.no_pca} --out-hvgs {output.hvgs} 2> {log}"
+
+
+rule embed:
+    input:
+        expand(paths.PROCESSED_DATA, pca="pca", allow_missing=True),
+    output:
+        paths.UMAP,
+    log:
+        "logs/embed/{accession}/{norm_method}.log",
+    shell:
+        "python {SCRIPTS}/embed.py --data {input} --out {output} 2> {log}"
 
 
 rule tune:
@@ -150,7 +163,8 @@ rule benchmark:
     input:
         unpack(benchmark_inputs),
     output:
-        paths.RUN_RESULT,
+        result=paths.RUN_RESULT,
+        labels=paths.RUN_LABELS,
     params:
         pca_flag=lambda wildcards: "--pca" if wildcards.pca == "pca" else "--no-pca",
         params_arg=lambda wildcards, input: f"--params {input.params}" if "params" in input.keys() else "",
@@ -160,7 +174,7 @@ rule benchmark:
         "python {SCRIPTS}/benchmark.py --dataset {wildcards.accession} --algorithm {wildcards.algorithm}"
         " --norm-method {wildcards.norm_method} {params.pca_flag}"
         " --data {input.data} --config {input.config} --labels {input.labels} {params.params_arg}"
-        " --out {output} 2> {log}"
+        " --out {output.result} --out-labels {output.labels} 2> {log}"
 
 
 rule aggregate_runs:

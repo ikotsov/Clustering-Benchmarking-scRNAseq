@@ -11,7 +11,7 @@ from src.data_loading import (
     parse_preprocessing_config,
 )
 from src.dataset_config import load_dataset_config, parse_n_clusters, parse_species
-from src.preprocessing import apply_pca, preprocess_data
+from src.preprocessing import apply_pca, apply_umap, preprocess_data
 from src.preprocessing.gene_annotation import load_gene_annotation
 from src.clustering.registry import (
     ALGORITHMS_REQUIRING_N_CLUSTERS,
@@ -122,6 +122,34 @@ def run_preprocessing(
                 hvg_output_path, len(hvg_genes_no_pca))
 
 
+def run_umap(
+    *,
+    pca_path: PathLike,
+    output_path: PathLike,
+):
+    """
+    Embeds the PCA representation in 2D with UMAP and saves the coordinates.
+    The embedding is for visualization only; it is never clustered or scored.
+
+    Parameters
+    ----------
+    pca_path : PathLike
+        PCA representation (output of run_preprocessing)
+    output_path : PathLike
+        Where to save the UMAP coordinates (gzipped CSV)
+    """
+    if not os.path.exists(pca_path):
+        raise FileNotFoundError(f"Expected file not found: {pca_path}")
+
+    logger.info("UMAP: %s", pca_path)
+    pca_data = load_csv_data(pca_path)
+    umap_data = apply_umap(pca_data)
+
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    umap_data.to_csv(output_path, compression='gzip')
+    logger.info("Saved to: %s (%s cells)", output_path, umap_data.shape[0])
+
+
 def run_experiment(
     accession: str,
     algo_name: ClusteringAlgorithm,
@@ -131,6 +159,7 @@ def run_experiment(
     params_path: PathLike | None,
     labels_path: PathLike,
     result_path: PathLike,
+    labels_output_path: PathLike,
     norm_method: NormMethod = "pearson",
     with_pca: bool = True,
 ):
@@ -157,6 +186,8 @@ def run_experiment(
         Ground truth labels CSV
     result_path : PathLike
         Where to save this run's evaluation metrics (collected into results.tsv by aggregate_run_results)
+    labels_output_path : PathLike
+        Where to save the predicted cluster of each cell (CSV), e.g. for plotting on the UMAP
     norm_method : NormMethod, default="pearson"
         Normalization method ("pearson" or "log_cpm")
     """
@@ -200,6 +231,10 @@ def run_experiment(
     # Wew rely on the fact that the clustering algorithm returns labels in the same order as the input data.
     labels_series = pd.Series(
         labels, index=target_data.index, name="cluster")
+    Path(labels_output_path).parent.mkdir(parents=True, exist_ok=True)
+    labels_series.to_csv(labels_output_path)
+    logger.info("Saved predicted labels to: %s", labels_output_path)
+
     external_metrics = evaluate_clustering_externally(
         labels_series, ground_truth)
 
