@@ -4,7 +4,12 @@ import pandas as pd
 from .types import PreprocessingConfig
 from .filters import filter_genes_by_max_count, filter_rrna_genes, high_fraction_mask
 from .gene_sets import mito_genes
-from .transforms import select_hvgs, normalize_with_log_cpm, normalize_with_pearson
+from .transforms import (
+    select_hvgs_seurat_v3,
+    select_hvgs_pearson,
+    normalize_with_log_cpm,
+    normalize_with_pearson,
+)
 from src.types import NormMethod, Species
 
 
@@ -41,18 +46,18 @@ def preprocess_data(
     clean_data = run_filtering_pipeline(
         raw_data, config=preprocessing_config, species=species, annotation=annotation)
 
-    # Then select HVGs (both flavors expect raw counts)
-    hvg_genes = select_hvgs(clean_data, norm_method)
-
-    # Then normalize
+    # Both HVG flavors score genes on raw counts (clean_data). The methods
+    # differ in whether we keep only the HVGs before or after normalizing.
     if norm_method == "log_cpm":
         logger.debug("Normalization (LogCPM)...")
-        # Normalize on all genes first so library sizes reflect sequencing depth,
+        hvg_genes = select_hvgs_seurat_v3(clean_data)
+        # Normalize on all genes so library sizes reflect sequencing depth,
         # then keep only the HVG columns.
         log_cpm_all_genes = normalize_with_log_cpm(clean_data)
         normalized_data = log_cpm_all_genes.loc[:, hvg_genes]
     elif norm_method == "pearson":
         logger.debug("Normalization (Pearson Residuals)...")
+        hvg_genes = select_hvgs_pearson(clean_data)
         # Keep only the HVG columns first, then compute residuals on them,
         # as in Scanpy's Pearson residuals workflow.
         hvg_counts = clean_data.loc[:, hvg_genes]

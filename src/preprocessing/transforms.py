@@ -5,8 +5,6 @@ import pandas as pd
 from typing import cast
 import scanpy as sc
 
-from src.types import NormMethod
-
 
 logger = logging.getLogger(__name__)
 
@@ -91,31 +89,38 @@ PEARSON_N_HVG = 3_000
 LOG_CPM_N_HVG = 2_000
 
 
-def select_hvgs(filtered_data: pd.DataFrame, norm_method: NormMethod) -> list[str]:
+def select_hvgs_seurat_v3(filtered_data: pd.DataFrame) -> list[str]:
     """
-    Selects Highly Variable Genes (HVGs) using the flavor recommended for `norm_method`.
+    Selects Highly Variable Genes (HVGs) with the Seurat v3 flavor, used with log-CPM.
+    Expects raw counts.
     """
-    adata = sc.AnnData(filtered_data)
+    logger.debug("Selecting top %s variable genes (Seurat v3)", LOG_CPM_N_HVG)
 
-    if norm_method == "pearson":
-        logger.debug(
-            "Selecting top %s variable genes (Pearson residuals)", PEARSON_N_HVG)
-        # Reference: https://scanpy.readthedocs.io/en/stable/generated/scanpy.experimental.pp.highly_variable_genes.html
-        sc.experimental.pp.highly_variable_genes(
-            adata,
-            flavor="pearson_residuals",
-            n_top_genes=PEARSON_N_HVG,
-        )
-    elif norm_method == "log_cpm":
-        logger.debug(
-            "Selecting top %s variable genes (Seurat v3)", LOG_CPM_N_HVG)
-        sc.pp.highly_variable_genes(
-            adata,
-            flavor="seurat_v3_paper",
-            n_top_genes=LOG_CPM_N_HVG,
-        )
-    else:
-        raise ValueError(f"Unknown normalization method: {norm_method}")
+    adata = sc.AnnData(filtered_data)
+    sc.pp.highly_variable_genes(
+        adata,
+        flavor="seurat_v3_paper",
+        n_top_genes=LOG_CPM_N_HVG,
+    )
+
+    return adata.var_names[adata.var["highly_variable"]].tolist()
+
+
+def select_hvgs_pearson(filtered_data: pd.DataFrame) -> list[str]:
+    """
+    Selects Highly Variable Genes (HVGs) with the Pearson residuals flavor.
+    Expects raw counts.
+    """
+    logger.debug(
+        "Selecting top %s variable genes (Pearson residuals)", PEARSON_N_HVG)
+
+    adata = sc.AnnData(filtered_data)
+    # Reference: https://scanpy.readthedocs.io/en/stable/generated/scanpy.experimental.pp.highly_variable_genes.html
+    sc.experimental.pp.highly_variable_genes(
+        adata,
+        flavor="pearson_residuals",
+        n_top_genes=PEARSON_N_HVG,
+    )
 
     return adata.var_names[adata.var["highly_variable"]].tolist()
 

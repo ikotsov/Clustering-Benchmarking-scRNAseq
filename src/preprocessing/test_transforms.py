@@ -6,7 +6,8 @@ from .transforms import (
     log_transform,
     normalize_with_log_cpm,
     normalize_with_pearson,
-    select_hvgs,
+    select_hvgs_seurat_v3,
+    select_hvgs_pearson,
 )
 
 
@@ -112,23 +113,18 @@ def count_matrix():
     )
 
 
-def test_select_hvgs_log_cpm_returns_subset_of_genes(count_matrix):
-    hvgs = select_hvgs(count_matrix, norm_method="log_cpm")
+def test_select_hvgs_seurat_v3_returns_subset_of_genes(count_matrix):
+    hvgs = select_hvgs_seurat_v3(count_matrix)
 
     assert len(hvgs) > 0
     assert set(hvgs).issubset(set(count_matrix.columns))
 
 
 def test_select_hvgs_pearson_returns_subset_of_genes(count_matrix):
-    hvgs = select_hvgs(count_matrix, norm_method="pearson")
+    hvgs = select_hvgs_pearson(count_matrix)
 
     assert len(hvgs) > 0
     assert set(hvgs).issubset(set(count_matrix.columns))
-
-
-def test_select_hvgs_unknown_method_raises(count_matrix):
-    with pytest.raises(ValueError):
-        select_hvgs(count_matrix, norm_method="bogus_method")
 
 
 def test_normalize_with_pearson_preserves_shape(count_matrix):
