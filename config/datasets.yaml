@@ -6,6 +6,11 @@ E-MTAB-3321:
   counts: data/datasets/E-MTAB-3321/raw/Goolam_et_al_2015_count_table.tsv
   metadata: data/datasets/E-MTAB-3321/raw/E-MTAB-3321.sdrf.txt
 
+E-MTAB-2805:
+  counts_g1: data/datasets/E-MTAB-2805/raw/G1_singlecells_counts.txt
+  counts_s: data/datasets/E-MTAB-2805/raw/S_singlecells_counts.txt
+  counts_g2m: data/datasets/E-MTAB-2805/raw/G2M_singlecells_counts.txt
+
 GSE36552:
   counts: data/datasets/GSE36552/raw/GSE36552.count_matrix.csv.gz
   metadata: data/datasets/GSE36552/raw/GSE36552.metadata.bminty.txt.gz
