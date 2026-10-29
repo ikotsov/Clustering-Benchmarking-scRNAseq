@@ -1,0 +1,8 @@
+protocol: "SMARTer (Fluidigm C1)"
+n_clusters: 3
+species: "mouse"
+preprocessing:
+  mito_threshold: 0.05
+  min_gene_max_count: 2
+  # Drops two near-empty cells (~1,300 counts; the other cells have > 85,000).
+  count_threshold: 50000
