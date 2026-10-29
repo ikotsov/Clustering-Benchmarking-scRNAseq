@@ -1,4 +1,4 @@
-protocol: "to check"
+protocol: "Smart-Seq2"
 n_clusters: 5
 species: "mouse"
 preprocessing:
