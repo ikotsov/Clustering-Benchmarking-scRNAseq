@@ -29,9 +29,19 @@ def parse_preprocessing_config(config: DatasetConfig) -> PreprocessingConfig:
     min_gene_max_count = int(min_gene_max_count_value) if isinstance(
         min_gene_max_count_value, (int, float)) else defaults.min_gene_max_count
 
+    count_value = cutoffs.get("count_threshold")
+    gene_value = cutoffs.get("gene_threshold")
+
+    count_threshold = float(count_value) if isinstance(
+        count_value, (int, float)) else defaults.count_threshold
+    gene_threshold = int(gene_value) if isinstance(
+        gene_value, (int, float)) else defaults.gene_threshold
+
     return PreprocessingConfig(
         mito_threshold=mito_threshold,
         min_gene_max_count=min_gene_max_count,
+        count_threshold=count_threshold,
+        gene_threshold=gene_threshold,
     )
 
 

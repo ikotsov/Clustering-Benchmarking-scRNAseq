@@ -2,7 +2,13 @@ import logging
 
 import pandas as pd
 from .types import PreprocessingConfig
-from .filters import filter_genes_by_max_count, filter_rrna_genes, high_fraction_mask
+from .filters import (
+    filter_genes_by_max_count,
+    filter_rrna_genes,
+    high_fraction_mask,
+    low_count_depth_mask,
+    low_gene_count_mask,
+)
 from .gene_sets import mito_genes
 from .transforms import (
     select_hvgs_seurat_v3,
@@ -81,12 +87,21 @@ def run_filtering_pipeline(
     logger.info("Input: %s cells x %s genes",
                 raw_data.shape[0], raw_data.shape[1])
 
+    low_counts = low_count_depth_mask(raw_data, config.count_threshold)
+    low_genes = low_gene_count_mask(raw_data, config.gene_threshold)
     high_mito = high_fraction_mask(
         raw_data, mito_genes(species, annotation), config.mito_threshold)
-    logger.info("Dropped %s cells with high mitochondrial fraction",
+    logger.info("Cells with count depth < %s: %s",
+                config.count_threshold, int(low_counts.sum()))
+    logger.info("Cells with genes detected < %s: %s",
+                config.gene_threshold, int(low_genes.sum()))
+    logger.info("Cells with high mitochondrial fraction: %s",
                 int(high_mito.sum()))
 
-    data = raw_data.loc[~high_mito]
+    failed_qc = low_counts | low_genes | high_mito
+    logger.info("Dropped %s cells failing cell QC", int(failed_qc.sum()))
+
+    data = raw_data.loc[~failed_qc]
 
     n_genes = data.shape[1]
     data = filter_rrna_genes(data, species=species, annotation=annotation)

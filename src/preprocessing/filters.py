@@ -120,6 +120,26 @@ def high_fraction_mask(data: pd.DataFrame, gene_list: List[str], threshold: floa
     return gene_set_fraction(data, gene_list) > threshold
 
 
+def low_count_depth_mask(data: pd.DataFrame, threshold: Optional[float]) -> pd.Series:
+    """
+    Returns a boolean Series (indexed by cell) that is True for cells whose
+    total counts are below the threshold. Flags nothing when threshold is None.
+    """
+    if threshold is None:
+        return pd.Series(False, index=data.index)
+    return data.sum(axis=1) < threshold
+
+
+def low_gene_count_mask(data: pd.DataFrame, threshold: Optional[int]) -> pd.Series:
+    """
+    Returns a boolean Series (indexed by cell) that is True for cells with fewer
+    detected genes (count > 0) than the threshold. Flags nothing when threshold is None.
+    """
+    if threshold is None:
+        return pd.Series(False, index=data.index)
+    return (data > 0).sum(axis=1) < threshold
+
+
 def filter_doublets(data: pd.DataFrame, expected_doublet_rate: float = 0.05, threshold: Optional[float] = None) -> pd.DataFrame:
     """
     Detects and removes doublets (cells that are actually two or more cells captured together).

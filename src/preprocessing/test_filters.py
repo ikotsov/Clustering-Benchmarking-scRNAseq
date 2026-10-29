@@ -10,6 +10,8 @@ from .filters import (
     filter_rrna_genes,
     filter_doublets,
     high_fraction_mask,
+    low_count_depth_mask,
+    low_gene_count_mask,
 )
 
 
@@ -251,3 +253,35 @@ def test_filter_rrna_genes_matches_ensembl_ids():
     filtered = filter_rrna_genes(df_rrna, species="human")
 
     assert list(filtered.columns) == ['ENSG00000075624']
+
+
+def test_low_count_depth_mask_flags_cells_below_threshold():
+    data = pd.DataFrame({
+        'Gene_A': [5, 10, 1],
+        'Gene_B': [5, 0, 1],
+    }, index=['Cell_Border', 'Cell_Good', 'Cell_Bad'])
+
+    mask = low_count_depth_mask(data, threshold=10)
+
+    assert mask.to_dict() == {
+        'Cell_Border': False, 'Cell_Good': False, 'Cell_Bad': True}
+
+
+def test_low_gene_count_mask_flags_cells_below_threshold():
+    data = pd.DataFrame({
+        'Gene_A': [5, 100, 1],
+        'Gene_B': [5, 0, 1],
+        'Gene_C': [0, 0, 1],
+    }, index=['Cell_Border', 'Cell_Bad', 'Cell_Good'])
+
+    mask = low_gene_count_mask(data, threshold=2)
+
+    assert mask.to_dict() == {
+        'Cell_Border': False, 'Cell_Bad': True, 'Cell_Good': False}
+
+
+def test_low_masks_without_threshold_flag_nothing():
+    data = pd.DataFrame({'Gene_A': [0, 1]}, index=['C1', 'C2'])
+
+    assert not low_count_depth_mask(data, threshold=None).any()
+    assert not low_gene_count_mask(data, threshold=None).any()
