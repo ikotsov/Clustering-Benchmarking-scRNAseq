@@ -9,6 +9,11 @@ MITO_STATUS_COLUMN = "MT_status"
 RRNA_STATUS_COLUMN = "RB_status"
 APOPTOSIS_STATUS_COLUMN = "APOPT_status"
 
+# Alternative gene names, or the "NO_ALIAS" placeholder.
+ALIAS_COLUMN = "alias_names"
+ALIAS_SEPARATOR = ";"
+NO_ALIAS = "NO_ALIAS"
+
 
 def load_gene_annotation(species: Species = "human", annotation_path: PathLike | None = None) -> pd.DataFrame:
     """

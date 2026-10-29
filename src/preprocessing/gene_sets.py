@@ -1,10 +1,19 @@
 import re
+from dataclasses import dataclass
 from typing import List, Optional, Set
 
 import pandas as pd
 
 from ..types import Species
-from .gene_annotation import APOPTOSIS_STATUS_COLUMN, MITO_STATUS_COLUMN, RRNA_STATUS_COLUMN, load_gene_annotation
+from .gene_annotation import (
+    ALIAS_COLUMN,
+    ALIAS_SEPARATOR,
+    APOPTOSIS_STATUS_COLUMN,
+    MITO_STATUS_COLUMN,
+    NO_ALIAS,
+    RRNA_STATUS_COLUMN,
+    load_gene_annotation,
+)
 
 
 def mito_genes(species: Species = "human", annotation: Optional[pd.DataFrame] = None) -> List[str]:
@@ -39,6 +48,60 @@ def is_in_gene_set(gene: str, gene_ids: Set[str], gene_names: Set[str]) -> bool:
     if is_ensembl_id(gene):
         return ensembl_id(gene) in gene_ids
     return gene.upper() in gene_names
+
+
+@dataclass(frozen=True)
+class UnmatchedGenes:
+    """
+    Data columns that match no Ensembl ID or gene name of the annotation, split by what we could find for them.
+
+    alias_matches: one row per (gene, annotation row whose aliases contain it), see alias_matches().
+    unknown_ensembl_ids: Ensembl IDs missing from the annotation (e.g. retired in its Ensembl release).
+    other: everything else, e.g. ERCC spike-ins or symbols that are not even an alias.
+    """
+    alias_matches: pd.DataFrame
+    unknown_ensembl_ids: List[str]
+    other: List[str]
+
+
+def unmatched_genes(data: pd.DataFrame, annotation: pd.DataFrame) -> UnmatchedGenes:
+    """
+    Diagnoses the columns of data that the gene sets can never pick up, because they match no gene_id
+    or gene_name of the annotation. Those still found through alias_names are reported with the annotation
+    rows they point to, since an alias may belong to several genes.
+    """
+    annotated_genes = annotation["gene_name"].tolist() + annotation["gene_id"].tolist()
+    matched = set(matching_genes(data, annotated_genes))
+    unmatched = [col for col in data.columns if col not in matched]
+
+    aliased = alias_matches(unmatched, annotation)
+    aliased_genes = set(aliased["gene"])
+    remaining = [gene for gene in unmatched if gene not in aliased_genes]
+    return UnmatchedGenes(
+        alias_matches=aliased,
+        unknown_ensembl_ids=[gene for gene in remaining if is_ensembl_id(gene)],
+        other=[gene for gene in remaining if not is_ensembl_id(gene)],
+    )
+
+
+def alias_matches(genes: List[str], annotation: pd.DataFrame) -> pd.DataFrame:
+    """
+    Returns the annotation rows whose alias_names contain one of genes (case-insensitively).
+
+    One row per gene and matching annotation row: a "gene" column, an "n_matches" column with the number of
+    annotation rows that gene matches (more than 1 means the alias is ambiguous), then the annotation columns.
+    Sorted with the most ambiguous genes first.
+    """
+    aliases = annotation.assign(alias=annotation[ALIAS_COLUMN].str.split(ALIAS_SEPARATOR)).explode("alias")
+    aliases = aliases[aliases["alias"].notna() & (aliases["alias"] != NO_ALIAS)]
+    aliases["alias"] = aliases["alias"].str.upper()
+
+    lookup = pd.DataFrame({"gene": genes, "alias": [gene.upper() for gene in genes]})
+    matches = (lookup.merge(aliases, on="alias")
+               .drop(columns="alias")
+               .drop_duplicates(subset=["gene", "gene_id"]))
+    matches.insert(1, "n_matches", matches.groupby("gene")["gene_id"].transform("size"))
+    return matches.sort_values(["n_matches", "gene"], ascending=[False, True]).reset_index(drop=True)
 
 
 # Stable Ensembl gene ID with an optional version suffix, e.g. "ENSG00000198804.2" or "ENSMUSG00000064351".

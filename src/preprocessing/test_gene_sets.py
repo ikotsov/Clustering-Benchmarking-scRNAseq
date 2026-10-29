@@ -1,5 +1,21 @@
 import pandas as pd
-from .gene_sets import apoptosis_genes, ensembl_id, is_ensembl_id, matching_genes, mito_genes, rrna_genes
+from .gene_sets import (
+    alias_matches,
+    apoptosis_genes,
+    ensembl_id,
+    is_ensembl_id,
+    matching_genes,
+    mito_genes,
+    rrna_genes,
+    unmatched_genes,
+)
+
+
+ANNOTATION = pd.DataFrame({
+    'gene_id': ['ENSG00000198804', 'ENSG00000000001', 'ENSG00000000002', 'ENSG00000075624'],
+    'gene_name': ['MT-CO1', 'GENEA', 'GENEB', 'ACTB'],
+    'alias_names': ['MTCO1;COX1', 'OLD1;SHARED', 'shared', 'NO_ALIAS'],
+})
 
 
 def test_is_ensembl_id_recognises_human_and_mouse_ids():
@@ -46,3 +62,28 @@ def test_matching_genes_does_not_treat_ens_prefixed_names_as_ids():
     data = pd.DataFrame(columns=['ENSA', 'ACTB'])
 
     assert matching_genes(data, ['ensa']) == ['ENSA']
+
+
+def test_alias_matches_reports_every_annotation_row_an_alias_points_to():
+    matches = alias_matches(['shared', 'cox1', 'UNKNOWN'], ANNOTATION)
+
+    assert matches[['gene', 'n_matches', 'gene_name']].values.tolist() == [
+        ['shared', 2, 'GENEA'],
+        ['shared', 2, 'GENEB'],
+        ['cox1', 1, 'MT-CO1'],
+    ]
+
+
+def test_alias_matches_ignores_the_no_alias_placeholder():
+    assert alias_matches(['NO_ALIAS'], ANNOTATION).empty
+
+
+def test_unmatched_genes_splits_unmatched_columns_by_cause():
+    data = pd.DataFrame(columns=[
+        'ENSG00000198804.2', 'actb', 'OLD1', 'ENSG00000999999', 'ERCC-00002'])
+
+    unmatched = unmatched_genes(data, ANNOTATION)
+
+    assert unmatched.alias_matches['gene'].tolist() == ['OLD1']
+    assert unmatched.unknown_ensembl_ids == ['ENSG00000999999']
+    assert unmatched.other == ['ERCC-00002']
