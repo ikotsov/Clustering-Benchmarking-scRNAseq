@@ -2,7 +2,7 @@
 Prepare GSE36552 (Yan et al., 2013; human preimplantation embryos and hESCs) as the standard counts + labels, e.g.:
 
     python scripts/prepare/GSE36552.py \\
-        --counts data/datasets/GSE36552/raw/GSE36552.csv.gz \\
+        --counts data/datasets/GSE36552/raw/GSE36552.count_matrix.csv.gz \\
         --metadata data/datasets/GSE36552/raw/GSE36552.metadata.bminty.txt.gz \\
         --out-counts data/datasets/GSE36552/interim/counts.csv.gz \\
         --out-labels data/datasets/GSE36552/interim/ground_truth_labels.csv

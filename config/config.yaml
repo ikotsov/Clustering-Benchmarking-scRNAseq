@@ -3,7 +3,7 @@
 
 datasets:
   - E-MTAB-3321
-  # - GSE36552
+  - GSE36552
   # - GSE45719
   # - GSE57249
 

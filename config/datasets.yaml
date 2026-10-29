@@ -7,5 +7,5 @@ E-MTAB-3321:
   metadata: data/datasets/E-MTAB-3321/raw/E-MTAB-3321.sdrf.txt
 
 GSE36552:
-  counts: data/datasets/GSE36552/raw/GSE36552.csv.gz
+  counts: data/datasets/GSE36552/raw/GSE36552.count_matrix.csv.gz
   metadata: data/datasets/GSE36552/raw/GSE36552.metadata.bminty.txt.gz

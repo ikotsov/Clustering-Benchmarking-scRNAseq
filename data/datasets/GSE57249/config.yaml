@@ -1,4 +1,0 @@
-species: "mouse"
-preprocessing:
-  mito_threshold: 0.5
-  min_gene_max_count: 2
