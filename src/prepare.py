@@ -16,6 +16,25 @@ from src.types import PathLike
 logger = logging.getLogger(__name__)
 
 
+def read_genes_by_cells_csv(path: PathLike) -> pd.DataFrame:
+    """Reads a counts CSV with genes as rows and cells as columns, returned as cells x genes."""
+    return pd.read_csv(path, index_col=0).T
+
+
+def read_pipe_separated_labels(path: PathLike, cell_column: str, label_column: str) -> pd.Series:
+    """
+    Reads labels from a pipe-separated metadata file (e.g. "Cell|Type"), indexed by cell ID.
+    Column names, cell IDs and labels are stripped, since some files carry stray whitespace (e.g. "Oocyte ").
+    """
+    metadata = pd.read_csv(path, sep="|", dtype=str)
+    metadata.columns = metadata.columns.str.strip()
+    return pd.Series(
+        metadata[label_column].str.strip().to_numpy(),
+        index=metadata[cell_column].str.strip(),
+        name=label_column,
+    )
+
+
 def save_prepared_dataset(
     counts: pd.DataFrame,
     labels: pd.Series,

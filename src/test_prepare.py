@@ -2,7 +2,7 @@ import pandas as pd
 import pytest
 
 from src.data_loading import load_csv_data, load_ground_truth_labels
-from src.prepare import save_prepared_dataset
+from src.prepare import read_genes_by_cells_csv, read_pipe_separated_labels, save_prepared_dataset
 
 
 @pytest.fixture
@@ -23,6 +23,20 @@ def test_saves_counts_and_labels_in_counts_order(tmp_path, counts):
     saved_labels = load_ground_truth_labels(tmp_path / "labels.csv")
     assert saved_labels.index.tolist() == ["cell1", "cell2", "cell3"]
     assert saved_labels.tolist() == ["A", "A", "B"]
+
+
+def test_reads_genes_by_cells_csv_as_cells_by_genes(tmp_path, counts):
+    counts.T.to_csv(tmp_path / "counts.csv.gz")
+
+    pd.testing.assert_frame_equal(read_genes_by_cells_csv(tmp_path / "counts.csv.gz"), counts)
+
+
+def test_reads_pipe_separated_labels_and_strips_whitespace(tmp_path):
+    (tmp_path / "metadata.txt").write_text("Cell |Type \ncell1|Oocyte \n cell2|2-cell embryo\n")
+
+    labels = read_pipe_separated_labels(tmp_path / "metadata.txt", cell_column="Cell", label_column="Type")
+
+    assert labels.to_dict() == {"cell1": "Oocyte", "cell2": "2-cell embryo"}
 
 
 def test_rejects_unlabeled_cells(tmp_path, counts):

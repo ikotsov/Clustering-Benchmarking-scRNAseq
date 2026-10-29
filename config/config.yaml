@@ -4,7 +4,7 @@
 datasets:
   - E-MTAB-3321
   - GSE36552
-  # - GSE45719
+  - GSE45719
   # - GSE57249
 
 norm_methods: [log_cpm, pearson]

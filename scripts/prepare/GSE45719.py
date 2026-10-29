@@ -1,0 +1,41 @@
+"""
+Prepare GSE45719 (Deng et al., 2014; mouse preimplantation embryos) as the standard counts + labels, e.g.:
+
+    python scripts/prepare/GSE45719.py \\
+        --counts data/datasets/GSE45719/raw/mouse.embryo.GS45719.expression_matrix.csv.gz \\
+        --metadata data/datasets/GSE45719/raw/mouse.embryo.GS45719.metadata.bminty.txt.gz \\
+        --out-counts data/datasets/GSE45719/interim/counts.csv.gz \\
+        --out-labels data/datasets/GSE45719/interim/ground_truth_labels.csv
+
+The count matrix is genes x cells; the labels are each cell's developmental stage from the "cell|type" metadata.
+"""
+import argparse
+from pathlib import Path
+
+from src.prepare import read_genes_by_cells_csv, read_pipe_separated_labels, save_prepared_dataset
+from src.logging_config import configure_logging
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--counts", type=Path, required=True,
+                        help="Source count matrix (genes x cells, gzipped CSV)")
+    parser.add_argument("--metadata", type=Path, required=True,
+                        help="Source metadata (pipe-separated: cell|type)")
+    parser.add_argument("--out-counts", type=Path, required=True)
+    parser.add_argument("--out-labels", type=Path, required=True)
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = parse_args(argv)
+    configure_logging()
+
+    counts = read_genes_by_cells_csv(args.counts)
+    labels = read_pipe_separated_labels(args.metadata, cell_column="cell", label_column="type")
+    save_prepared_dataset(counts, labels, args.out_counts, args.out_labels)
+
+
+if __name__ == "__main__":
+    main()

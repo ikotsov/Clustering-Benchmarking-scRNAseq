@@ -12,9 +12,7 @@ The count matrix is genes x cells; the labels are each cell's type from the "Cel
 import argparse
 from pathlib import Path
 
-import pandas as pd
-
-from src.prepare import save_prepared_dataset
+from src.prepare import read_genes_by_cells_csv, read_pipe_separated_labels, save_prepared_dataset
 from src.logging_config import configure_logging
 
 
@@ -34,13 +32,8 @@ def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
     configure_logging()
 
-    counts = pd.read_csv(args.counts, index_col=0).T
-
-    metadata = pd.read_csv(args.metadata, sep="|")
-    # Names and values carry stray whitespace (e.g. "Oocyte ").
-    metadata.columns = metadata.columns.str.strip()
-    labels = metadata.set_index(metadata["Cell"].str.strip())["Type"].str.strip()
-
+    counts = read_genes_by_cells_csv(args.counts)
+    labels = read_pipe_separated_labels(args.metadata, cell_column="Cell", label_column="Type")
     save_prepared_dataset(counts, labels, args.out_counts, args.out_labels)
 
 

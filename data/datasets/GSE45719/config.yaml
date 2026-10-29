@@ -1,0 +1,6 @@
+protocol: "Smart-seq"
+n_clusters: 10
+species: "mouse"
+preprocessing:
+  mito_threshold: 0.05
+  min_gene_max_count: 2

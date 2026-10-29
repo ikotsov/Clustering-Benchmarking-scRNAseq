@@ -9,3 +9,7 @@ E-MTAB-3321:
 GSE36552:
   counts: data/datasets/GSE36552/raw/GSE36552.count_matrix.csv.gz
   metadata: data/datasets/GSE36552/raw/GSE36552.metadata.bminty.txt.gz
+
+GSE45719:
+  counts: data/datasets/GSE45719/raw/mouse.embryo.GS45719.expression_matrix.csv.gz
+  metadata: data/datasets/GSE45719/raw/mouse.embryo.GS45719.metadata.bminty.txt.gz
