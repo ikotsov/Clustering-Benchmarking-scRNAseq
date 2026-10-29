@@ -1,0 +1,8 @@
+protocol: "Drop-seq"
+n_clusters: 3
+species: "human"
+preprocessing:
+  # The median mito fraction is ~4% (up to 8%), so the 0.05 default would remove 20% of the cells, mostly
+  # HCC827. The cells already passed the CellBench QC.
+  mito_threshold: 0.2
+  min_gene_max_count: 2

@@ -2,7 +2,8 @@ import pandas as pd
 import pytest
 
 from src.data_loading import load_csv_data, load_ground_truth_labels
-from src.prepare import read_genes_by_cells_csv, read_pipe_separated_labels, save_prepared_dataset
+from src.prepare import (
+    read_cellbench_labels, read_genes_by_cells_csv, read_pipe_separated_labels, save_prepared_dataset)
 
 
 @pytest.fixture
@@ -37,6 +38,17 @@ def test_reads_pipe_separated_labels_and_strips_whitespace(tmp_path):
     labels = read_pipe_separated_labels(tmp_path / "metadata.txt", cell_column="Cell", label_column="Type")
 
     assert labels.to_dict() == {"cell1": "Oocyte", "cell2": "2-cell embryo"}
+
+
+def test_reads_cellbench_labels_of_singlets_only(tmp_path):
+    pd.DataFrame(
+        {"cell_line": ["H1975", "H2228", "HCC827"], "demuxlet_cls": ["SNG", "DBL", "SNG"]},
+        index=["A1", "A2", "A3"],
+    ).to_csv(tmp_path / "metadata.csv.gz")
+
+    labels = read_cellbench_labels(tmp_path / "metadata.csv.gz")
+
+    assert labels.to_dict() == {"A1": "H1975", "A3": "HCC827"}
 
 
 def test_rejects_unlabeled_cells(tmp_path, counts):

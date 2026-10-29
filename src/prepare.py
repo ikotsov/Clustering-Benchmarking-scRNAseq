@@ -35,6 +35,16 @@ def read_pipe_separated_labels(path: PathLike, cell_column: str, label_column: s
     )
 
 
+def read_cellbench_labels(path: PathLike) -> pd.Series:
+    """
+    Reads the cell lines from a CellBench (GSE118767) cell metadata file, e.g. sc_10x_5cl.metadata.csv.gz from
+    https://github.com/LuyiTian/sc_mixology/tree/master/data/csv. The file lists the cells that passed the
+    authors' QC; cells demuxlet called doublets ("DBL") are dropped, since they have no single cell line.
+    """
+    metadata = pd.read_csv(path, index_col=0)
+    return metadata.loc[metadata["demuxlet_cls"] == "SNG", "cell_line"]
+
+
 def save_prepared_dataset(
     counts: pd.DataFrame,
     labels: pd.Series,

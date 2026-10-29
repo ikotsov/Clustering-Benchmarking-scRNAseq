@@ -1,0 +1,8 @@
+protocol: "10x Chromium"
+n_clusters: 5
+species: "human"
+preprocessing:
+  # These cell lines have a median mito fraction of ~6% (A549 ~7%), so the 0.05 default would remove
+  # ~75% of the cells, mostly A549. The cells already passed the CellBench QC.
+  mito_threshold: 0.2
+  min_gene_max_count: 2

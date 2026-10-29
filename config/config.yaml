@@ -6,6 +6,9 @@ datasets:
   - E-MTAB-2805
   - GSE36552
   - GSE45719
+  - GSE118767_10x_5cl
+  - GSE118767_celseq2_3cl
+  - GSE118767_dropseq_3cl
   # - GSE57249
 
 norm_methods: [log_cpm, pearson]

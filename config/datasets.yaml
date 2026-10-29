@@ -18,3 +18,14 @@ GSE36552:
 GSE45719:
   counts: data/datasets/GSE45719/raw/mouse.embryo.GS45719.expression_matrix.csv.gz
   metadata: data/datasets/GSE45719/raw/mouse.embryo.GS45719.metadata.bminty.txt.gz
+GSE118767_10x_5cl:
+  counts: data/datasets/GSE118767_10x_5cl/raw/GSM3618014_gene_count.csv.gz
+  metadata: data/datasets/GSE118767_10x_5cl/raw/sc_10x_5cl.metadata.csv.gz
+
+GSE118767_celseq2_3cl:
+  counts: data/datasets/GSE118767_celseq2_3cl/raw/GSM3336845_NN84_Celseq2_SC_counts.csv.gz
+  metadata: data/datasets/GSE118767_celseq2_3cl/raw/sc_celseq2.metadata.csv.gz
+
+GSE118767_dropseq_3cl:
+  counts: data/datasets/GSE118767_dropseq_3cl/raw/GSM3336849_dropseq_gene_count.csv.gz
+  metadata: data/datasets/GSE118767_dropseq_3cl/raw/sc_dropseq.metadata.csv.gz
