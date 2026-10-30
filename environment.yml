@@ -26,6 +26,7 @@ dependencies:
   - seaborn>=0.13
   # Utilities
   - pyyaml>=6.0
+  - psutil>=7.0 # runtime and memory of the clustering
   - openpyxl>=3.1 # pandas.read_excel backend for .xlsx marker files
   - typing_extensions
   # Notebooks

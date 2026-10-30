@@ -23,6 +23,9 @@ def save_run_result(
     tuned: bool,
     metrics: dict[str, float | None],
     output_path: PathLike,
+    n_cells: int,
+    n_features: int,
+    clustering_resources: dict[str, float],
 ) -> None:
     """
     Save the evaluation result of a single run into its own JSON file, overwriting any previous result.
@@ -33,7 +36,10 @@ def save_run_result(
           "normalization": "pearson",
           "with_pca": true,
           "tuned": false,
+          "n_cells": 1500,
+          "n_features": 32,
           "metrics": {...},
+          "clustering_resources": {"wall_time_s": ..., "cpu_time_s": ..., "rss_mb": ..., "rss_increase_mb": ...},
           "timestamp": "..."
         }
 
@@ -51,13 +57,20 @@ def save_run_result(
         Dictionary of metric names and values (e.g., {"ari": 0.85, "nmi": 0.78})
     output_path : PathLike
         Path to the run's result file
+    n_cells, n_features : int
+        Shape of the clustered data (features: PCs with PCA, genes without)
+    clustering_resources : dict
+        Runtime and memory of the clustering call (see src.profiling.ResourceUsage)
     """
     run_entry = {
         "algorithm": algorithm,
         "normalization": preprocessing,
         "with_pca": with_pca,
         "tuned": tuned,
+        "n_cells": n_cells,
+        "n_features": n_features,
         "metrics": metrics,
+        "clustering_resources": clustering_resources,
         "timestamp": datetime.now().isoformat(),
     }
 
@@ -84,13 +97,16 @@ def aggregate_run_results(
     """
     Collect the per-run result files (see save_run_result) of a dataset into a results table (TSV)
     with one row per run:
-        dataset  algorithm  normalization  pca  params  ari  nmi  ...
+        dataset  algorithm  normalization  pca  params  n_cells  n_features  ari  nmi  ...  clustering_wall_time_s  ...
 
     pca ("pca" / "no_pca") and params ("default" / "tuned") use the labels of the output paths
     (see src.paths), so the table can be filtered with the same values the files are named by.
 
     With null_result_paths (the null distribution of each run, see save_null_distribution, in the order
     of run_result_paths), each row also gets {metric}_null_mean and {metric}_pvalue (see summarize_null).
+
+    The last columns are the runtime and memory of the clustering call.
+    Runs saved before these were recorded get empty values, with a warning to rerun them.
 
     Rows keep the order of run_result_paths, and the table is rewritten from scratch,
     so it holds exactly the given runs.
@@ -107,13 +123,20 @@ def aggregate_run_results(
         with open(run_result_path, 'r') as f:
             run = json.load(f)
         null_summary = (
-            summarize_null(run["metrics"], load_null_distribution(null_paths[i])) if null_paths is not None else {}
+            summarize_null(run["metrics"], load_null_distribution(
+                null_paths[i])) if null_paths is not None else {}
         )
+        if "clustering_resources" not in run:
+            logger.warning(
+                "%s has no runtime or memory; rerun it to record them", run_result_path)
         rows.append({
             "dataset": dataset,
             **_run_columns(run),
+            "n_cells": run.get("n_cells"),
+            "n_features": run.get("n_features"),
             **run["metrics"],
             **null_summary,
+            **{f"clustering_{name}": value for name, value in run.get("clustering_resources", {}).items()},
         })
 
     Path(results_path).parent.mkdir(parents=True, exist_ok=True)
@@ -153,9 +176,11 @@ def aggregate_run_labels(
         }))
 
     Path(labels_path).parent.mkdir(parents=True, exist_ok=True)
-    pd.concat(tables, ignore_index=True).to_csv(labels_path, sep="\t", index=False)
+    pd.concat(tables, ignore_index=True).to_csv(
+        labels_path, sep="\t", index=False)
 
-    logger.info("Aggregated the labels of %s runs into %s", len(tables), labels_path)
+    logger.info("Aggregated the labels of %s runs into %s",
+                len(tables), labels_path)
 
 
 def _run_columns(run: dict) -> dict[str, str]:

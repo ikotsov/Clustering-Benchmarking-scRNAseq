@@ -31,6 +31,7 @@ from src.evaluation import (
 )
 from src.constants import DATASETS_DIR, PCA_VARIANCE_RATIO, SEED
 from src.paths import get_params_label, get_pca_label, processed_data_path
+from src.profiling import measure_resources
 from src.types import NormMethod, PathLike, Species
 from src.evaluation.biological.types import EnrichmentSetName
 
@@ -220,7 +221,15 @@ def run_experiment(
     if algo_name in ALGORITHMS_REQUIRING_N_CLUSTERS and n_clusters is not None:
         cluster_kwargs["n_clusters"] = n_clusters
 
-    labels = cluster_func(target_data, **cluster_kwargs)
+    with measure_resources() as clustering_resources:
+        labels = cluster_func(target_data, **cluster_kwargs)
+    logger.info(
+        "Clustering took %.2fs (CPU %.2fs), memory %.0f MB (+%.0f MB)",
+        clustering_resources.wall_time_s,
+        clustering_resources.cpu_time_s,
+        clustering_resources.rss_mb,
+        clustering_resources.rss_increase_mb,
+    )
 
     # 4. Load ground truth labels
     logger.info("Loading ground truth labels...")
@@ -263,6 +272,9 @@ def run_experiment(
         tuned=tuned,
         metrics=metrics,
         output_path=result_path,
+        n_cells=target_data.shape[0],
+        n_features=target_data.shape[1],
+        clustering_resources=clustering_resources.as_dict(),
     )
 
 
