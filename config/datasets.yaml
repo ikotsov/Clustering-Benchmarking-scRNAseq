@@ -34,3 +34,7 @@ GSE118767_celseq2_3cl:
 GSE118767_dropseq_3cl:
   counts: data/datasets/GSE118767_dropseq_3cl/raw/GSM3336849_dropseq_gene_count.csv.gz
   metadata: data/datasets/GSE118767_dropseq_3cl/raw/sc_dropseq.metadata.csv.gz
+
+zheng_pbmc_bead_enriched:
+  counts: data/datasets/zheng_pbmc_bead_enriched/raw/pbmc.bead.enriched.sample.zheng.count_matrix.csv.gz
+  metadata: data/datasets/zheng_pbmc_bead_enriched/raw/pbmc.bead.enriched.sample.zheng.metadata.bminty.txt.gz

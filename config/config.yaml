@@ -10,6 +10,7 @@ datasets:
   - GSE118767_10x_5cl
   - GSE118767_celseq2_3cl
   - GSE118767_dropseq_3cl
+  - zheng_pbmc_bead_enriched
   # - GSE57249
 
 norm_methods: [log_cpm, pearson]
