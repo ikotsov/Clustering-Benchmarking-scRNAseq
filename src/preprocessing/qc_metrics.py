@@ -4,7 +4,7 @@ from typing import List
 import pandas as pd
 
 from ..types import Species
-from .gene_sets import apoptosis_genes, matching_genes, mito_genes, rrna_genes
+from .gene_sets import apoptosis_genes, ensembl_id, is_ensembl_id, matching_genes, mito_genes, rrna_genes
 
 
 logger = logging.getLogger(__name__)
@@ -20,8 +20,9 @@ def gene_set_fraction(data: pd.DataFrame, gene_list: List[str], name: str = "gen
 
     if len(valid_genes) == 0 and len(gene_list) > 0:
         logger.warning(
-            "None of the %s %s genes were found in the data columns, so every cell's %s fraction is 0",
-            len(gene_list), name, name)
+            "None of the %s %s genes (matched by name or Ensembl ID) were found in the data columns, "
+            "so every cell's %s fraction is 0",
+            gene_set_size(gene_list), name, name)
         return pd.Series(0.0, index=data.index)
 
     subset_counts = data[valid_genes].sum(axis=1)
@@ -29,6 +30,15 @@ def gene_set_fraction(data: pd.DataFrame, gene_list: List[str], name: str = "gen
 
     # Avoid division by zero by replacing 0 total counts with 1 (these cells will be dropped anyway or have 0 fraction)
     return subset_counts / total_counts.replace(0, 1)
+
+
+def gene_set_size(gene_list: List[str]) -> int:
+    """
+    Returns the number of genes in gene_list. Annotation gene sets list every gene by both name and
+    Ensembl ID, so their genes are counted by distinct Ensembl ID; lists without IDs count every entry.
+    """
+    gene_ids = {ensembl_id(gene) for gene in gene_list if is_ensembl_id(gene)}
+    return len(gene_ids) if gene_ids else len(gene_list)
 
 
 def cell_qc_metrics(data: pd.DataFrame, species: Species = "human") -> pd.DataFrame:

@@ -1,5 +1,5 @@
 import pandas as pd
-from .qc_metrics import cell_qc_metrics, gene_set_fraction
+from .qc_metrics import cell_qc_metrics, gene_set_fraction, gene_set_size
 
 
 def test_gene_set_fraction_per_cell():
@@ -28,6 +28,13 @@ def test_gene_set_fraction_warning_names_the_gene_set(caplog):
     gene_set_fraction(data, ['Ghost_Gene'], name="rRNA")
 
     assert "None of the 1 rRNA genes" in caplog.text
+
+
+def test_gene_set_size_counts_genes_listed_by_name_and_id_once():
+    gene_list = ['Rn5s', 'n-R5s1', 'n-R5s1', 'ENSMUSG00000119584', 'ENSMUSG00000064339.1', 'ENSMUSG00000064339']
+
+    assert gene_set_size(gene_list) == 2
+    assert gene_set_size(['Ghost_Gene', 'Other_Gene']) == 2
 
 
 def test_cell_qc_metrics_per_cell():
