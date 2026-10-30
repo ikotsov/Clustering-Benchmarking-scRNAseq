@@ -6,3 +6,4 @@ preprocessing:
   min_gene_max_count: 2
   # Drops two near-empty cells (~1,300 counts; the other cells have > 85,000).
   count_threshold: 50000
+  gene_threshold: 1500
