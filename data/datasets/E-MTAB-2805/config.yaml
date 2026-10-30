@@ -7,3 +7,4 @@ preprocessing:
   min_gene_max_count: 2
   # Drops the empty capture wells (< 2,000 counts; the other cells have > 100,000).
   count_threshold: 100000
+  gene_threshold: 2000
