@@ -2,6 +2,7 @@ import re
 from dataclasses import dataclass
 from typing import List, Optional, Set
 
+import numpy as np
 import pandas as pd
 
 from ..types import Species
@@ -102,6 +103,24 @@ def alias_matches(genes: List[str], annotation: pd.DataFrame) -> pd.DataFrame:
                .drop_duplicates(subset=["gene", "gene_id"]))
     matches.insert(1, "n_matches", matches.groupby("gene")["gene_id"].transform("size"))
     return matches.sort_values(["n_matches", "gene"], ascending=[False, True]).reset_index(drop=True)
+
+
+def duplicated_genes(data: pd.DataFrame) -> pd.DataFrame:
+    """
+    Diagnoses gene names that label more than one column of data. Empty if all gene names are unique.
+
+    One row per repeated gene name, indexed by "gene": "n_columns" is the number of columns sharing it and
+    "identical_counts" whether those columns hold the same values (a plain copy rather than distinct features
+    that ended up with one name). Sorted with the most repeated genes first.
+    """
+    repeated = data.columns[data.columns.duplicated(keep=False)]
+    rows = []
+    for gene in repeated.unique():
+        columns = data.iloc[:, np.flatnonzero(data.columns == gene)]
+        identical = all(columns.iloc[:, 0].equals(columns.iloc[:, i]) for i in range(1, columns.shape[1]))
+        rows.append({"gene": gene, "n_columns": columns.shape[1], "identical_counts": identical})
+    report = pd.DataFrame(rows, columns=["gene", "n_columns", "identical_counts"]).set_index("gene")
+    return report.sort_values("n_columns", ascending=False, kind="stable")
 
 
 # Stable Ensembl gene ID with an optional version suffix, e.g. "ENSG00000198804.2" or "ENSMUSG00000064351".

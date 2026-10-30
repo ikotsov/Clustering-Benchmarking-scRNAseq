@@ -2,6 +2,7 @@ import pandas as pd
 from .gene_sets import (
     alias_matches,
     apoptosis_genes,
+    duplicated_genes,
     ensembl_id,
     is_ensembl_id,
     matching_genes,
@@ -87,3 +88,22 @@ def test_unmatched_genes_splits_unmatched_columns_by_cause():
     assert unmatched.alias_matches['gene'].tolist() == ['OLD1']
     assert unmatched.unknown_ensembl_ids == ['ENSG00000999999']
     assert unmatched.other == ['ERCC-00002']
+
+
+def test_duplicated_genes_is_empty_when_gene_names_are_unique():
+    data = pd.DataFrame([[1, 2]], columns=['GENEA', 'GENEB'])
+
+    assert duplicated_genes(data).empty
+
+
+def test_duplicated_genes_reports_repeats_and_whether_their_counts_match():
+    data = pd.DataFrame(
+        [[1, 1, 5, 6, 7, 0], [2, 2, 5, 0, 7, 0]],
+        columns=['GENEA', 'GENEA', 'GENEB', 'GENEB', 'GENEB', 'GENEC'],
+    )
+
+    report = duplicated_genes(data)
+
+    assert report.index.tolist() == ['GENEB', 'GENEA']
+    assert report['n_columns'].tolist() == [3, 2]
+    assert report['identical_counts'].tolist() == [False, True]
