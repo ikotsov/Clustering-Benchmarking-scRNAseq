@@ -175,7 +175,7 @@ def plot_genes_vs_count_depth(
         _, ax = plt.subplots(figsize=(8, 6))
 
     if color_by is None:
-        color_by = gene_set_fraction(data, mito_genes(species))
+        color_by = gene_set_fraction(data, mito_genes(species), "mitochondrial")
 
     count_depth = data.sum(axis=1)
     genes_per_cell = (data > 0).sum(axis=1)
@@ -267,7 +267,7 @@ def plot_gene_set_fraction_vs_count_depth(data: pd.DataFrame, gene_list: List[st
         return finish_plot(ax, is_standalone)
 
     count_depth = data.sum(axis=1)
-    fraction = gene_set_fraction(data, gene_list)
+    fraction = gene_set_fraction(data, gene_list, name)
     is_above = fraction > threshold if threshold is not None else pd.Series(
         False, index=data.index)
 

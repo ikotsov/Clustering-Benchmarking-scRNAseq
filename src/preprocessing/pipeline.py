@@ -90,7 +90,7 @@ def run_filtering_pipeline(
     low_counts = low_count_depth_mask(raw_data, config.count_threshold)
     low_genes = low_gene_count_mask(raw_data, config.gene_threshold)
     high_mito = high_fraction_mask(
-        raw_data, mito_genes(species, annotation), config.mito_threshold)
+        raw_data, mito_genes(species, annotation), config.mito_threshold, "mitochondrial")
     logger.info("Cells with count depth < %s: %s",
                 config.count_threshold, int(low_counts.sum()))
     logger.info("Cells with genes detected < %s: %s",

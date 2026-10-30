@@ -10,16 +10,18 @@ from .gene_sets import apoptosis_genes, matching_genes, mito_genes, rrna_genes
 logger = logging.getLogger(__name__)
 
 
-def gene_set_fraction(data: pd.DataFrame, gene_list: List[str]) -> pd.Series:
+def gene_set_fraction(data: pd.DataFrame, gene_list: List[str], name: str = "gene set") -> pd.Series:
     """
     Returns, for each cell, the fraction of its total counts coming from genes in gene_list.
     Genes are matched case-insensitively; cells get 0 when no gene in the list is present.
+    name labels the gene set in the warning logged when none of its genes are found.
     """
     valid_genes = matching_genes(data, gene_list)
 
     if len(valid_genes) == 0 and len(gene_list) > 0:
         logger.warning(
-            "None of the %s genes in the gene set were found in the data columns", len(gene_list))
+            "None of the %s %s genes were found in the data columns, so every cell's %s fraction is 0",
+            len(gene_list), name, name)
         return pd.Series(0.0, index=data.index)
 
     subset_counts = data[valid_genes].sum(axis=1)
@@ -46,9 +48,9 @@ def cell_qc_metrics(data: pd.DataFrame, species: Species = "human") -> pd.DataFr
     metrics = pd.DataFrame({
         "count_depth": data.sum(axis=1),
         "n_genes": (data > 0).sum(axis=1),
-        "mito_fraction": gene_set_fraction(data, mito_genes(species)),
-        "rrna_fraction": gene_set_fraction(data, rrna_genes(species)),
-        "apoptosis_fraction": gene_set_fraction(data, apoptosis_genes(species)),
+        "mito_fraction": gene_set_fraction(data, mito_genes(species), "mitochondrial"),
+        "rrna_fraction": gene_set_fraction(data, rrna_genes(species), "rRNA"),
+        "apoptosis_fraction": gene_set_fraction(data, apoptosis_genes(species), "apoptosis"),
     })
 
     return metrics.sort_values("count_depth", ascending=False)

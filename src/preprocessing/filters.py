@@ -98,7 +98,7 @@ def filter_cells_by_fraction(data: pd.DataFrame, gene_list: List[str], threshold
     Removes cells with high expression of a specific gene set.
     """
     # Keep cells where ratio is less than or equal to the threshold
-    data_filtered = data.loc[~high_fraction_mask(data, gene_list, threshold)]
+    data_filtered = data.loc[~high_fraction_mask(data, gene_list, threshold, filter_name)]
 
     dropped = data.shape[0] - data_filtered.shape[0]
     if dropped > 0:
@@ -112,12 +112,12 @@ def filter_cells_by_fraction(data: pd.DataFrame, gene_list: List[str], threshold
     return data_filtered
 
 
-def high_fraction_mask(data: pd.DataFrame, gene_list: List[str], threshold: float) -> pd.Series:
+def high_fraction_mask(data: pd.DataFrame, gene_list: List[str], threshold: float, name: str = "gene set") -> pd.Series:
     """
     Returns a boolean Series (indexed by cell) that is True for cells whose
     fraction of counts in gene_list exceeds the threshold.
     """
-    return gene_set_fraction(data, gene_list) > threshold
+    return gene_set_fraction(data, gene_list, name) > threshold
 
 
 def low_count_depth_mask(data: pd.DataFrame, threshold: Optional[float]) -> pd.Series:

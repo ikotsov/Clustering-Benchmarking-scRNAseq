@@ -22,6 +22,14 @@ def test_gene_set_fraction_without_matching_genes_is_zero():
     assert fractions.to_dict() == {'C1': 0.0, 'C2': 0.0}
 
 
+def test_gene_set_fraction_warning_names_the_gene_set(caplog):
+    data = pd.DataFrame({'Gene_A': [10, 20]}, index=['C1', 'C2'])
+
+    gene_set_fraction(data, ['Ghost_Gene'], name="rRNA")
+
+    assert "None of the 1 rRNA genes" in caplog.text
+
+
 def test_cell_qc_metrics_per_cell():
     data = pd.DataFrame({
         'MT-CO1': [50, 0, 10],
