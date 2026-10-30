@@ -6,6 +6,7 @@ import pandas as pd
 from typing import cast, List, Optional
 
 from src.constants import SEED, MIN_GENE_MAX_COUNT
+from src.preprocessing.filters import low_count_depth_mask, low_gene_count_mask
 from src.preprocessing.qc_metrics import gene_set_fraction
 from src.preprocessing.gene_sets import apoptosis_genes, matching_genes, mito_genes, rrna_genes
 from src.preprocessing.types import PreprocessingConfig
@@ -23,7 +24,7 @@ RED = '#e74c3c'
 def plot_qc_overview(
     data: pd.DataFrame,
     count_threshold: Optional[float] = None,
-    gene_threshold: Optional[float] = None,
+    gene_threshold: Optional[int] = None,
     zoom_below: Optional[float] = None,
     color_by: Optional[pd.Series] = None,
     color_label: str = "Fraction of mitochondrial counts",
@@ -160,13 +161,14 @@ def plot_genes_vs_count_depth(
     color_by: Optional[pd.Series] = None,
     color_label: str = "Fraction of mitochondrial counts",
     count_threshold: Optional[float] = None,
-    gene_threshold: Optional[float] = None,
+    gene_threshold: Optional[int] = None,
     species: Species = "human",
     ax=None,
 ):
     """
     Scatter of genes detected vs count depth per cell, coloured by a per-cell value
     (mitochondrial fraction by default), with both thresholds drawn to show their joint effect.
+    When a threshold is given, the title reports how many cells pass both thresholds.
     """
     is_standalone = ax is None
     if is_standalone:
@@ -175,16 +177,25 @@ def plot_genes_vs_count_depth(
     if color_by is None:
         color_by = gene_set_fraction(data, mito_genes(species))
 
+    count_depth = data.sum(axis=1)
+    genes_per_cell = (data > 0).sum(axis=1)
+
     points = ax.scatter(
-        data.sum(axis=1),
-        (data > 0).sum(axis=1),
+        count_depth,
+        genes_per_cell,
         c=color_by.reindex(data.index),
         cmap='viridis',
         s=12,
         alpha=0.8,
     )
     ax.figure.colorbar(points, ax=ax, label=color_label)
-    ax.set_title("Genes detected vs count depth", fontweight='bold')
+
+    title = "Genes detected vs count depth"
+    if count_threshold is not None or gene_threshold is not None:
+        kept = ~(low_count_depth_mask(data, count_threshold)
+                 | low_gene_count_mask(data, gene_threshold))
+        title += f"\nCells kept: {kept.sum()} / {len(kept)} ({kept.mean():.1%})"
+    ax.set_title(title, fontweight='bold')
     ax.set_xlabel("Count depth")
     ax.set_ylabel("Number of genes")
     ax.grid(True, linestyle='--', alpha=0.3)
