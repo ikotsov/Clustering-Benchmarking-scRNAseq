@@ -4,5 +4,5 @@ species: "mouse"
 preprocessing:
   mito_threshold: 0.5
   min_gene_max_count: 2
-  count_threshold: 700000
+  count_threshold: 550000
   gene_threshold: 7300
