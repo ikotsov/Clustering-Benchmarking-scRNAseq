@@ -1,4 +1,5 @@
 protocol: "SMARTer (Fluidigm C1)"
+tissue: "Embryonic stem cells"
 n_clusters: 3
 species: "mouse"
 preprocessing:

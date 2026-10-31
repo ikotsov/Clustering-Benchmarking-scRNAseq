@@ -1,4 +1,5 @@
 protocol: "CEL-seq2"
+tissue: "Lung cancer cell lines"
 n_clusters: 3
 species: "human"
 preprocessing:

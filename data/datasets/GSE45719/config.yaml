@@ -1,4 +1,5 @@
 protocol: "Smart-seq"
+tissue: "Preimplantation embryo"
 n_clusters: 10
 species: "mouse"
 preprocessing:

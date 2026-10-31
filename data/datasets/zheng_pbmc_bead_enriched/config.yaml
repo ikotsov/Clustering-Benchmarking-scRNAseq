@@ -1,4 +1,5 @@
 protocol: "10x GemCode"
+tissue: "Blood (PBMC)"
 n_clusters: 10
 species: "human"
 preprocessing:

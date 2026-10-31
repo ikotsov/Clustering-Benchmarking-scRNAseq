@@ -1,4 +1,5 @@
 protocol: "Tang"
+tissue: "Preimplantation embryo"
 n_clusters: 8
 species: "human"
 preprocessing:
