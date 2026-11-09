@@ -6,5 +6,7 @@ preprocessing:
   mito_threshold: 0.05
   min_gene_max_count: 2
   # Drops two near-empty cells (~1,300 counts; the other cells have > 85,000).
-  count_threshold: 50000
-  gene_threshold: 1500
+  min_count_threshold: 50000
+  max_count_threshold: null
+  min_gene_threshold: 1500
+  max_gene_threshold: null

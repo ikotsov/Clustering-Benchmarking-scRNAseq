@@ -7,5 +7,7 @@ preprocessing:
   mito_threshold: 0.2
   min_gene_max_count: 2
   # Drops the empty capture wells (< 2,000 counts; the other cells have > 100,000).
-  count_threshold: 100000
-  gene_threshold: 2000
+  min_count_threshold: 100000
+  max_count_threshold: null
+  min_gene_threshold: 2000
+  max_gene_threshold: null

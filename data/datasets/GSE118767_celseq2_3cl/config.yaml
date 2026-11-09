@@ -7,3 +7,5 @@ preprocessing:
   # ~65% of the cells, mostly H1975. The cells already passed the CellBench QC.
   mito_threshold: 0.3
   min_gene_max_count: 2
+  max_count_threshold: null
+  max_gene_threshold: null

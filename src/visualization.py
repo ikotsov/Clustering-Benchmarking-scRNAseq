@@ -6,7 +6,12 @@ import pandas as pd
 from typing import cast, List, Optional
 
 from src.constants import SEED, MIN_GENE_MAX_COUNT
-from src.preprocessing.filters import low_count_depth_mask, low_gene_count_mask
+from src.preprocessing.filters import (
+    high_count_depth_mask,
+    high_gene_count_mask,
+    low_count_depth_mask,
+    low_gene_count_mask,
+)
 from src.preprocessing.qc_metrics import gene_set_fraction
 from src.preprocessing.gene_sets import apoptosis_genes, matching_genes, mito_genes, rrna_genes
 from src.preprocessing.types import PreprocessingConfig
@@ -23,8 +28,10 @@ RED = '#e74c3c'
 
 def plot_qc_overview(
     data: pd.DataFrame,
-    count_threshold: Optional[float] = None,
-    gene_threshold: Optional[int] = None,
+    min_count_threshold: Optional[float] = None,
+    max_count_threshold: Optional[float] = None,
+    min_gene_threshold: Optional[int] = None,
+    max_gene_threshold: Optional[int] = None,
     zoom_below: Optional[float] = None,
     color_by: Optional[pd.Series] = None,
     color_label: str = "Fraction of mitochondrial counts",
@@ -42,8 +49,8 @@ def plot_qc_overview(
     ----------
     data : pd.DataFrame
         Raw counts (cells x genes), before any filtering.
-    count_threshold, gene_threshold : float, optional
-        Candidate minimum count depth / genes per cell, drawn as dashed lines.
+    min_count_threshold, max_count_threshold, min_gene_threshold, max_gene_threshold : float, optional
+        Candidate minimum / maximum count depth and genes per cell, drawn as dashed lines.
     zoom_below : float, optional
         If given, panel A gets an inset histogram of the count depths below this value.
     color_by : pd.Series, optional
@@ -57,16 +64,20 @@ def plot_qc_overview(
     fig, axes = plt.subplots(2, 2, figsize=(12, 10))
 
     plot_count_depth_histogram(
-        data, threshold=count_threshold, zoom_below=zoom_below, ax=axes[0, 0])
+        data, threshold=min_count_threshold, max_threshold=max_count_threshold,
+        zoom_below=zoom_below, ax=axes[0, 0])
     plot_genes_per_cell_histogram(
-        data, threshold=gene_threshold, ax=axes[0, 1])
-    plot_count_depth_rank(data, threshold=count_threshold, ax=axes[1, 0])
+        data, threshold=min_gene_threshold, max_threshold=max_gene_threshold, ax=axes[0, 1])
+    plot_count_depth_rank(
+        data, threshold=min_count_threshold, max_threshold=max_count_threshold, ax=axes[1, 0])
     plot_genes_vs_count_depth(
         data,
         color_by=color_by,
         color_label=color_label,
-        count_threshold=count_threshold,
-        gene_threshold=gene_threshold,
+        min_count_threshold=min_count_threshold,
+        max_count_threshold=max_count_threshold,
+        min_gene_threshold=min_gene_threshold,
+        max_gene_threshold=max_gene_threshold,
         species=species,
         ax=axes[1, 1],
     )
@@ -79,10 +90,11 @@ def plot_qc_overview(
     plt.show()
 
 
-def plot_count_depth_histogram(data: pd.DataFrame, threshold: Optional[float] = None, zoom_below: Optional[float] = None, bins: int = 50, ax=None):
+def plot_count_depth_histogram(data: pd.DataFrame, threshold: Optional[float] = None, max_threshold: Optional[float] = None, zoom_below: Optional[float] = None, bins: int = 50, ax=None):
     """
     Histogram of count depth (total counts) per cell, optionally with a zoomed-in
-    inset of the count depths below zoom_below.
+    inset of the count depths below zoom_below. threshold is the minimum count depth,
+    max_threshold the maximum.
     """
     is_standalone = ax is None
     if is_standalone:
@@ -96,7 +108,8 @@ def plot_count_depth_histogram(data: pd.DataFrame, threshold: Optional[float] = 
     ax.set_xlabel("Count depth")
     ax.set_ylabel("Number of cells")
     ax.grid(axis='y', linestyle='--', alpha=0.3)
-    draw_threshold(ax, threshold, vertical=True)
+    draw_threshold(ax, threshold, vertical=True, name="Min threshold")
+    draw_threshold(ax, max_threshold, vertical=True, name="Max threshold")
 
     if zoom_below is not None:
         inset = ax.inset_axes((0.45, 0.4, 0.5, 0.45))
@@ -110,9 +123,10 @@ def plot_count_depth_histogram(data: pd.DataFrame, threshold: Optional[float] = 
     return finish_plot(ax, is_standalone)
 
 
-def plot_genes_per_cell_histogram(data: pd.DataFrame, threshold: Optional[float] = None, bins: int = 50, ax=None):
+def plot_genes_per_cell_histogram(data: pd.DataFrame, threshold: Optional[float] = None, max_threshold: Optional[float] = None, bins: int = 50, ax=None):
     """
     Histogram of the number of genes detected (count > 0) per cell.
+    threshold is the minimum number of genes, max_threshold the maximum.
     """
     is_standalone = ax is None
     if is_standalone:
@@ -127,15 +141,17 @@ def plot_genes_per_cell_histogram(data: pd.DataFrame, threshold: Optional[float]
     ax.set_xlabel("Number of genes")
     ax.set_ylabel("Number of cells")
     ax.grid(axis='y', linestyle='--', alpha=0.3)
-    draw_threshold(ax, threshold, vertical=True)
+    draw_threshold(ax, threshold, vertical=True, name="Min threshold")
+    draw_threshold(ax, max_threshold, vertical=True, name="Max threshold")
 
     return finish_plot(ax, is_standalone)
 
 
-def plot_count_depth_rank(data: pd.DataFrame, threshold: Optional[float] = None, ax=None):
+def plot_count_depth_rank(data: pd.DataFrame, threshold: Optional[float] = None, max_threshold: Optional[float] = None, ax=None):
     """
     Count depth per cell sorted from high to low on log-log axes (the Cell Ranger
     "knee" plot). A sharp drop ("elbow") suggests where low-quality cells begin.
+    threshold is the minimum count depth, max_threshold the maximum.
     """
     is_standalone = ax is None
     if is_standalone:
@@ -151,7 +167,8 @@ def plot_count_depth_rank(data: pd.DataFrame, threshold: Optional[float] = None,
     ax.set_xlabel("Cell rank")
     ax.set_ylabel("Count depth")
     ax.grid(True, which='both', linestyle='--', alpha=0.3)
-    draw_threshold(ax, threshold, vertical=False)
+    draw_threshold(ax, threshold, vertical=False, name="Min threshold")
+    draw_threshold(ax, max_threshold, vertical=False, name="Max threshold")
 
     return finish_plot(ax, is_standalone)
 
@@ -160,15 +177,17 @@ def plot_genes_vs_count_depth(
     data: pd.DataFrame,
     color_by: Optional[pd.Series] = None,
     color_label: str = "Fraction of mitochondrial counts",
-    count_threshold: Optional[float] = None,
-    gene_threshold: Optional[int] = None,
+    min_count_threshold: Optional[float] = None,
+    max_count_threshold: Optional[float] = None,
+    min_gene_threshold: Optional[int] = None,
+    max_gene_threshold: Optional[int] = None,
     species: Species = "human",
     ax=None,
 ):
     """
     Scatter of genes detected vs count depth per cell, coloured by a per-cell value
-    (mitochondrial fraction by default), with both thresholds drawn to show their joint effect.
-    When a threshold is given, the title reports how many cells pass both thresholds.
+    (mitochondrial fraction by default), with the count and gene thresholds drawn to show their joint effect.
+    When a threshold is given, the title reports how many cells pass all thresholds.
     """
     is_standalone = ax is None
     if is_standalone:
@@ -191,18 +210,26 @@ def plot_genes_vs_count_depth(
     ax.figure.colorbar(points, ax=ax, label=color_label)
 
     title = "Genes detected vs count depth"
-    if count_threshold is not None or gene_threshold is not None:
-        kept = ~(low_count_depth_mask(data, count_threshold)
-                 | low_gene_count_mask(data, gene_threshold))
+    thresholds = (min_count_threshold, max_count_threshold,
+                  min_gene_threshold, max_gene_threshold)
+    if any(threshold is not None for threshold in thresholds):
+        kept = ~(low_count_depth_mask(data, min_count_threshold)
+                 | high_count_depth_mask(data, max_count_threshold)
+                 | low_gene_count_mask(data, min_gene_threshold)
+                 | high_gene_count_mask(data, max_gene_threshold))
         title += f"\nCells kept: {kept.sum()} / {len(kept)} ({kept.mean():.1%})"
     ax.set_title(title, fontweight='bold')
     ax.set_xlabel("Count depth")
     ax.set_ylabel("Number of genes")
     ax.grid(True, linestyle='--', alpha=0.3)
-    draw_threshold(ax, count_threshold, vertical=True,
-                   name="Count threshold", legend_loc='lower right')
-    draw_threshold(ax, gene_threshold, vertical=False,
-                   name="Gene threshold", legend_loc='lower right')
+    draw_threshold(ax, min_count_threshold, vertical=True,
+                   name="Min count threshold", legend_loc='lower right')
+    draw_threshold(ax, max_count_threshold, vertical=True,
+                   name="Max count threshold", legend_loc='lower right')
+    draw_threshold(ax, min_gene_threshold, vertical=False,
+                   name="Min gene threshold", legend_loc='lower right')
+    draw_threshold(ax, max_gene_threshold, vertical=False,
+                   name="Max gene threshold", legend_loc='lower right')
 
     return finish_plot(ax, is_standalone)
 

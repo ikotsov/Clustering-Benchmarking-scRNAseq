@@ -7,3 +7,5 @@ preprocessing:
   # HCC827. The cells already passed the CellBench QC.
   mito_threshold: 0.2
   min_gene_max_count: 2
+  max_count_threshold: null
+  max_gene_threshold: null

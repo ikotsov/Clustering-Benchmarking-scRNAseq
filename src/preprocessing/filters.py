@@ -130,6 +130,16 @@ def low_count_depth_mask(data: pd.DataFrame, threshold: Optional[float]) -> pd.S
     return data.sum(axis=1) < threshold
 
 
+def high_count_depth_mask(data: pd.DataFrame, threshold: Optional[float]) -> pd.Series:
+    """
+    Returns a boolean Series (indexed by cell) that is True for cells whose
+    total counts are above the threshold. Flags nothing when threshold is None.
+    """
+    if threshold is None:
+        return pd.Series(False, index=data.index)
+    return data.sum(axis=1) > threshold
+
+
 def low_gene_count_mask(data: pd.DataFrame, threshold: Optional[int]) -> pd.Series:
     """
     Returns a boolean Series (indexed by cell) that is True for cells with fewer
@@ -138,6 +148,16 @@ def low_gene_count_mask(data: pd.DataFrame, threshold: Optional[int]) -> pd.Seri
     if threshold is None:
         return pd.Series(False, index=data.index)
     return (data > 0).sum(axis=1) < threshold
+
+
+def high_gene_count_mask(data: pd.DataFrame, threshold: Optional[int]) -> pd.Series:
+    """
+    Returns a boolean Series (indexed by cell) that is True for cells with more
+    detected genes (count > 0) than the threshold. Flags nothing when threshold is None.
+    """
+    if threshold is None:
+        return pd.Series(False, index=data.index)
+    return (data > 0).sum(axis=1) > threshold
 
 
 def filter_doublets(data: pd.DataFrame, expected_doublet_rate: float = 0.05, threshold: Optional[float] = None) -> pd.DataFrame:

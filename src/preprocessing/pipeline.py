@@ -5,7 +5,9 @@ from .types import PreprocessingConfig
 from .filters import (
     filter_genes_by_max_count,
     filter_rrna_genes,
+    high_count_depth_mask,
     high_fraction_mask,
+    high_gene_count_mask,
     low_count_depth_mask,
     low_gene_count_mask,
 )
@@ -87,18 +89,24 @@ def run_filtering_pipeline(
     logger.info("Input: %s cells x %s genes",
                 raw_data.shape[0], raw_data.shape[1])
 
-    low_counts = low_count_depth_mask(raw_data, config.count_threshold)
-    low_genes = low_gene_count_mask(raw_data, config.gene_threshold)
+    low_counts = low_count_depth_mask(raw_data, config.min_count_threshold)
+    high_counts = high_count_depth_mask(raw_data, config.max_count_threshold)
+    low_genes = low_gene_count_mask(raw_data, config.min_gene_threshold)
+    high_genes = high_gene_count_mask(raw_data, config.max_gene_threshold)
     high_mito = high_fraction_mask(
         raw_data, mito_genes(species, annotation), config.mito_threshold, "mitochondrial")
     logger.info("Cells with count depth < %s: %s",
-                config.count_threshold, int(low_counts.sum()))
+                config.min_count_threshold, int(low_counts.sum()))
+    logger.info("Cells with count depth > %s: %s",
+                config.max_count_threshold, int(high_counts.sum()))
     logger.info("Cells with genes detected < %s: %s",
-                config.gene_threshold, int(low_genes.sum()))
+                config.min_gene_threshold, int(low_genes.sum()))
+    logger.info("Cells with genes detected > %s: %s",
+                config.max_gene_threshold, int(high_genes.sum()))
     logger.info("Cells with high mitochondrial fraction: %s",
                 int(high_mito.sum()))
 
-    failed_qc = low_counts | low_genes | high_mito
+    failed_qc = low_counts | high_counts | low_genes | high_genes | high_mito
     logger.info("Dropped %s cells failing cell QC", int(failed_qc.sum()))
 
     data = raw_data.loc[~failed_qc]

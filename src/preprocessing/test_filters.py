@@ -9,7 +9,9 @@ from .filters import (
     filter_high_apoptosis_cells,
     filter_rrna_genes,
     filter_doublets,
+    high_count_depth_mask,
     high_fraction_mask,
+    high_gene_count_mask,
     low_count_depth_mask,
     low_gene_count_mask,
 )
@@ -267,6 +269,18 @@ def test_low_count_depth_mask_flags_cells_below_threshold():
         'Cell_Border': False, 'Cell_Good': False, 'Cell_Bad': True}
 
 
+def test_high_count_depth_mask_flags_cells_above_threshold():
+    data = pd.DataFrame({
+        'Gene_A': [5, 10, 1],
+        'Gene_B': [5, 1, 1],
+    }, index=['Cell_Border', 'Cell_Bad', 'Cell_Good'])
+
+    mask = high_count_depth_mask(data, threshold=10)
+
+    assert mask.to_dict() == {
+        'Cell_Border': False, 'Cell_Bad': True, 'Cell_Good': False}
+
+
 def test_low_gene_count_mask_flags_cells_below_threshold():
     data = pd.DataFrame({
         'Gene_A': [5, 100, 1],
@@ -280,8 +294,23 @@ def test_low_gene_count_mask_flags_cells_below_threshold():
         'Cell_Border': False, 'Cell_Bad': True, 'Cell_Good': False}
 
 
-def test_low_masks_without_threshold_flag_nothing():
+def test_high_gene_count_mask_flags_cells_above_threshold():
+    data = pd.DataFrame({
+        'Gene_A': [5, 1, 1],
+        'Gene_B': [5, 1, 0],
+        'Gene_C': [0, 1, 0],
+    }, index=['Cell_Border', 'Cell_Bad', 'Cell_Good'])
+
+    mask = high_gene_count_mask(data, threshold=2)
+
+    assert mask.to_dict() == {
+        'Cell_Border': False, 'Cell_Bad': True, 'Cell_Good': False}
+
+
+def test_count_and_gene_masks_without_threshold_flag_nothing():
     data = pd.DataFrame({'Gene_A': [0, 1]}, index=['C1', 'C2'])
 
     assert not low_count_depth_mask(data, threshold=None).any()
+    assert not high_count_depth_mask(data, threshold=None).any()
     assert not low_gene_count_mask(data, threshold=None).any()
+    assert not high_gene_count_mask(data, threshold=None).any()
