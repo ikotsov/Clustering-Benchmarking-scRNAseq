@@ -1,0 +1,134 @@
+{
+  "log_cpm": {
+    "pca": {
+      "leiden": {
+        "objective_metric": "mean_external_score",
+        "best_params": {
+          "resolution": 2.3638887489744818
+        },
+        "best_value": 0.6052319916818495
+      },
+      "birch": {
+        "objective_metric": "mean_external_score",
+        "best_params": {
+          "threshold": 0.8116262258099887,
+          "branching_factor": 97
+        },
+        "best_value": 0.46530899997285347
+      },
+      "hdbscan": {
+        "objective_metric": "mean_external_score",
+        "best_params": {
+          "min_cluster_size": 7,
+          "min_samples": 2
+        },
+        "best_value": 0.42179261078931546
+      },
+      "optics": {
+        "objective_metric": "mean_external_score",
+        "best_params": {
+          "min_samples": 5
+        },
+        "best_value": 0.3371984319766495
+      }
+    },
+    "no_pca": {
+      "leiden": {
+        "objective_metric": "mean_external_score",
+        "best_params": {
+          "resolution": 1.6630904930042263
+        },
+        "best_value": 0.557808328581319
+      },
+      "birch": {
+        "objective_metric": "mean_external_score",
+        "best_params": {
+          "threshold": 0.8116262258099887,
+          "branching_factor": 97
+        },
+        "best_value": 0.4772862778110323
+      },
+      "hdbscan": {
+        "objective_metric": "mean_external_score",
+        "best_params": {
+          "min_cluster_size": 7,
+          "min_samples": 2
+        },
+        "best_value": 0.3929671762331135
+      },
+      "optics": {
+        "objective_metric": "mean_external_score",
+        "best_params": {
+          "min_samples": 9
+        },
+        "best_value": 0.21881682968589364
+      }
+    }
+  },
+  "pearson": {
+    "pca": {
+      "leiden": {
+        "objective_metric": "mean_external_score",
+        "best_params": {
+          "resolution": 0.2684424752877784
+        },
+        "best_value": 0.5251552913651257
+      },
+      "birch": {
+        "objective_metric": "mean_external_score",
+        "best_params": {
+          "threshold": 0.8116262258099887,
+          "branching_factor": 97
+        },
+        "best_value": 0.4996396674558823
+      },
+      "hdbscan": {
+        "objective_metric": "mean_external_score",
+        "best_params": {
+          "min_cluster_size": 7,
+          "min_samples": 2
+        },
+        "best_value": 0.3401552714990666
+      },
+      "optics": {
+        "objective_metric": "mean_external_score",
+        "best_params": {
+          "min_samples": 6
+        },
+        "best_value": 0.32858434195459085
+      }
+    },
+    "no_pca": {
+      "leiden": {
+        "objective_metric": "mean_external_score",
+        "best_params": {
+          "resolution": 0.2684424752877784
+        },
+        "best_value": 0.5251552913651257
+      },
+      "birch": {
+        "objective_metric": "mean_external_score",
+        "best_params": {
+          "threshold": 0.8116262258099887,
+          "branching_factor": 97
+        },
+        "best_value": 0.552847658068134
+      },
+      "hdbscan": {
+        "objective_metric": "mean_external_score",
+        "best_params": {
+          "min_cluster_size": 7,
+          "min_samples": 2
+        },
+        "best_value": 0.3176974114263747
+      },
+      "optics": {
+        "objective_metric": "mean_external_score",
+        "best_params": {
+          "min_samples": 5
+        },
+        "best_value": 0.22057687955534386
+      }
+    }
+  }
+}

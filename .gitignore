@@ -220,6 +220,7 @@ __marimo__/
 data/**
 !data/**/
 !data/**/config.yaml
+!data/datasets/README.md
 !data/**/outputs/*.json
 !data/**/outputs/*.tsv
 
