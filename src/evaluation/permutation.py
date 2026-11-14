@@ -11,10 +11,15 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import pairwise_distances
 
 from src.evaluation.extrinsic import EXTERNAL_METRICS, score_external
-from src.evaluation.intrinsic import INTERNAL_METRICS, LOWER_IS_BETTER, are_internal_metrics_defined, score_internal
+from src.evaluation.intrinsic import (
+    INTERNAL_METRICS,
+    LOWER_IS_BETTER,
+    are_internal_metrics_defined,
+    precompute_distances,
+    score_internal,
+)
 from src.types import PathLike
 
 
@@ -50,7 +55,7 @@ def compute_null_distribution(
     X = data.loc[labels_pred.index].to_numpy()
 
     # Silhouette needs every pairwise distance; computing them once saves recomputing them for each shuffle.
-    distances = pairwise_distances(X) if are_internal_metrics_defined(labels_pred) else None
+    distances = precompute_distances(X) if are_internal_metrics_defined(labels_pred) else None
 
     rows = []
     for i, y_perm in enumerate(permuted):

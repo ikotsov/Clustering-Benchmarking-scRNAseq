@@ -1,4 +1,5 @@
-from typing import Literal, get_args
+from collections.abc import Callable, Iterable
+from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -6,16 +7,17 @@ from numpy.typing import ArrayLike
 from sklearn.metrics import (
     calinski_harabasz_score,
     davies_bouldin_score,
+    pairwise_distances,
     silhouette_score,
 )
 
 
-InternalMetric = Literal["silhouette", "calinski_harabasz", "davies_bouldin"]
-INTERNAL_METRICS: list[InternalMetric] = list(get_args(InternalMetric))
-LOWER_IS_BETTER: set[InternalMetric] = {"davies_bouldin"}
+Matrix = np.ndarray | pd.DataFrame
 
 
-def evaluate_clustering_internally(data: pd.DataFrame, labels_pred: pd.Series) -> dict[str, float | None]:
+def evaluate_clustering_internally(
+    data: pd.DataFrame, labels_pred: pd.Series,
+) -> dict["InternalMetric", float | None]:
     """
     Computes internal clustering metrics that do not require ground truth labels.
     Uses the raw feature data to assess cluster cohesion and separation.
@@ -42,30 +44,60 @@ def evaluate_clustering_internally(data: pd.DataFrame, labels_pred: pd.Series) -
     return score_internal(X, y)
 
 
+def compute_silhouette(X: Matrix, labels: ArrayLike, distances: np.ndarray | None = None) -> float:
+    if distances is None:
+        return float(silhouette_score(X, labels))
+    return float(silhouette_score(distances, labels, metric="precomputed"))
+
+
+def compute_calinski_harabasz(X: Matrix, labels: ArrayLike, distances: np.ndarray | None = None) -> float:
+    return float(calinski_harabasz_score(X, labels))
+
+
+def compute_davies_bouldin(X: Matrix, labels: ArrayLike, distances: np.ndarray | None = None) -> float:
+    return float(davies_bouldin_score(X, labels))
+
+
+InternalMetric = Literal["silhouette", "calinski_harabasz", "davies_bouldin"]
+INTERNAL_METRICS: dict[InternalMetric, Callable[[Matrix, ArrayLike, np.ndarray | None], float]] = {
+    "silhouette": compute_silhouette,
+    "calinski_harabasz": compute_calinski_harabasz,
+    "davies_bouldin": compute_davies_bouldin,
+}
+LOWER_IS_BETTER: set[InternalMetric] = {"davies_bouldin"}
+USES_DISTANCES: set[InternalMetric] = {"silhouette"}
+
+
 def score_internal(
-    X: np.ndarray | pd.DataFrame,
+    X: Matrix,
     labels: ArrayLike,
     distances: np.ndarray | None = None,
-) -> dict[str, float | None]:
+    metrics: Iterable[InternalMetric] = INTERNAL_METRICS,
+) -> dict[InternalMetric, float | None]:
     """
-    Scores already aligned data and labels with every internal metric (INTERNAL_METRICS),
+    Scores already aligned data and labels with the given internal metrics (all of INTERNAL_METRICS by default),
     all None when they are undefined for the labels (see are_internal_metrics_defined).
 
-    distances : optional precomputed pairwise distances of X, so that scoring many labelings of
-    the same data (e.g. the shuffles of the permutation test) computes them only once.
+    distances : optional precomputed pairwise distances of X (see precompute_distances), so that scoring many
+    labelings of the same data (e.g. the shuffles of the permutation test) computes them only once.
     """
+    metrics = list(metrics)
     if not are_internal_metrics_defined(labels):
-        return dict.fromkeys(INTERNAL_METRICS, None)
+        return dict.fromkeys(metrics, None)
+    return {metric: INTERNAL_METRICS[metric](X, labels, distances) for metric in metrics}
 
-    silhouette = (
-        silhouette_score(X, labels) if distances is None
-        else silhouette_score(distances, labels, metric="precomputed")
-    )
-    return {
-        "silhouette": float(silhouette),
-        "calinski_harabasz": float(calinski_harabasz_score(X, labels)),
-        "davies_bouldin": float(davies_bouldin_score(X, labels)),
-    }
+
+def precompute_distances(
+    X: np.ndarray,
+    metrics: Iterable[InternalMetric] = INTERNAL_METRICS,
+) -> np.ndarray | None:
+    """
+    The pairwise distances of X to pass to score_internal when scoring many labelings of X with metrics,
+    or None when none of the metrics uses them.
+    """
+    if USES_DISTANCES.isdisjoint(metrics):
+        return None
+    return pairwise_distances(X)
 
 
 def are_internal_metrics_defined(labels: ArrayLike) -> bool:

@@ -7,7 +7,6 @@ from typing import Literal, TypedDict, cast
 import optuna
 import pandas as pd
 from optuna.samplers import TPESampler
-from sklearn.metrics import pairwise_distances
 
 from src.clustering.registry import (
     ALGORITHMS_REQUIRING_N_CLUSTERS,
@@ -18,7 +17,7 @@ from src.constants import SEED
 from src.data_loading import load_ground_truth_labels
 from src.dataset_config import load_dataset_config, parse_n_clusters
 from src.evaluation.extrinsic import score_external
-from src.evaluation.intrinsic import LOWER_IS_BETTER, score_internal
+from src.evaluation.intrinsic import LOWER_IS_BETTER, precompute_distances, score_internal
 from src.paths import get_pca_label
 from src.tuning.common import (
     DEFAULT_NORM_METHOD,
@@ -176,16 +175,15 @@ def _internal_scorer(
     objective_metric: InternalObjectiveMetric,
 ) -> Callable[[pd.Series], float]:
     X = data.to_numpy()
-    # score_internal always computes silhouette, which needs every pairwise distance;
-    # computing them once saves recomputing them for each trial.
-    distances = pairwise_distances(X)
+    # Computed once rather than in every trial, when the metric uses them (silhouette).
+    distances = precompute_distances(X, [objective_metric])
     # Trials whose labels leave the metric undefined get its worst value, steering the search away from them.
     worst = math.inf if objective_metric in LOWER_IS_BETTER else -math.inf
 
     def score(labels_pred: pd.Series) -> float:
-        value = score_internal(
-            X, labels_pred.loc[data.index].to_numpy(), distances)[objective_metric]
-        return worst if value is None else float(value)
+        labels = labels_pred.loc[data.index].to_numpy()
+        value = score_internal(X, labels, distances, metrics=[objective_metric])[objective_metric]
+        return worst if value is None else value
 
     return score
 
