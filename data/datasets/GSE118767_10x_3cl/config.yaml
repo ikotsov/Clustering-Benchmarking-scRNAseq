@@ -1,0 +1,11 @@
+protocol: "10x Chromium"
+tissue: "Lung cancer cell lines"
+n_clusters: 3
+species: "human"
+preprocessing:
+  mito_threshold: 0.13
+  min_gene_max_count: 2
+  min_count_threshold: null
+  min_gene_threshold: null
+  max_count_threshold: null
+  max_gene_threshold: null

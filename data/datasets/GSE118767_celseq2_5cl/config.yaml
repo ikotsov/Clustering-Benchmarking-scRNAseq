@@ -1,0 +1,9 @@
+protocol: "CEL-seq2"
+tissue: "Lung cancer cell lines"
+n_clusters: 5
+species: "human"
+preprocessing:
+  mito_threshold: 0.3
+  min_gene_max_count: 2
+  max_count_threshold: null
+  max_gene_threshold: null
