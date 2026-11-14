@@ -29,7 +29,7 @@ from src.tuning.common import (
     load_preprocessed_data,
     save_tuning_results,
 )
-from src.types import NormMethod, PathLike, TuningObjective
+from src.types import NormMethod, PathLike
 
 
 logger = logging.getLogger(__name__)
@@ -69,15 +69,14 @@ def run_tuning(
     n_trials: int = 50,
     norm_method: NormMethod = DEFAULT_NORM_METHOD,
     with_pca: bool = True,
-    objective: TuningObjective = 'external',
     objective_metric: ObjectiveMetric = 'mean_external_score',
 ) -> None:
     """
     Tunes the parameters of one algorithm with Optuna and saves the best ones (see save_tuning_results).
 
-    External objective metrics score each trial against the ground truth labels (labels_path);
-    internal ones score the clusters on the data alone, as a user without labels would tune,
-    so labels_path is not needed. objective_metric must belong to objective.
+    The objective follows from objective_metric (see get_tuning_objective). External metrics score each
+    trial against the ground truth labels (labels_path, required); internal ones score the clusters on the
+    data alone, as a user without labels would tune, so labels_path must then be left out.
     """
     if n_trials <= 0:
         raise ValueError("n_trials must be > 0")
@@ -86,16 +85,19 @@ def run_tuning(
         raise ValueError(
             f"Tuning is not configured for '{algorithm}'. Supported: {supported}")
 
-    if get_tuning_objective(objective_metric) != objective:
-        raise ValueError(f"'{objective_metric}' is not an {objective} metric")
+    objective = get_tuning_objective(objective_metric)
+    if objective == "external" and labels_path is None:
+        raise ValueError(
+            f"'{objective_metric}' is an external metric: it needs the ground truth labels (labels_path)")
+    if objective == "internal" and labels_path is not None:
+        raise ValueError(
+            f"'{objective_metric}' is an internal metric: tuning on it must not see the ground truth labels")
 
     data = load_preprocessed_data(data_path)
 
     score: Callable[[pd.Series], float]
     if objective == "external":
-        if labels_path is None:
-            raise ValueError(
-                f"Tuning on '{objective_metric}' needs the ground truth labels (labels_path)")
+        assert labels_path is not None
         score = _external_scorer(
             load_ground_truth_labels(labels_path), cast(ExternalObjectiveMetric, objective_metric))
     else:

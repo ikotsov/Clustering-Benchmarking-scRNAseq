@@ -10,12 +10,11 @@ Runs an Optuna search on the given representation (PCA or not) and saves the bes
         --algorithm leiden \\
         --norm-method log_cpm \\
         --pca \\
-        --objective external \\
         --objective-metric mean_external_score \\
         --out data/datasets/E-MTAB-3321/outputs/tuning/external/log_cpm/pca/leiden.json
 
-Internal tuning (e.g. --objective internal --objective-metric silhouette) does not use the ground truth,
-so --labels can be left out.
+Internal metrics (e.g. --objective-metric silhouette) tune without the ground truth, so --labels must
+then be left out; external metrics need it.
 """
 import argparse
 from pathlib import Path
@@ -24,7 +23,7 @@ from typing import get_args
 from src.logging_config import configure_logging
 from src.tuning.algorithms import ALGORITHM_PARAM_SPECS, run_tuning
 from src.tuning.common import ObjectiveMetric
-from src.types import NormMethod, TuningObjective
+from src.types import NormMethod
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -43,10 +42,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help="Whether --data is the PCA representation (--pca / --no-pca)")
     parser.add_argument("--n-trials", type=int, default=50,
                         help="Number of Optuna trials (default: %(default)s)")
-    parser.add_argument("--objective", choices=get_args(TuningObjective), required=True,
-                        help="Whether to tune against the ground truth labels (external) or without them (internal)")
     parser.add_argument("--objective-metric", choices=get_args(ObjectiveMetric), default="mean_external_score",
-                        help="Metric to optimize, one of the --objective metrics (default: %(default)s)")
+                        help="Metric to optimize: an external one scores against --labels, an internal one"
+                             " scores without them (default: %(default)s)")
     parser.add_argument("--out", type=Path, required=True,
                         help="Where to save the tuning result (JSON)")
     return parser.parse_args(argv)
@@ -64,7 +62,6 @@ def main(argv: list[str] | None = None) -> None:
         n_trials=args.n_trials,
         norm_method=args.norm_method,
         with_pca=args.pca,
-        objective=args.objective,
         objective_metric=args.objective_metric,
     )
 

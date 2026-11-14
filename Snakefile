@@ -166,7 +166,7 @@ rule tune:
         "python {SCRIPTS}/tune.py --data {input.data} --config {input.config} {params.labels_arg}"
         " --algorithm {wildcards.algorithm} --norm-method {wildcards.norm_method} {params.pca_flag}"
         " --n-trials {params.n_trials}"
-        " --objective {wildcards.objective} --objective-metric {params.objective_metric}"
+        " --objective-metric {params.objective_metric}"
         " --out {output} 2> {log}"
 
 
