@@ -29,8 +29,7 @@ from src.tuning.common import (
     load_preprocessed_data,
     save_tuning_results,
 )
-from src.tuning.types import TuningObjective
-from src.types import NormMethod, PathLike
+from src.types import NormMethod, PathLike, TuningObjective
 
 
 logger = logging.getLogger(__name__)

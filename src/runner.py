@@ -32,8 +32,7 @@ from src.evaluation import (
 from src.constants import DATASETS_DIR, PCA_VARIANCE_RATIO, SEED
 from src.paths import get_params_label, get_pca_label, processed_data_path
 from src.profiling import measure_resources
-from src.tuning.types import TuningObjective
-from src.types import NormMethod, PathLike, Species
+from src.types import NormMethod, PathLike, Species, TuningObjective
 from src.evaluation.biological.types import EnrichmentSetName
 
 logger = logging.getLogger(__name__)

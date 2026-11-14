@@ -24,8 +24,7 @@ from typing import get_args
 from src.logging_config import configure_logging
 from src.tuning.algorithms import ALGORITHM_PARAM_SPECS, run_tuning
 from src.tuning.common import ObjectiveMetric
-from src.tuning.types import TuningObjective
-from src.types import NormMethod
+from src.types import NormMethod, TuningObjective
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:

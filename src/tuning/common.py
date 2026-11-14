@@ -11,8 +11,7 @@ from src.evaluation.intrinsic import InternalMetric
 from src.data_loading import load_csv_data
 from src.clustering.registry import ClusteringAlgorithm
 from src.paths import get_pca_label
-from src.tuning.types import TuningObjective
-from src.types import NormMethod, PathLike
+from src.types import NormMethod, PathLike, TuningObjective
 
 
 DEFAULT_NORM_METHOD: NormMethod = 'log_cpm'

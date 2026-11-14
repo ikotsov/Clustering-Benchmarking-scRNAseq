@@ -7,7 +7,7 @@ can use them directly as rule patterns, while scripts and notebooks fill them in
 from pathlib import Path
 
 from src.constants import PROJECT_ROOT
-from src.tuning.types import TuningObjective
+from src.types import TuningObjective
 
 
 DATASET_DIR = "data/datasets/{accession}"

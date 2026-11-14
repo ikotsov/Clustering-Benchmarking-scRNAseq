@@ -9,8 +9,7 @@ import pandas as pd
 
 from src.evaluation.biological.types import BiologicalComparisonRecord
 from src.evaluation.permutation import load_null_distribution, summarize_null
-from src.tuning.types import TuningObjective
-from src.types import PathLike
+from src.types import PathLike, TuningObjective
 from src.paths import get_params_label, get_pca_label
 
 
