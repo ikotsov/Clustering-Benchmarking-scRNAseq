@@ -10,7 +10,12 @@ Runs an Optuna search on the given representation (PCA or not) and saves the bes
         --algorithm leiden \\
         --norm-method log_cpm \\
         --pca \\
-        --out data/datasets/E-MTAB-3321/outputs/tuning/log_cpm/pca/leiden.json
+        --objective external \\
+        --objective-metric mean_external_score \\
+        --out data/datasets/E-MTAB-3321/outputs/tuning/external/log_cpm/pca/leiden.json
+
+Internal tuning (e.g. --objective internal --objective-metric silhouette) does not use the ground truth,
+so --labels can be left out.
 """
 import argparse
 from pathlib import Path
@@ -19,6 +24,7 @@ from typing import get_args
 from src.logging_config import configure_logging
 from src.tuning.algorithms import ALGORITHM_PARAM_SPECS, run_tuning
 from src.tuning.common import ObjectiveMetric
+from src.tuning.types import TuningObjective
 from src.types import NormMethod
 
 
@@ -29,8 +35,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help="Preprocessed data to tune on (gzipped CSV)")
     parser.add_argument("--config", type=Path, required=True,
                         help="Dataset config.yaml (n_clusters)")
-    parser.add_argument("--labels", type=Path, required=True,
-                        help="Ground truth labels CSV")
+    parser.add_argument("--labels", type=Path, default=None,
+                        help="Ground truth labels CSV (needed by the external objective metrics)")
     parser.add_argument("--algorithm", choices=tuple(ALGORITHM_PARAM_SPECS), required=True)
     parser.add_argument("--norm-method", choices=get_args(NormMethod), required=True,
                         help="Normalization the data was preprocessed with (recorded in the result)")
@@ -38,8 +44,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help="Whether --data is the PCA representation (--pca / --no-pca)")
     parser.add_argument("--n-trials", type=int, default=50,
                         help="Number of Optuna trials (default: %(default)s)")
+    parser.add_argument("--objective", choices=get_args(TuningObjective), required=True,
+                        help="Whether to tune against the ground truth labels (external) or without them (internal)")
     parser.add_argument("--objective-metric", choices=get_args(ObjectiveMetric), default="mean_external_score",
-                        help="Metric to maximize (default: %(default)s)")
+                        help="Metric to optimize, one of the --objective metrics (default: %(default)s)")
     parser.add_argument("--out", type=Path, required=True,
                         help="Where to save the tuning result (JSON)")
     return parser.parse_args(argv)
@@ -57,6 +65,7 @@ def main(argv: list[str] | None = None) -> None:
         n_trials=args.n_trials,
         norm_method=args.norm_method,
         with_pca=args.pca,
+        objective=args.objective,
         objective_metric=args.objective_metric,
     )
 

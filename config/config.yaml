@@ -25,7 +25,9 @@ tuning:
   # Tuned before benchmarking; the other algorithms run with their defaults.
   algorithms: [leiden, birch, hdbscan, optics]
   n_trials: 50
-  objective_metric: mean_external_score
+  objectives:
+    external: mean_external_score
+    internal: silhouette
 
 permutation_test:
   n_permutations: 1000

@@ -7,9 +7,9 @@ and the predicted labels of its runs into its labels table (TSV), e.g.:
         --out data/datasets/E-MTAB-3321/outputs/results.tsv \\
         --out-labels data/datasets/E-MTAB-3321/outputs/labels.tsv \\
         data/datasets/E-MTAB-3321/outputs/runs/log_cpm/pca/default/kmeans.json \\
-        data/datasets/E-MTAB-3321/outputs/runs/log_cpm/pca/tuned/leiden.json \\
+        data/datasets/E-MTAB-3321/outputs/runs/log_cpm/pca/tuned_external/leiden.json \\
         --run-labels data/datasets/E-MTAB-3321/outputs/runs/log_cpm/pca/default/kmeans_labels.csv \\
-                     data/datasets/E-MTAB-3321/outputs/runs/log_cpm/pca/tuned/leiden_labels.csv
+                     data/datasets/E-MTAB-3321/outputs/runs/log_cpm/pca/tuned_external/leiden_labels.csv
 """
 import argparse
 from pathlib import Path

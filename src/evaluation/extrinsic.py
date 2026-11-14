@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Callable
+from typing import Literal
 
 import pandas as pd
 from numpy.typing import ArrayLike
@@ -46,7 +47,8 @@ def compute_jaccard(y_true: ArrayLike, y_pred: ArrayLike) -> float:
     return tp / (tp + fp + fn) if (tp + fp + fn) > 0 else 0.0
 
 
-EXTERNAL_METRICS: dict[str, Callable[[ArrayLike, ArrayLike], float]] = {
+ExternalMetric = Literal["ari", "nmi", "jaccard"]
+EXTERNAL_METRICS: dict[ExternalMetric, Callable[[ArrayLike, ArrayLike], float]] = {
     "ari": compute_ari,
     "nmi": compute_nmi,
     "jaccard": compute_jaccard,

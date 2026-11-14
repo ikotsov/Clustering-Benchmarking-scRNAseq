@@ -32,6 +32,7 @@ from src.evaluation import (
 from src.constants import DATASETS_DIR, PCA_VARIANCE_RATIO, SEED
 from src.paths import get_params_label, get_pca_label, processed_data_path
 from src.profiling import measure_resources
+from src.tuning.types import TuningObjective
 from src.types import NormMethod, PathLike, Species
 from src.evaluation.biological.types import EnrichmentSetName
 
@@ -166,6 +167,7 @@ def run_experiment(
     labels_output_path: PathLike,
     norm_method: NormMethod = "pearson",
     with_pca: bool = True,
+    tuning_objective: TuningObjective | None = None,
 ):
     """
     Orchestrates the clustering flow: Load preprocessed data -> Cluster -> Evaluate -> Save.
@@ -194,11 +196,14 @@ def run_experiment(
         Where to save the predicted cluster of each cell (CSV), e.g. for plotting on the UMAP
     norm_method : NormMethod, default="pearson"
         Normalization method ("pearson" or "log_cpm")
+    tuning_objective : TuningObjective or None
+        Objective params_path was tuned on ("external" or "internal"); None, like params_path, for the defaults
     """
-    tuned = params_path is not None
+    if (params_path is None) != (tuning_objective is None):
+        raise ValueError("params_path and tuning_objective must be given together")
     pca_tag = get_pca_label(with_pca).upper()
     logger.info("EXPERIMENT: %s + %s + %s + %s",
-                accession, algo_name.upper(), pca_tag, get_params_label(tuned).upper())
+                accession, algo_name.upper(), pca_tag, get_params_label(tuning_objective).upper())
 
     # 2. Load preprocessed data
     if not os.path.exists(data_path):
@@ -269,7 +274,7 @@ def run_experiment(
         algorithm=algo_name,
         preprocessing=norm_method,
         with_pca=with_pca,
-        tuned=tuned,
+        tuning_objective=tuning_objective,
         metrics=metrics,
         output_path=result_path,
         n_cells=target_data.shape[0],

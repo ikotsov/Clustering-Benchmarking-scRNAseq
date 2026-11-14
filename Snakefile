@@ -6,7 +6,8 @@ Clustering benchmark workflow:
                           \\-> embed (2D UMAP for plots only)
 
 Every algorithm is benchmarked with its default parameters; the tuned algorithms are benchmarked
-a second time with the parameters tuned on the same normalization + PCA representation.
+again with the parameters tuned on the same normalization + PCA representation, once per tuning
+objective: external (against the ground truth labels) and internal (on the clusters alone, as without labels).
 permutation_test scores shuffles of each run's predicted labels, so that results.tsv can compare
 every run with random labels of the same cluster sizes (null means and empirical p-values).
 
@@ -34,6 +35,9 @@ DATASETS = config["datasets"]
 NORM_METHODS = config["norm_methods"]
 ALGORITHMS = config["algorithms"]
 TUNED_ALGORITHMS = config["tuning"]["algorithms"]
+TUNING_OBJECTIVES = config["tuning"]["objectives"]
+# Tuned runs are labelled by their objective, e.g. "tuned_internal"
+TUNED_PARAMS = [f"tuned_{objective}" for objective in TUNING_OBJECTIVES]
 PCA_OPTIONS = ["pca", "no_pca"]
 
 SCRIPTS = f"{workflow.basedir}/scripts"
@@ -45,7 +49,8 @@ wildcard_constraints:
     accession="|".join(DATASETS),
     norm_method="|".join(NORM_METHODS),
     pca="pca|no_pca",
-    params="tuned|default",
+    objective="|".join(TUNING_OBJECTIVES),
+    params="|".join(["default", *TUNED_PARAMS]),
     algorithm="|".join(ALGORITHMS),
 
 
@@ -71,8 +76,13 @@ def benchmark_inputs(wildcards):
         return inputs
     if wildcards.algorithm not in TUNED_ALGORITHMS:
         raise ValueError(f"'{wildcards.algorithm}' is not tuned, so it has no tuned run")
-    inputs["params"] = paths.TUNING_RESULT.format(**dict(wildcards.items()))
+    inputs["params"] = paths.TUNING_RESULT.format(
+        **dict(wildcards.items()), objective=tuning_objective(wildcards))
     return inputs
+
+
+def tuning_objective(wildcards):
+    return wildcards.params.removeprefix("tuned_")
 
 
 rule all:
@@ -139,29 +149,32 @@ rule tune:
     input:
         data=paths.PROCESSED_DATA,
         config=paths.DATASET_CONFIG,
-        labels=paths.GROUND_TRUTH_LABELS,
+        # Internal tuning never sees the ground truth labels
+        labels=lambda wildcards: paths.GROUND_TRUTH_LABELS if wildcards.objective == "external" else [],
     output:
         paths.TUNING_RESULT,
     params:
         n_trials=config["tuning"]["n_trials"],
-        objective_metric=config["tuning"]["objective_metric"],
+        objective_metric=lambda wildcards: TUNING_OBJECTIVES[wildcards.objective],
         pca_flag=lambda wildcards: "--pca" if wildcards.pca == "pca" else "--no-pca",
+        labels_arg=lambda wildcards, input: f"--labels {input.labels}" if input.labels else "",
     log:
-        "logs/tune/{accession}/{norm_method}/{pca}/{algorithm}.log",
+        "logs/tune/{accession}/{objective}/{norm_method}/{pca}/{algorithm}.log",
     benchmark:
-        "benchmarks/tune/{accession}/{norm_method}/{pca}/{algorithm}.tsv",
+        "benchmarks/tune/{accession}/{objective}/{norm_method}/{pca}/{algorithm}.tsv",
     shell:
-        "python {SCRIPTS}/tune.py --data {input.data} --config {input.config} --labels {input.labels}"
+        "python {SCRIPTS}/tune.py --data {input.data} --config {input.config} {params.labels_arg}"
         " --algorithm {wildcards.algorithm} --norm-method {wildcards.norm_method} {params.pca_flag}"
-        " --n-trials {params.n_trials} --objective-metric {params.objective_metric}"
+        " --n-trials {params.n_trials}"
+        " --objective {wildcards.objective} --objective-metric {params.objective_metric}"
         " --out {output} 2> {log}"
 
 
 rule aggregate_tuning:
     input:
         expand(
-            paths.TUNING_RESULT, norm_method=NORM_METHODS, pca=PCA_OPTIONS, algorithm=TUNED_ALGORITHMS,
-            allow_missing=True,
+            paths.TUNING_RESULT, objective=TUNING_OBJECTIVES, norm_method=NORM_METHODS, pca=PCA_OPTIONS,
+            algorithm=TUNED_ALGORITHMS, allow_missing=True,
         ),
     output:
         paths.CLUSTERING_PARAMS,
@@ -181,7 +194,10 @@ rule benchmark:
         labels=paths.RUN_LABELS,
     params:
         pca_flag=lambda wildcards: "--pca" if wildcards.pca == "pca" else "--no-pca",
-        params_arg=lambda wildcards, input: f"--params {input.params}" if "params" in input.keys() else "",
+        params_arg=lambda wildcards, input: (
+            f"--params {input.params} --tuning-objective {tuning_objective(wildcards)}"
+            if "params" in input.keys() else ""
+        ),
     log:
         "logs/benchmark/{accession}/{norm_method}/{pca}/{params}/{algorithm}.log",
     benchmark:
@@ -217,7 +233,7 @@ def expand_runs(template):
         template, params="default", algorithm=ALGORITHMS,
         norm_method=NORM_METHODS, pca=PCA_OPTIONS, allow_missing=True,
     ) + expand(
-        template, params="tuned", algorithm=TUNED_ALGORITHMS,
+        template, params=TUNED_PARAMS, algorithm=TUNED_ALGORITHMS,
         norm_method=NORM_METHODS, pca=PCA_OPTIONS, allow_missing=True,
     )
 

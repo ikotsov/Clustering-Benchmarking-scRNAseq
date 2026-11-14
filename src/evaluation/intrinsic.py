@@ -1,3 +1,5 @@
+from typing import Literal, get_args
+
 import numpy as np
 import pandas as pd
 from numpy.typing import ArrayLike
@@ -8,8 +10,9 @@ from sklearn.metrics import (
 )
 
 
-INTERNAL_METRICS = ["silhouette", "calinski_harabasz", "davies_bouldin"]
-LOWER_IS_BETTER = {"davies_bouldin"}
+InternalMetric = Literal["silhouette", "calinski_harabasz", "davies_bouldin"]
+INTERNAL_METRICS: list[InternalMetric] = list(get_args(InternalMetric))
+LOWER_IS_BETTER: set[InternalMetric] = {"davies_bouldin"}
 
 
 def evaluate_clustering_internally(data: pd.DataFrame, labels_pred: pd.Series) -> dict[str, float | None]:

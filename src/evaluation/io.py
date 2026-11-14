@@ -9,6 +9,7 @@ import pandas as pd
 
 from src.evaluation.biological.types import BiologicalComparisonRecord
 from src.evaluation.permutation import load_null_distribution, summarize_null
+from src.tuning.types import TuningObjective
 from src.types import PathLike
 from src.paths import get_params_label, get_pca_label
 
@@ -20,7 +21,7 @@ def save_run_result(
     algorithm: str,
     preprocessing: str,
     with_pca: bool,
-    tuned: bool,
+    tuning_objective: TuningObjective | None,
     metrics: dict[str, float | None],
     output_path: PathLike,
     n_cells: int,
@@ -35,7 +36,7 @@ def save_run_result(
           "algorithm": "kmeans",
           "normalization": "pearson",
           "with_pca": true,
-          "tuned": false,
+          "tuning_objective": null,
           "n_cells": 1500,
           "n_features": 32,
           "metrics": {...},
@@ -51,8 +52,8 @@ def save_run_result(
         Normalization method used (e.g. "log_cpm", "pearson")
     with_pca : bool
         Whether PCA was applied
-    tuned : bool
-        Whether the algorithm ran with tuned parameters (False: its defaults)
+    tuning_objective : TuningObjective or None
+        Objective of the tuned parameters the algorithm ran with ("external" or "internal"), None for its defaults
     metrics : dict
         Dictionary of metric names and values (e.g., {"ari": 0.85, "nmi": 0.78})
     output_path : PathLike
@@ -66,7 +67,7 @@ def save_run_result(
         "algorithm": algorithm,
         "normalization": preprocessing,
         "with_pca": with_pca,
-        "tuned": tuned,
+        "tuning_objective": tuning_objective,
         "n_cells": n_cells,
         "n_features": n_features,
         "metrics": metrics,
@@ -83,7 +84,7 @@ def save_run_result(
         algorithm,
         preprocessing,
         get_pca_label(with_pca),
-        get_params_label(tuned),
+        get_params_label(tuning_objective),
         output_path,
     )
 
@@ -99,7 +100,7 @@ def aggregate_run_results(
     with one row per run:
         dataset  algorithm  normalization  pca  params  n_cells  n_features  ari  nmi  ...  clustering_wall_time_s  ...
 
-    pca ("pca" / "no_pca") and params ("default" / "tuned") use the labels of the output paths
+    pca ("pca" / "no_pca") and params ("default" / "tuned_external" / "tuned_internal") use the labels of the output paths
     (see src.paths), so the table can be filtered with the same values the files are named by.
 
     With null_result_paths (the null distribution of each run, see save_null_distribution, in the order
@@ -189,7 +190,7 @@ def _run_columns(run: dict) -> dict[str, str]:
         "algorithm": run["algorithm"],
         "normalization": run["normalization"],
         "pca": get_pca_label(run["with_pca"]),
-        "params": get_params_label(run["tuned"]),
+        "params": get_params_label(run["tuning_objective"]),
     }
 
 

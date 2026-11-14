@@ -7,6 +7,7 @@ can use them directly as rule patterns, while scripts and notebooks fill them in
 from pathlib import Path
 
 from src.constants import PROJECT_ROOT
+from src.tuning.types import TuningObjective
 
 
 DATASET_DIR = "data/datasets/{accession}"
@@ -17,7 +18,7 @@ PROCESSED_DATA = DATASET_DIR + "/processed/{norm_method}/{pca}.csv.gz"
 HVGS = DATASET_DIR + "/processed/{norm_method}/hvgs.tsv"
 UMAP = DATASET_DIR + "/processed/{norm_method}/umap.csv.gz"
 TUNING_RESULT = DATASET_DIR + \
-    "/outputs/tuning/{norm_method}/{pca}/{algorithm}.json"
+    "/outputs/tuning/{objective}/{norm_method}/{pca}/{algorithm}.json"
 RUN_RESULT = DATASET_DIR + \
     "/outputs/runs/{norm_method}/{pca}/{params}/{algorithm}.json"
 RUN_LABELS = DATASET_DIR + \
@@ -44,20 +45,27 @@ def get_pca_label(with_pca: bool) -> str:
     return "pca" if with_pca else "no_pca"
 
 
-def get_params_label(tuned: bool) -> str:
-    return "tuned" if tuned else "default"
+def get_params_label(tuning_objective: TuningObjective | None) -> str:
+    """"default" for a run with the algorithm's defaults, else "tuned_<objective>" (e.g. "tuned_internal")."""
+    return "default" if tuning_objective is None else f"tuned_{tuning_objective}"
 
 
 def processed_data_path(accession: str, norm_method: str, with_pca: bool) -> Path:
     return resolve(PROCESSED_DATA, accession=accession, norm_method=norm_method, pca=get_pca_label(with_pca))
 
 
-def run_result_path(accession: str, norm_method: str, with_pca: bool, tuned: bool, algorithm: str) -> Path:
+def run_result_path(
+    accession: str,
+    norm_method: str,
+    with_pca: bool,
+    tuning_objective: TuningObjective | None,
+    algorithm: str,
+) -> Path:
     return resolve(
         RUN_RESULT,
         accession=accession,
         norm_method=norm_method,
         pca=get_pca_label(with_pca),
-        params=get_params_label(tuned),
+        params=get_params_label(tuning_objective),
         algorithm=algorithm,
     )

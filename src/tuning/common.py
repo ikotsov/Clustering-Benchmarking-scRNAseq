@@ -2,14 +2,16 @@ import json
 import os
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Literal, TypeAlias
+from typing import Literal, get_args
 
 import pandas as pd
 
-from src.evaluation import compute_ari, compute_nmi, compute_jaccard
+from src.evaluation.extrinsic import ExternalMetric
+from src.evaluation.intrinsic import InternalMetric
 from src.data_loading import load_csv_data
 from src.clustering.registry import ClusteringAlgorithm
 from src.paths import get_pca_label
+from src.tuning.types import TuningObjective
 from src.types import NormMethod, PathLike
 
 
@@ -26,24 +28,9 @@ def load_preprocessed_data(data_path: PathLike) -> pd.DataFrame:
     return load_csv_data(data_path)
 
 
-ObjectiveMetric = Literal["ari", "nmi", "jaccard", "mean_external_score"]
-
-
-ClusteringMetrics: TypeAlias = dict[ObjectiveMetric, float]
-
-
-def compute_clustering_metrics(pred: pd.Series, true: pd.Series) -> ClusteringMetrics:
-    metrics: ClusteringMetrics = {
-        "ari": compute_ari(true, pred),
-        "nmi": compute_nmi(true, pred),
-        "jaccard": compute_jaccard(true, pred),
-        "mean_external_score": 0.0,
-    }
-    metrics["mean_external_score"] = (
-        metrics["ari"] + metrics["nmi"] + metrics["jaccard"]
-    ) / 3.0
-    return metrics
-
+ExternalObjectiveMetric = Literal[ExternalMetric, "mean_external_score"]
+InternalObjectiveMetric = InternalMetric
+ObjectiveMetric = Literal[ExternalObjectiveMetric, InternalObjectiveMetric]
 
 def save_tuning_results(
     output_path: PathLike,
@@ -55,7 +42,7 @@ def save_tuning_results(
     objective_metric: ObjectiveMetric,
 ) -> PathLike:
     """
-    Save the tuning result of one algorithm + normalization + PCA option into its own JSON file,
+    Save the tuning result of one algorithm + normalization + PCA option + objective into its own JSON file,
     overwriting any previous result.
 
     Args:
@@ -65,7 +52,7 @@ def save_tuning_results(
         with_pca: Whether the PCA representation was tuned on
         best_params: Best hyperparameters found
         best_value: Best objective metric value
-        objective_metric: Which metric was optimized
+        objective_metric: Which metric was optimized (its objective, external or internal, is recorded too)
 
     Returns:
         Path to the saved results file
@@ -74,6 +61,7 @@ def save_tuning_results(
         "algorithm": algorithm,
         "normalization": norm_method,
         "with_pca": with_pca,
+        "objective": get_tuning_objective(objective_metric),
         "objective_metric": objective_metric,
         "best_params": best_params,
         "best_value": best_value,
@@ -86,22 +74,32 @@ def save_tuning_results(
     return output_path
 
 
+def get_tuning_objective(objective_metric: ObjectiveMetric) -> TuningObjective:
+    """Whether the metric scores against the ground truth labels (external) or not (internal)."""
+    if objective_metric in get_args(ExternalObjectiveMetric):
+        return "external"
+    if objective_metric in get_args(InternalObjectiveMetric):
+        return "internal"
+    raise ValueError(f"Unknown objective metric: {objective_metric}")
+
+
 def aggregate_tuning_results(
     tuning_result_paths: Iterable[PathLike],
     output_path: PathLike,
 ) -> None:
     """
     Collect per-job tuning result files (see save_tuning_results) into clustering_params.json,
-    organized hierarchically by norm_method > pca > algorithm. The file is rewritten from scratch,
+    organized hierarchically by objective > norm_method > pca > algorithm. The file is rewritten from scratch,
     so it holds exactly the given results.
     """
-    all_results: dict[str, dict[str, dict[str, dict]]] = {}
+    all_results: dict[str, dict[str, dict[str, dict[str, dict]]]] = {}
     for tuning_result_path in tuning_result_paths:
         with open(tuning_result_path, "r") as f:
             result = json.load(f)
 
         pca_label = get_pca_label(result["with_pca"])
-        all_results.setdefault(result["normalization"], {}).setdefault(pca_label, {})[result["algorithm"]] = {
+        all_results.setdefault(result["objective"], {}).setdefault(result["normalization"], {}).setdefault(
+            pca_label, {})[result["algorithm"]] = {
             "objective_metric": result["objective_metric"],
             "best_params": result["best_params"],
             "best_value": result["best_value"],
