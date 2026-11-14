@@ -1,0 +1,270 @@
+{
+  "log_cpm": {
+    "pca": {
+      "tuned_mean_external_score": {
+        "leiden": {
+          "objective": "external",
+          "best_params": {
+            "resolution": 0.37536428985574194
+          },
+          "best_value": 0.9735290740816399
+        },
+        "birch": {
+          "objective": "external",
+          "best_params": {
+            "threshold": 0.8116262258099887,
+            "branching_factor": 97
+          },
+          "best_value": 0.7956681632963467
+        },
+        "hdbscan": {
+          "objective": "external",
+          "best_params": {
+            "min_cluster_size": 11,
+            "min_samples": 4
+          },
+          "best_value": 0.921081871800228
+        },
+        "optics": {
+          "objective": "external",
+          "best_params": {
+            "min_samples": 9
+          },
+          "best_value": 0.8867526428390563
+        }
+      },
+      "tuned_silhouette": {
+        "leiden": {
+          "objective": "internal",
+          "best_params": {
+            "resolution": 0.10396757163064094
+          },
+          "best_value": 0.59060355575527
+        },
+        "birch": {
+          "objective": "internal",
+          "best_params": {
+            "threshold": 0.8116262258099887,
+            "branching_factor": 97
+          },
+          "best_value": 0.6208220992055238
+        },
+        "hdbscan": {
+          "objective": "internal",
+          "best_params": {
+            "min_cluster_size": 26,
+            "min_samples": 3
+          },
+          "best_value": 0.6118446174217537
+        },
+        "optics": {
+          "objective": "internal",
+          "best_params": {
+            "min_samples": 20
+          },
+          "best_value": 0.5938861701799525
+        }
+      }
+    },
+    "no_pca": {
+      "tuned_mean_external_score": {
+        "leiden": {
+          "objective": "external",
+          "best_params": {
+            "resolution": 1.1861663446573512
+          },
+          "best_value": 0.887470048802686
+        },
+        "birch": {
+          "objective": "external",
+          "best_params": {
+            "threshold": 0.8116262258099887,
+            "branching_factor": 97
+          },
+          "best_value": 0.7956681632963467
+        },
+        "hdbscan": {
+          "objective": "external",
+          "best_params": {
+            "min_cluster_size": 3,
+            "min_samples": 1
+          },
+          "best_value": 0.830553971809619
+        },
+        "optics": {
+          "objective": "external",
+          "best_params": {
+            "min_samples": 4
+          },
+          "best_value": 0.903550950588798
+        }
+      },
+      "tuned_silhouette": {
+        "leiden": {
+          "objective": "internal",
+          "best_params": {
+            "resolution": 0.2684424752877784
+          },
+          "best_value": 0.38923264603516294
+        },
+        "birch": {
+          "objective": "internal",
+          "best_params": {
+            "threshold": 0.8116262258099887,
+            "branching_factor": 97
+          },
+          "best_value": 0.3184246703049194
+        },
+        "hdbscan": {
+          "objective": "internal",
+          "best_params": {
+            "min_cluster_size": 7,
+            "min_samples": 2
+          },
+          "best_value": 0.3942106941417811
+        },
+        "optics": {
+          "objective": "internal",
+          "best_params": {
+            "min_samples": 13
+          },
+          "best_value": 0.3797314771969102
+        }
+      }
+    }
+  },
+  "pearson": {
+    "pca": {
+      "tuned_mean_external_score": {
+        "leiden": {
+          "objective": "external",
+          "best_params": {
+            "resolution": 0.2684424752877784
+          },
+          "best_value": 0.806322127110645
+        },
+        "birch": {
+          "objective": "external",
+          "best_params": {
+            "threshold": 0.8116262258099887,
+            "branching_factor": 97
+          },
+          "best_value": 0.7256970870078564
+        },
+        "hdbscan": {
+          "objective": "external",
+          "best_params": {
+            "min_cluster_size": 5,
+            "min_samples": 2
+          },
+          "best_value": 0.865451856798637
+        },
+        "optics": {
+          "objective": "external",
+          "best_params": {
+            "min_samples": 16
+          },
+          "best_value": 0.7444004280619682
+        }
+      },
+      "tuned_silhouette": {
+        "leiden": {
+          "objective": "internal",
+          "best_params": {
+            "resolution": 0.10536211882901883
+          },
+          "best_value": 0.5367019171108044
+        },
+        "birch": {
+          "objective": "internal",
+          "best_params": {
+            "threshold": 0.8116262258099887,
+            "branching_factor": 97
+          },
+          "best_value": 0.4765547297704289
+        },
+        "hdbscan": {
+          "objective": "internal",
+          "best_params": {
+            "min_cluster_size": 23,
+            "min_samples": 6
+          },
+          "best_value": 0.5362591677567441
+        },
+        "optics": {
+          "objective": "internal",
+          "best_params": {
+            "min_samples": 18
+          },
+          "best_value": 0.5207019867620272
+        }
+      }
+    },
+    "no_pca": {
+      "tuned_mean_external_score": {
+        "leiden": {
+          "objective": "external",
+          "best_params": {
+            "resolution": 1.3320658909314815
+          },
+          "best_value": 0.887470048802686
+        },
+        "birch": {
+          "objective": "external",
+          "best_params": {
+            "threshold": 0.8116262258099887,
+            "branching_factor": 97
+          },
+          "best_value": 0.7256970870078564
+        },
+        "hdbscan": {
+          "objective": "external",
+          "best_params": {
+            "min_cluster_size": 23,
+            "min_samples": 6
+          },
+          "best_value": 0.751933096036542
+        },
+        "optics": {
+          "objective": "external",
+          "best_params": {
+            "min_samples": 7
+          },
+          "best_value": 0.8656192641373691
+        }
+      },
+      "tuned_silhouette": {
+        "leiden": {
+          "objective": "internal",
+          "best_params": {
+            "resolution": 0.2684424752877784
+          },
+          "best_value": 0.36718040561490917
+        },
+        "birch": {
+          "objective": "internal",
+          "best_params": {
+            "threshold": 0.8116262258099887,
+            "branching_factor": 97
+          },
+          "best_value": 0.23688828435634127
+        },
+        "hdbscan": {
+          "objective": "internal",
+          "best_params": {
+            "min_cluster_size": 7,
+            "min_samples": 2
+          },
+          "best_value": 0.36718040561490917
+        },
+        "optics": {
+          "objective": "internal",
+          "best_params": {
+            "min_samples": 9
+          },
+          "best_value": 0.3146126540433005
+        }
+      }
+    }
+  }
+}
