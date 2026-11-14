@@ -27,6 +27,18 @@ GSE118767_10x_5cl:
   counts: data/datasets/GSE118767_10x_5cl/raw/GSM3618014_gene_count.csv.gz
   metadata: data/datasets/GSE118767_10x_5cl/raw/sc_10x_5cl.metadata.csv.gz
 
+GSE118767_10x_3cl:
+  counts: data/datasets/GSE118767_10x_3cl/raw/GSM3022245_gene_count.csv.gz
+  metadata: data/datasets/GSE118767_10x_3cl/raw/sc_10x.metadata.csv.gz
+
+GSE118767_celseq2_5cl:
+  counts_p1: data/datasets/GSE118767_celseq2_5cl/raw/GSM3618022_gene_count_RPI4.csv.gz
+  counts_p2: data/datasets/GSE118767_celseq2_5cl/raw/GSM3618023_gene_count_RPI5.csv.gz
+  counts_p3: data/datasets/GSE118767_celseq2_5cl/raw/GSM3618024_gene_count_RPI6.csv.gz
+  metadata_p1: data/datasets/GSE118767_celseq2_5cl/raw/sc_celseq2_5cl_p1.metadata.csv.gz
+  metadata_p2: data/datasets/GSE118767_celseq2_5cl/raw/sc_celseq2_5cl_p2.metadata.csv.gz
+  metadata_p3: data/datasets/GSE118767_celseq2_5cl/raw/sc_celseq2_5cl_p3.metadata.csv.gz
+
 GSE118767_celseq2_3cl:
   counts: data/datasets/GSE118767_celseq2_3cl/raw/GSM3336845_NN84_Celseq2_SC_counts.csv.gz
   metadata: data/datasets/GSE118767_celseq2_3cl/raw/sc_celseq2.metadata.csv.gz

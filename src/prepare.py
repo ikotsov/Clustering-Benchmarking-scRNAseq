@@ -40,9 +40,18 @@ def read_cellbench_labels(path: PathLike) -> pd.Series:
     Reads the cell lines from a CellBench (GSE118767) cell metadata file, e.g. sc_10x_5cl.metadata.csv.gz from
     https://github.com/LuyiTian/sc_mixology/tree/master/data/csv. The file lists the cells that passed the
     authors' QC; cells demuxlet called doublets ("DBL") are dropped, since they have no single cell line.
+
+    The label is the authors' curated `cell_line`, or demuxlet's own call (`cell_line_demuxlet`) in the files
+    that have no curated column (the 5 cell line CEL-seq2 plates). Those plates also record how many cells were
+    sorted into each well (`cell_number`); wells with more than one are dropped, since demuxlet calls two cells
+    of the same line a singlet, but their counts are still those of two cells.
     """
     metadata = pd.read_csv(path, index_col=0)
-    return metadata.loc[metadata["demuxlet_cls"] == "SNG", "cell_line"]
+    single = metadata["demuxlet_cls"] == "SNG"
+    if "cell_number" in metadata.columns:
+        single &= metadata["cell_number"] == 1
+    label_column = "cell_line" if "cell_line" in metadata.columns else "cell_line_demuxlet"
+    return metadata.loc[single, label_column].rename("cell_line")
 
 
 def save_prepared_dataset(

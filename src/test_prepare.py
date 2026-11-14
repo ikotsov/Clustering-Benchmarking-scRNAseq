@@ -51,6 +51,21 @@ def test_reads_cellbench_labels_of_singlets_only(tmp_path):
     assert labels.to_dict() == {"A1": "H1975", "A3": "HCC827"}
 
 
+def test_reads_cellbench_demuxlet_labels_of_single_cell_wells(tmp_path):
+    pd.DataFrame(
+        {
+            "cell_line_demuxlet": ["A549", "H838", "H1975", "HCC827"],
+            "demuxlet_cls": ["SNG", "SNG", "DBL", "SNG"],
+            "cell_number": [1, 2, 1, 1],
+        },
+        index=["p1_A1", "p1_A2", "p1_A3", "p1_A4"],
+    ).to_csv(tmp_path / "metadata.csv.gz")
+
+    labels = read_cellbench_labels(tmp_path / "metadata.csv.gz")
+
+    assert labels.to_dict() == {"p1_A1": "A549", "p1_A4": "HCC827"}
+
+
 def test_rejects_unlabeled_cells(tmp_path, counts):
     labels = pd.Series({"cell1": "A", "cell2": "A"})
     with pytest.raises(ValueError, match="1 cells have no label"):
