@@ -1,11 +1,12 @@
 import logging
 from collections.abc import Callable
-from typing import Literal
 
 import pandas as pd
 from numpy.typing import ArrayLike
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
 from sklearn.metrics.cluster import pair_confusion_matrix
+
+from src.types import ExternalMetric
 
 
 logger = logging.getLogger(__name__)
@@ -47,7 +48,6 @@ def compute_jaccard(y_true: ArrayLike, y_pred: ArrayLike) -> float:
     return tp / (tp + fp + fn) if (tp + fp + fn) > 0 else 0.0
 
 
-ExternalMetric = Literal["ari", "nmi", "jaccard"]
 EXTERNAL_METRICS: dict[ExternalMetric, Callable[[ArrayLike, ArrayLike], float]] = {
     "ari": compute_ari,
     "nmi": compute_nmi,

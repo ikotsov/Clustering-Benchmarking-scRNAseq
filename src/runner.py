@@ -30,9 +30,11 @@ from src.evaluation import (
     save_run_result,
 )
 from src.constants import DATASETS_DIR, PCA_VARIANCE_RATIO, SEED
-from src.paths import get_params_label, get_pca_label, processed_data_path
+from src.paths import get_pca_label, processed_data_path
 from src.profiling import measure_resources
-from src.types import NormMethod, PathLike, Species, TuningObjective
+from src.tuning.objectives import get_params_label
+from src.tuning.types import ObjectiveMetric
+from src.types import NormMethod, PathLike, Species
 from src.evaluation.biological.types import EnrichmentSetName
 
 logger = logging.getLogger(__name__)
@@ -166,7 +168,7 @@ def run_experiment(
     labels_output_path: PathLike,
     norm_method: NormMethod = "pearson",
     with_pca: bool = True,
-    tuning_objective: TuningObjective | None = None,
+    tuning_metric: ObjectiveMetric | None = None,
 ):
     """
     Orchestrates the clustering flow: Load preprocessed data -> Cluster -> Evaluate -> Save.
@@ -195,14 +197,14 @@ def run_experiment(
         Where to save the predicted cluster of each cell (CSV), e.g. for plotting on the UMAP
     norm_method : NormMethod, default="pearson"
         Normalization method ("pearson" or "log_cpm")
-    tuning_objective : TuningObjective or None
-        Objective params_path was tuned on ("external" or "internal"); None, like params_path, for the defaults
+    tuning_metric : ObjectiveMetric or None
+        Metric params_path was tuned on (e.g. "silhouette"); None, like params_path, for the defaults
     """
-    if (params_path is None) != (tuning_objective is None):
-        raise ValueError("params_path and tuning_objective must be given together")
+    if (params_path is None) != (tuning_metric is None):
+        raise ValueError("params_path and tuning_metric must be given together")
     pca_tag = get_pca_label(with_pca).upper()
     logger.info("EXPERIMENT: %s + %s + %s + %s",
-                accession, algo_name.upper(), pca_tag, get_params_label(tuning_objective).upper())
+                accession, algo_name.upper(), pca_tag, get_params_label(tuning_metric).upper())
 
     # 2. Load preprocessed data
     if not os.path.exists(data_path):
@@ -273,7 +275,7 @@ def run_experiment(
         algorithm=algo_name,
         preprocessing=norm_method,
         with_pca=with_pca,
-        tuning_objective=tuning_objective,
+        tuning_metric=tuning_metric,
         metrics=metrics,
         output_path=result_path,
         n_cells=target_data.shape[0],

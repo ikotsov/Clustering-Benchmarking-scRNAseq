@@ -3,8 +3,8 @@ Collect the per-job tuning result files of one dataset into its clustering_param
 
     python scripts/aggregate_tuning.py \\
         --out data/datasets/E-MTAB-3321/outputs/clustering_params.json \\
-        data/datasets/E-MTAB-3321/outputs/tuning/external/log_cpm/pca/leiden.json \\
-        data/datasets/E-MTAB-3321/outputs/tuning/internal/log_cpm/pca/leiden.json
+        data/datasets/E-MTAB-3321/outputs/tuning/log_cpm/pca/tuned_mean_external_score/leiden.json \\
+        data/datasets/E-MTAB-3321/outputs/tuning/log_cpm/pca/tuned_silhouette/leiden.json
 """
 import argparse
 from pathlib import Path

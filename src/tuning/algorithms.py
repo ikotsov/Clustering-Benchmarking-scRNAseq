@@ -21,13 +21,11 @@ from src.evaluation.intrinsic import LOWER_IS_BETTER, precompute_distances, scor
 from src.paths import get_pca_label
 from src.tuning.common import (
     DEFAULT_NORM_METHOD,
-    ExternalObjectiveMetric,
-    InternalObjectiveMetric,
-    ObjectiveMetric,
-    get_tuning_objective,
     load_preprocessed_data,
     save_tuning_results,
 )
+from src.tuning.objectives import get_tuning_objective
+from src.tuning.types import ExternalObjectiveMetric, InternalObjectiveMetric, ObjectiveMetric
 from src.types import NormMethod, PathLike
 
 

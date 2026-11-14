@@ -11,7 +11,7 @@ Runs an Optuna search on the given representation (PCA or not) and saves the bes
         --norm-method log_cpm \\
         --pca \\
         --objective-metric mean_external_score \\
-        --out data/datasets/E-MTAB-3321/outputs/tuning/external/log_cpm/pca/leiden.json
+        --out data/datasets/E-MTAB-3321/outputs/tuning/log_cpm/pca/tuned_mean_external_score/leiden.json
 
 Internal metrics (e.g. --objective-metric silhouette) tune without the ground truth, so --labels must
 then be left out; external metrics need it.
@@ -22,7 +22,7 @@ from typing import get_args
 
 from src.logging_config import configure_logging
 from src.tuning.algorithms import ALGORITHM_PARAM_SPECS, run_tuning
-from src.tuning.common import ObjectiveMetric
+from src.tuning.types import ObjectiveMetric
 from src.types import NormMethod
 
 

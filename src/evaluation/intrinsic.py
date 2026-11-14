@@ -1,5 +1,4 @@
 from collections.abc import Callable, Iterable
-from typing import Literal
 
 import numpy as np
 import pandas as pd
@@ -11,13 +10,15 @@ from sklearn.metrics import (
     silhouette_score,
 )
 
+from src.types import InternalMetric
+
 
 Matrix = np.ndarray | pd.DataFrame
 
 
 def evaluate_clustering_internally(
     data: pd.DataFrame, labels_pred: pd.Series,
-) -> dict["InternalMetric", float | None]:
+) -> dict[InternalMetric, float | None]:
     """
     Computes internal clustering metrics that do not require ground truth labels.
     Uses the raw feature data to assess cluster cohesion and separation.
@@ -58,7 +59,6 @@ def compute_davies_bouldin(X: Matrix, labels: ArrayLike, distances: np.ndarray |
     return float(davies_bouldin_score(X, labels))
 
 
-InternalMetric = Literal["silhouette", "calinski_harabasz", "davies_bouldin"]
 INTERNAL_METRICS: dict[InternalMetric, Callable[[Matrix, ArrayLike, np.ndarray | None], float]] = {
     "silhouette": compute_silhouette,
     "calinski_harabasz": compute_calinski_harabasz,

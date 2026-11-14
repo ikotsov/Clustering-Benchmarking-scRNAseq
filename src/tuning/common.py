@@ -2,16 +2,15 @@ import json
 import os
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Literal, get_args
 
 import pandas as pd
 
-from src.evaluation.extrinsic import ExternalMetric
-from src.evaluation.intrinsic import InternalMetric
 from src.data_loading import load_csv_data
 from src.clustering.registry import ClusteringAlgorithm
 from src.paths import get_pca_label
-from src.types import NormMethod, PathLike, TuningObjective
+from src.tuning.objectives import get_params_label, get_tuning_objective
+from src.tuning.types import ObjectiveMetric
+from src.types import NormMethod, PathLike
 
 
 DEFAULT_NORM_METHOD: NormMethod = 'log_cpm'
@@ -27,9 +26,6 @@ def load_preprocessed_data(data_path: PathLike) -> pd.DataFrame:
     return load_csv_data(data_path)
 
 
-ExternalObjectiveMetric = Literal[ExternalMetric, "mean_external_score"]
-InternalObjectiveMetric = InternalMetric
-ObjectiveMetric = Literal[ExternalObjectiveMetric, InternalObjectiveMetric]
 
 def save_tuning_results(
     output_path: PathLike,
@@ -41,7 +37,7 @@ def save_tuning_results(
     objective_metric: ObjectiveMetric,
 ) -> PathLike:
     """
-    Save the tuning result of one algorithm + normalization + PCA option + objective into its own JSON file,
+    Save the tuning result of one algorithm + normalization + PCA option + objective metric into its own JSON file,
     overwriting any previous result.
 
     Args:
@@ -73,22 +69,14 @@ def save_tuning_results(
     return output_path
 
 
-def get_tuning_objective(objective_metric: ObjectiveMetric) -> TuningObjective:
-    """Whether the metric scores against the ground truth labels (external) or not (internal)."""
-    if objective_metric in get_args(ExternalObjectiveMetric):
-        return "external"
-    if objective_metric in get_args(InternalObjectiveMetric):
-        return "internal"
-    raise ValueError(f"Unknown objective metric: {objective_metric}")
-
-
 def aggregate_tuning_results(
     tuning_result_paths: Iterable[PathLike],
     output_path: PathLike,
 ) -> None:
     """
     Collect per-job tuning result files (see save_tuning_results) into clustering_params.json,
-    organized hierarchically by objective > norm_method > pca > algorithm. The file is rewritten from scratch,
+    organized hierarchically by norm_method > pca > params (e.g. "tuned_silhouette", see get_params_label)
+    > algorithm, the order of the tuning paths. The file is rewritten from scratch,
     so it holds exactly the given results.
     """
     all_results: dict[str, dict[str, dict[str, dict[str, dict]]]] = {}
@@ -97,9 +85,10 @@ def aggregate_tuning_results(
             result = json.load(f)
 
         pca_label = get_pca_label(result["with_pca"])
-        all_results.setdefault(result["objective"], {}).setdefault(result["normalization"], {}).setdefault(
-            pca_label, {})[result["algorithm"]] = {
-            "objective_metric": result["objective_metric"],
+        params_label = get_params_label(result["objective_metric"])
+        all_results.setdefault(result["normalization"], {}).setdefault(pca_label, {}).setdefault(
+            params_label, {})[result["algorithm"]] = {
+            "objective": result["objective"],
             "best_params": result["best_params"],
             "best_value": result["best_value"],
         }

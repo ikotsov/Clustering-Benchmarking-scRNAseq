@@ -3,10 +3,10 @@ Build the null distribution of one benchmark run's metrics by shuffling its pred
 
     python scripts/permutation_test.py \\
         --data data/datasets/E-MTAB-3321/processed/log_cpm/pca.csv.gz \\
-        --run-labels data/datasets/E-MTAB-3321/outputs/runs/log_cpm/pca/tuned_external/leiden_labels.csv \\
+        --run-labels data/datasets/E-MTAB-3321/outputs/runs/log_cpm/pca/tuned_mean_external_score/leiden_labels.csv \\
         --labels data/datasets/E-MTAB-3321/interim/ground_truth_labels.csv \\
         --n-permutations 1000 \\
-        --out data/datasets/E-MTAB-3321/outputs/runs/log_cpm/pca/tuned_external/leiden_null.npz
+        --out data/datasets/E-MTAB-3321/outputs/runs/log_cpm/pca/tuned_mean_external_score/leiden_null.npz
 """
 import argparse
 from pathlib import Path

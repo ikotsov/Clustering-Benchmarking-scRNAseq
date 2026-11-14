@@ -9,12 +9,12 @@ Run one benchmark: cluster one preprocessed dataset with one algorithm, evaluate
         --data data/datasets/E-MTAB-3321/processed/log_cpm/pca.csv.gz \\
         --config data/datasets/E-MTAB-3321/config.yaml \\
         --labels data/datasets/E-MTAB-3321/interim/ground_truth_labels.csv \\
-        --params data/datasets/E-MTAB-3321/outputs/tuning/internal/log_cpm/pca/leiden.json \\
-        --tuning-objective internal \\
-        --out data/datasets/E-MTAB-3321/outputs/runs/log_cpm/pca/tuned_internal/leiden.json \\
-        --out-labels data/datasets/E-MTAB-3321/outputs/runs/log_cpm/pca/tuned_internal/leiden_labels.csv
+        --params data/datasets/E-MTAB-3321/outputs/tuning/log_cpm/pca/tuned_silhouette/leiden.json \\
+        --tuning-metric silhouette \\
+        --out data/datasets/E-MTAB-3321/outputs/runs/log_cpm/pca/tuned_silhouette/leiden.json \\
+        --out-labels data/datasets/E-MTAB-3321/outputs/runs/log_cpm/pca/tuned_silhouette/leiden_labels.csv
 
-Leave out --params and --tuning-objective to run the algorithm with its defaults.
+Leave out --params and --tuning-metric to run the algorithm with its defaults.
 """
 import argparse
 from pathlib import Path
@@ -23,7 +23,8 @@ from typing import get_args
 from src.clustering.registry import AVAILABLE_ALGORITHMS
 from src.logging_config import configure_logging
 from src.runner import run_experiment
-from src.types import NormMethod, TuningObjective
+from src.tuning.types import ObjectiveMetric
+from src.types import NormMethod
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -44,8 +45,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                         help="Ground truth labels CSV")
     parser.add_argument("--params", type=Path, default=None,
                         help="Tuning result of this algorithm + normalization + PCA option (JSON)")
-    parser.add_argument("--tuning-objective", choices=get_args(TuningObjective), default=None,
-                        help="Objective --params was tuned on (recorded in the result)")
+    parser.add_argument("--tuning-metric", choices=get_args(ObjectiveMetric), default=None,
+                        help="Metric --params was tuned on (recorded in the result)")
     parser.add_argument("--out", type=Path, required=True,
                         help="Where to save the run's metrics (JSON)")
     parser.add_argument("--out-labels", type=Path, required=True,
@@ -67,7 +68,7 @@ def main(argv: list[str] | None = None) -> None:
         labels_output_path=args.out_labels,
         norm_method=args.norm_method,
         with_pca=args.pca,
-        tuning_objective=args.tuning_objective,
+        tuning_metric=args.tuning_metric,
     )
 
 
