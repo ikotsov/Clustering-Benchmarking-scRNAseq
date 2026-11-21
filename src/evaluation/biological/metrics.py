@@ -1,355 +1,120 @@
-import math
-from typing import Literal, Sequence, cast
+"""Metrics of a cluster's marker genes vs the reference sets, and their null statistics.
 
+For one cluster, the marker set M, every random set (same size as M) and each reference set R
+live in the same universe U, so every metric is a function of a single number, the overlap |M∩R|.
+The null test therefore only needs the overlaps of the random sets: the p-value of the overlap
+is the p-value of every metric (they all rise with it, FPR falls with it).
+"""
 import numpy as np
 import pandas as pd
 
 from .constants import SIGNIFICANCE_LEVEL
-from .types import (
-    BiologicalComparisonRecord,
-    BiologicalMetricsRecord,
-    EnrichmentSetName,
-    FoldEnrichmentMetrics,
-    MembershipMetrics,
-    RandomSummaryStats,
-    ReferenceSets,
-    TailStats,
-)
+from .types import ReferenceSets
 
-# Metrics where a *higher* value is more biologically meaningful, so the
-# significance test asks "is the observed value higher than random chance?".
-RIGHT_TAIL_METRICS: tuple[str, ...] = (
-    "jaccard", "precision", "recall", "specificity", "fold_enrichment",
-)
-# Metrics where a *lower* value is more meaningful (a false-positive rate
-# should be below what random gene selection produces), so the test asks
-# "is the observed value lower than random chance?".
-LEFT_TAIL_METRICS: tuple[str, ...] = ("fpr",)
-# Raw counts that only get a descriptive summary, not a z-score/p-value/CI significance test.
-RANDOM_SUMMARY_ONLY_METRICS: tuple[str, ...] = (
-    "tp", "fp", "fn", "tn", "intersection", "expected",
-)
-ALL_NULL_TRACKED_METRICS: tuple[str, ...] = (
-    RIGHT_TAIL_METRICS + LEFT_TAIL_METRICS + RANDOM_SUMMARY_ONLY_METRICS
-)
+# Columns of overlap_metrics and null_statistics, in order
+METRIC_NAMES = ("tp", "fp", "fn", "tn", "jaccard", "precision", "recall", "specificity", "fpr",
+                "expected", "fold_enrichment")
+NULL_STATISTIC_NAMES = ("null_overlap_mean", "overlap_z_score", "p_value")
 
 
-def compute_run_metrics(
-    cluster_marker_genes: list[str] | set[str],
-    enrichment_sets: ReferenceSets,
-    all_genes: set[str],
-    cluster_id: str,
-    cluster_size: int,
-) -> list[BiologicalMetricsRecord]:
-    """Raw metrics of one gene set (a cluster's markers, or a random set drawn for that cluster) vs every reference set.
+def count_overlaps(genes: set[str] | list[str], reference_genes: list[set[str]]) -> np.ndarray:
+    """|genes ∩ R| for each reference set R."""
+    gene_set = set(genes)
+    return np.array([len(gene_set & reference) for reference in reference_genes])
 
-    One record per (enrichment set, cell type), inside the universe `all_genes`.
+
+def overlap_metrics(
+    overlap: np.ndarray,
+    n_marker_genes: int,
+    reference_sizes: np.ndarray,
+    universe_size: int,
+) -> dict[str, np.ndarray]:
+    """Set metrics of a marker set (prediction) vs each reference set (truth), from their overlaps.
+
+    Assumes a non-empty marker set and non-empty reference sets smaller than the universe,
+    as evaluate_clustering_biologically guarantees.
     """
-    selected_cluster_markers = set(cluster_marker_genes)
-
-    results: list[BiologicalMetricsRecord] = []
-
-    for enrichment_set_name, marker_sets_by_cell_type in enrichment_sets.items():
-        for cell_type, reference_marker_genes in marker_sets_by_cell_type.items():
-            marker_set = set(reference_marker_genes)
-
-            run_metrics = _compute_membership_metrics(
-                reference_genes=marker_set,
-                selected_genes=selected_cluster_markers,
-                all_genes=all_genes,
-            )
-            run_fold = _compute_fold_enrichment(
-                selected_genes=selected_cluster_markers,
-                marker_genes=marker_set,
-                all_genes=all_genes,
-            )
-
-            results.append(
-                {
-                    "enrichment_set": enrichment_set_name,
-                    "cluster_id": cluster_id,
-                    "cluster_size": cluster_size,
-                    "n_marker_genes": len(selected_cluster_markers),
-                    "cell_type": cell_type,
-                    "jaccard": run_metrics["jaccard"],
-                    "tp": run_metrics["tp"],
-                    "fp": run_metrics["fp"],
-                    "fn": run_metrics["fn"],
-                    "tn": run_metrics["tn"],
-                    "precision": run_metrics["precision"],
-                    "recall": run_metrics["recall"],
-                    "specificity": run_metrics["specificity"],
-                    "fpr": run_metrics["fpr"],
-                    "intersection": run_fold["intersection"],
-                    "expected": run_fold["expected"],
-                    "fold_enrichment": run_fold["fold_enrichment"],
-                }
-            )
-
-    return results
-
-
-def attach_tail_statistics(
-    observed_records: list[BiologicalMetricsRecord],
-    sampled_records: list[BiologicalMetricsRecord],
-) -> list[BiologicalComparisonRecord]:
-    """Test each observed metric against the null distribution of its own cluster.
-
-    `sampled_records` hold the same metrics for random gene sets drawn for one cluster
-    (same size as its marker set, expression-matched to it), tagged with that cluster's id.
-    Each observed record (enrichment set, cluster, cell type) is tested against the
-    `n_samples` values of the same (enrichment set, cluster, cell type): right tail for
-    metrics where higher is more meaningful, left tail for FPR.
-    """
-    null_pools = _build_null_pools(sampled_records)
-
-    enriched_records: list[BiologicalComparisonRecord] = []
-    for record in observed_records:
-        pool_key = (record["enrichment_set"], record["cluster_id"], record["cell_type"])
-        metric_pools = null_pools.get(pool_key, {})
-
-        enriched: BiologicalComparisonRecord = dict(record)
-        for metric_name in RIGHT_TAIL_METRICS:
-            random_values = metric_pools.get(metric_name, [])
-            observed_value = _as_optional_float(record.get(metric_name))
-            stats = _right_tail_stats(observed_value, random_values)
-            enriched.update(_prefix_stats(stats, metric_name))
-            enriched.update(_random_summary(metric_name, random_values))
-        for metric_name in LEFT_TAIL_METRICS:
-            random_values = metric_pools.get(metric_name, [])
-            observed_value = _as_optional_float(record.get(metric_name))
-            stats = _left_tail_stats(observed_value, random_values)
-            enriched.update(_prefix_stats(stats, metric_name))
-            enriched.update(_random_summary(metric_name, random_values))
-        for metric_name in RANDOM_SUMMARY_ONLY_METRICS:
-            random_values = metric_pools.get(metric_name, [])
-            enriched.update(_random_summary(metric_name, random_values))
-
-        enriched_records.append(enriched)
-
-    return enriched_records
-
-
-def summarize_biological_evaluation(
-    records: list[BiologicalComparisonRecord],
-    reference_sets: ReferenceSets,
-    n_clusters: int,
-    n_clusters_without_markers: int,
-    n_clusters_untested: int,
-    significance_level: float = SIGNIFICANCE_LEVEL,
-) -> dict[str, float | int | None]:
-    """One value per results-table column for a run (None when a reference set has no cell types).
-
-    For each reference set and each of its cell types, the best-matching cluster is the one with
-    the highest Jaccard (a cell type no cluster has markers for scores 0). Per reference set:
-
-    - bio_<set>_jaccard / bio_<set>_fold_enrichment: mean over cell types of the best cluster's value
-      (macro average, as in the reference study)
-    - bio_<set>_n_recovered: cell types whose best cluster's Jaccard p-value < significance_level
-    - bio_<set>_n_cell_types: cell types of the reference set
-
-    Plus the cluster counts: bio_n_clusters, bio_n_clusters_without_markers (no DE markers, so no
-    records) and bio_n_clusters_untested (markers, but no null: too few, or no KDE could be fitted).
-    """
-    best: dict[tuple[str, str], BiologicalComparisonRecord] = {}
-    for record in records:
-        key = (str(record["enrichment_set"]), str(record["cell_type"]))
-        if key not in best or cast(float, record["jaccard"]) > cast(float, best[key]["jaccard"]):
-            best[key] = record
-
-    summary: dict[str, float | int | None] = {
-        "bio_n_clusters": n_clusters,
-        "bio_n_clusters_without_markers": n_clusters_without_markers,
-        "bio_n_clusters_untested": n_clusters_untested,
-    }
-    for set_name, cell_types in reference_sets.items():
-        jaccards: list[float] = []
-        fold_enrichments: list[float] = []
-        n_recovered = 0
-        for cell_type in cell_types:
-            record = best.get((set_name, cell_type))
-            if record is None:
-                jaccards.append(0.0)
-                fold_enrichments.append(0.0)
-                continue
-            jaccards.append(cast(float, record["jaccard"]))
-            fold_enrichments.append(_as_optional_float(record["fold_enrichment"]) or 0.0)
-            p_value = _as_optional_float(record.get("jaccard_p_value"))
-            n_recovered += int(p_value is not None and p_value < significance_level)
-
-        summary[f"bio_{set_name}_jaccard"] = float(np.mean(jaccards)) if jaccards else None
-        summary[f"bio_{set_name}_fold_enrichment"] = float(np.mean(fold_enrichments)) if fold_enrichments else None
-        summary[f"bio_{set_name}_n_recovered"] = n_recovered
-        summary[f"bio_{set_name}_n_cell_types"] = len(cell_types)
-    return summary
-
-
-def _as_optional_float(value: object) -> float | None:
-    """Narrow a dynamically-looked-up record field to the numeric type it
-    always actually holds (`.get()` with a non-literal key can't be typed
-    more precisely than `object` on a TypedDict)."""
-    return None if value is None else cast(float, value)
-
-
-NullPoolKey = tuple[EnrichmentSetName, str, str]
-
-
-def _build_null_pools(
-    sampled_records: list[BiologicalMetricsRecord],
-) -> dict[NullPoolKey, dict[str, list[float | None]]]:
-    """Collect the random values of every metric per (enrichment set, cluster, cell type).
-
-    One value per random set: each random set is scored once against each reference set.
-    """
-    null_pools: dict[NullPoolKey, dict[str, list[float | None]]] = {}
-    for record in sampled_records:
-        key = (record["enrichment_set"], record["cluster_id"], record["cell_type"])
-        pooled = null_pools.setdefault(key, {name: [] for name in ALL_NULL_TRACKED_METRICS})
-        for metric_name in ALL_NULL_TRACKED_METRICS:
-            pooled[metric_name].append(_as_optional_float(record.get(metric_name)))
-
-    return null_pools
-
-
-def _compute_membership_metrics(
-    reference_genes: set[str],
-    selected_genes: set[str],
-    all_genes: set[str],
-) -> MembershipMetrics:
-    """Confusion counts of `selected_genes` (prediction) vs `reference_genes` (truth) within `all_genes`.
-
-    Ratios with an empty denominator are 0 (as sklearn's zero_division=0), except
-    specificity/FPR, which are None when the universe has no negatives.
-    """
-    tp = len(selected_genes & reference_genes)
-    fp = len(selected_genes - reference_genes)
-    fn = len(reference_genes - selected_genes)
-    tn = len(all_genes - (selected_genes | reference_genes))
-    specificity = tn / (tn + fp) if (tn + fp) > 0 else None
-
+    tp = overlap
+    fp = n_marker_genes - tp
+    fn = reference_sizes - tp
+    tn = universe_size - n_marker_genes - reference_sizes + tp
+    expected = n_marker_genes * reference_sizes / universe_size
     return {
         "tp": tp,
         "fp": fp,
         "fn": fn,
         "tn": tn,
-        "jaccard": tp / (tp + fp + fn) if (tp + fp + fn) > 0 else 0.0,
-        "precision": tp / (tp + fp) if (tp + fp) > 0 else 0.0,
-        "recall": tp / (tp + fn) if (tp + fn) > 0 else 0.0,
-        "specificity": specificity,
-        "fpr": None if specificity is None else 1.0 - specificity,
+        "jaccard": tp / (tp + fp + fn),
+        "precision": tp / n_marker_genes,
+        "recall": tp / reference_sizes,
+        "specificity": tn / (tn + fp),
+        "fpr": fp / (tn + fp),
+        # Overlap expected for a uniformly random set of the same size
+        "expected": expected,
+        "fold_enrichment": tp / expected,
     }
 
 
-def _compute_fold_enrichment(
-    selected_genes: set[str],
-    marker_genes: set[str],
-    all_genes: set[str],
-) -> FoldEnrichmentMetrics:
-    intersection = len(selected_genes & marker_genes)
-    universe_size = len(all_genes)
-    expected = (
-        (len(selected_genes) * len(marker_genes)) / universe_size
-        if universe_size > 0
-        else np.nan
-    )
-    fold_enrichment = (
-        intersection /
-        expected if pd.notna(expected) and expected > 0 else np.nan
-    )
+def null_statistics(observed: np.ndarray, random_overlaps: np.ndarray) -> dict[str, np.ndarray]:
+    """Test each observed overlap against the overlaps of the random sets.
 
-    return {
-        "intersection": int(intersection),
-        "expected": None if pd.isna(expected) else float(expected),
-        "fold_enrichment": None if pd.isna(fold_enrichment) else float(fold_enrichment),
-    }
-
-
-def _prefix_stats(stats: TailStats, metric_name: str) -> dict[str, float | None]:
-    return {
-        f"{metric_name}_z_score": stats["z_score"],
-        f"{metric_name}_p_value": stats["p_value"],
-        f"{metric_name}_ci_lower": stats["ci_lower"],
-        f"{metric_name}_ci_upper": stats["ci_upper"],
-    }
-
-
-def _compute_random_summary(values: Sequence[int | float | None]) -> RandomSummaryStats:
-    clean_values = [
-        float(value) for value in values if value is not None and not math.isnan(value)
-    ]
-    if len(clean_values) == 0:
-        return {"mean": None, "std": None, "n": 0}
-
-    values_array = np.asarray(clean_values)
-    return {
-        "mean": float(np.mean(values_array)),
-        "std": _std(values_array),
-        "n": int(len(clean_values)),
-    }
-
-
-def _std(values: np.ndarray) -> float:
-    """Population std, exactly 0 when all values are equal.
-
-    np.std of identical floats can return float noise (e.g. 1e-16 for ten copies
-    of 0.9756...), which would turn a degenerate null into a z-score of ~1e15.
+    observed: one overlap per reference set; random_overlaps: random sets x reference sets.
+    - null_overlap_mean: overlap expected for an expression-matched random set
+    - overlap_z_score: (observed - null mean) / null std; NaN when the null is constant
+    - p_value: (#random >= observed + 1) / (#random + 1), so never 0
     """
-    if np.ptp(values) == 0:
-        return 0.0
-    return float(np.std(values))
-
-
-def _random_summary(
-    metric_name: str,
-    values: Sequence[int | float | None],
-) -> dict[str, float | int | None]:
-    summary = _compute_random_summary(values)
+    null_mean = random_overlaps.mean(axis=0)
+    null_std = random_overlaps.std(axis=0)  # exactly 0 for a constant column: overlaps are integers
+    with np.errstate(divide="ignore", invalid="ignore"):
+        z_score = np.where(null_std > 0, (observed - null_mean) / null_std, np.nan)
+    n_as_large = (random_overlaps >= observed).sum(axis=0)
     return {
-        f"random_{metric_name}_mean": summary["mean"],
-        f"random_{metric_name}_std": summary["std"],
-        f"random_{metric_name}_n": summary["n"],
+        "null_overlap_mean": null_mean,
+        "overlap_z_score": z_score,
+        "p_value": (n_as_large + 1) / (len(random_overlaps) + 1),
     }
 
 
-def _right_tail_stats(
-    observed: float | None,
-    random_values: Sequence[float | None],
-) -> TailStats:
-    return _compute_tail_stats(observed, random_values, direction="right")
+def untested_statistics() -> dict[str, float]:
+    """The null_statistics columns of a cluster that is not tested."""
+    return dict.fromkeys(NULL_STATISTIC_NAMES, np.nan)
 
 
-def _left_tail_stats(observed: float | None, random_values: list[float | None]) -> TailStats:
-    return _compute_tail_stats(observed, random_values, direction="left")
+def summarize_biological_evaluation(
+    records: pd.DataFrame,
+    reference_sets: ReferenceSets,
+    n_clusters: int,
+    significance_level: float = SIGNIFICANCE_LEVEL,
+) -> dict[str, float | int]:
+    """One value per results-table column for a run.
 
+    For each cell type of each reference set, its best-matching cluster is the one with the highest
+    Jaccard; a cell type no cluster has markers for scores 0. Per reference set (macro average over
+    its cell types, as in the reference study):
 
-def _compute_tail_stats(
-    observed: float | None,
-    random_values: Sequence[float | None],
-    direction: Literal["right", "left"],
-) -> TailStats:
-    clean_random = [
-        float(value) for value in random_values if value is not None and not math.isnan(value)
-    ]
-    if observed is None or math.isnan(observed) or len(clean_random) == 0:
-        return {"z_score": None, "p_value": None, "ci_lower": None, "ci_upper": None}
+    - bio_<set>_jaccard / bio_<set>_fold_enrichment: mean of the best clusters' values
+    - bio_<set>_n_recovered: cell types whose best cluster's p-value < significance_level
+    - bio_<set>_n_cell_types: cell types of the reference set
 
-    random_array = np.asarray(clean_random)
-    random_std = _std(random_array)
-    z_score = (
-        (float(observed) - float(np.mean(random_array))) / random_std
-        if random_std != 0
-        else np.nan
-    )
-    if direction == "right":
-        p_value = (float(np.sum(random_array >= float(observed))) +
-                   1.0) / (len(random_array) + 1.0)
-    else:
-        p_value = (float(np.sum(random_array <= float(observed))) +
-                   1.0) / (len(random_array) + 1.0)
-    ci_lower, ci_upper = np.percentile(random_array, [2.5, 97.5])
-    return {
-        "z_score": None if pd.isna(z_score) else float(z_score),
-        "p_value": None if pd.isna(p_value) else float(p_value),
-        "ci_lower": None if pd.isna(ci_lower) else float(ci_lower),
-        "ci_upper": None if pd.isna(ci_upper) else float(ci_upper),
+    Plus bio_n_clusters, bio_n_clusters_without_markers (no records) and bio_n_clusters_untested
+    (markers, but no null distribution; see null_status).
+    """
+    tested = records["null_status"] == "tested"
+    summary: dict[str, float | int] = {
+        "bio_n_clusters": n_clusters,
+        "bio_n_clusters_without_markers": n_clusters - records["cluster_id"].nunique(),
+        "bio_n_clusters_untested": records.loc[~tested, "cluster_id"].nunique(),
     }
+
+    best = records.loc[records.groupby(["enrichment_set", "cell_type"])["jaccard"].idxmax()]
+    for set_name, cell_types in reference_sets.items():
+        best_of_set = (best[best["enrichment_set"] == set_name]
+                       .set_index("cell_type")
+                       .reindex(list(cell_types))[["jaccard", "fold_enrichment", "p_value"]]
+                       .astype(float))
+        summary[f"bio_{set_name}_jaccard"] = float(best_of_set["jaccard"].fillna(0).mean())
+        summary[f"bio_{set_name}_fold_enrichment"] = float(best_of_set["fold_enrichment"].fillna(0).mean())
+        summary[f"bio_{set_name}_n_recovered"] = int((best_of_set["p_value"] < significance_level).sum())
+        summary[f"bio_{set_name}_n_cell_types"] = len(cell_types)
+    return summary
+

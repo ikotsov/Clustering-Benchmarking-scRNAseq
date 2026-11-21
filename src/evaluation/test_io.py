@@ -22,7 +22,11 @@ def test_aggregate_run_results_adds_the_biological_summary_of_each_run(tmp_path)
         _save_run(runs[-1], algorithm)
         save_biological_evaluation(
             biologicals[-1],
-            BiologicalEvaluation(records=[], summary={"bio_de_markers_jaccard": jaccard, "bio_n_clusters": 3}),
+            BiologicalEvaluation(
+                records=pd.DataFrame({"cluster_id": ["0"], "p_value": [float("nan")]}),
+                cluster_markers={"0": ["g1"]},
+                summary={"bio_de_markers_jaccard": jaccard, "bio_n_clusters": 3},
+            ),
             n_samples=100, seed=3,
         )
 

@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from .markers import build_database_marker_sets, build_de_marker_sets, compute_log_cpm
+from .markers import build_database_marker_sets, build_de_marker_sets, compute_log_cpm, index_genes_by_symbol
 
 
 def _synthetic_counts(seed: int = 0) -> tuple[pd.DataFrame, pd.Series]:
@@ -53,8 +53,8 @@ def test_build_database_marker_sets_maps_symbols_to_ensembl_ids_of_the_universe(
     universe = ["ENSG1", "ENSG2", "ENSG3"]  # SFTPC and CD79A are not measured
 
     sets = build_database_marker_sets(
-        "cell_marker", "human", tissues=["Blood", "Lung"], cell_types=None,
-        marker_index=MARKER_INDEX, universe=universe, annotation=annotation)
+        "cell_marker", {"tissues": ["Blood", "Lung"]}, "human", MARKER_INDEX,
+        index_genes_by_symbol(universe, annotation))
 
     # B cell: union over both tissues, matched case-insensitively; unmeasured genes dropped
     assert sets == {"AT2 cell": set(), "B cell": {"ENSG1", "ENSG2"}, "T cell": {"ENSG3"}}
@@ -62,22 +62,23 @@ def test_build_database_marker_sets_maps_symbols_to_ensembl_ids_of_the_universe(
 
 def test_build_database_marker_sets_matches_symbol_universes_directly_and_filters_cell_types():
     sets = build_database_marker_sets(
-        "cell_marker", "human", tissues=["Blood"], cell_types=["T cell"],
-        marker_index=MARKER_INDEX, universe=["Cd3e", "Cd19"], annotation=None)
+        "cell_marker", {"tissues": ["Blood"], "cell_types": ["T cell"]}, "human", MARKER_INDEX,
+        index_genes_by_symbol(["Cd3e", "Cd19"], annotation=None))
 
     assert sets == {"T cell": {"Cd3e"}}
 
 
 def test_build_database_marker_sets_reads_sctype_from_the_all_species_bucket():
     sets = build_database_marker_sets(
-        "sctype", "mouse", tissues=["Immune system"], cell_types=None,
-        marker_index=MARKER_INDEX, universe=["Cd19"], annotation=None)
+        "sctype", {"tissues": ["Immune system"]}, "mouse", MARKER_INDEX, index_genes_by_symbol(["Cd19"], None))
 
     assert sets == {"B cells": {"Cd19"}}
 
 
 def test_build_database_marker_sets_rejects_unknown_tissues_and_cell_types():
-    with pytest.raises(ValueError, match="unknown tissues"):
-        build_database_marker_sets("cell_marker", "human", ["Brain"], None, MARKER_INDEX, ["CD19"])
+    genes_by_symbol = index_genes_by_symbol(["CD19"], None)
+    with pytest.raises(ValueError, match="cell_marker: Unknown tissues"):
+        build_database_marker_sets("cell_marker", {"tissues": ["Brain"]}, "human", MARKER_INDEX, genes_by_symbol)
     with pytest.raises(ValueError, match="not in tissues"):
-        build_database_marker_sets("cell_marker", "human", ["Blood"], ["NK cell"], MARKER_INDEX, ["CD19"])
+        build_database_marker_sets(
+            "cell_marker", {"tissues": ["Blood"], "cell_types": ["NK cell"]}, "human", MARKER_INDEX, genes_by_symbol)

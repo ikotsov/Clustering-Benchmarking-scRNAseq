@@ -3,7 +3,7 @@ import pandas as pd
 from numpy.linalg import LinAlgError
 from scipy.stats import gaussian_kde
 
-from .constants import DEFAULT_SEED, DEFAULT_STRATIFIED_SAMPLES
+from .constants import DEFAULT_SEED, DEFAULT_N_SAMPLES
 
 
 def compute_gene_sampling_features(counts: pd.DataFrame) -> pd.DataFrame:
@@ -31,7 +31,7 @@ class MatchedSamplingError(ValueError):
 def build_matched_gene_samples(
     gene_sampling_features: pd.DataFrame,
     observed_genes: list[str],
-    n_samples: int = DEFAULT_STRATIFIED_SAMPLES,
+    n_samples: int = DEFAULT_N_SAMPLES,
     seed: int = DEFAULT_SEED,
 ) -> list[list[str]]:
     """Draw random gene sets that are the size of `observed_genes` and expressed like them.

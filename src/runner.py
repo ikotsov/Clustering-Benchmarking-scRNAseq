@@ -40,6 +40,7 @@ from src.evaluation.biological import (
     save_biological_evaluation,
     save_reference_sets,
 )
+from src.evaluation.biological.types import NullSettings
 
 logger = logging.getLogger(__name__)
 
@@ -426,9 +427,7 @@ def run_biological_evaluation(
         counts=counts,
         predicted_labels=predicted_labels,
         reference_sets=load_reference_sets(reference_sets_path),
-        n_samples=n_samples,
-        seed=seed,
-        min_marker_genes=min_marker_genes,
+        null_settings=NullSettings(n_samples=n_samples, seed=seed, min_marker_genes=min_marker_genes),
     )
     logger.info("Summary: %s", ", ".join(f"{name}={value}" for name, value in evaluation.summary.items()))
     save_biological_evaluation(output_path, evaluation, n_samples=n_samples, seed=seed)

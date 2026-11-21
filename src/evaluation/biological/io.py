@@ -43,25 +43,29 @@ def save_biological_evaluation(
     """
     Save the biological evaluation of one run into its own JSON file, next to the run's result:
         {
-          "n_samples": 100, "seed": 3,
+          "n_samples": 100, "seed": 42,
           "summary": {"bio_de_markers_jaccard": ..., ...},   # one value per results-table column
-          "records": [...],                                  # one per (enrichment set, cluster, cell type)
+          "records": [...],                                  # one per (enrichment set, cell type, cluster)
+          "cluster_markers": {"0": [genes], ...},
           "timestamp": "..."
         }
+    NaN (statistics of untested clusters) is saved as null.
     """
+    records = evaluation.records.astype(object).where(evaluation.records.notna(), None)
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w") as f:
         json.dump({
             "n_samples": n_samples,
             "seed": seed,
             "summary": evaluation.summary,
-            "records": evaluation.records,
+            "records": records.to_dict(orient="records"),
+            "cluster_markers": evaluation.cluster_markers,
             "timestamp": datetime.now().isoformat(),
         }, f, indent=1, allow_nan=False)
     logger.info("Biological evaluation saved: %s (%s records)", output_path, len(evaluation.records))
 
 
-def load_biological_summary(path: PathLike) -> dict[str, float | int | None]:
+def load_biological_summary(path: PathLike) -> dict[str, float | int]:
     """The bio_* columns of a run (see save_biological_evaluation)."""
     with open(path) as f:
         return json.load(f)["summary"]
