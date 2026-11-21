@@ -200,10 +200,16 @@ def save_biological_evaluation_results(
     algorithm: str,
     preprocessing: str,
     with_pca: bool,
+    tuning_metric: ObjectiveMetric | None,
     comparison_records: list[BiologicalComparisonRecord],
     output_dir: str,
 ) -> None:
-    """Save biological evaluation results into biological_results.json."""
+    """Save biological evaluation results into biological_results.json.
+
+    One entry per run, identified by (algorithm, normalization, with_pca, tuning_metric);
+    saving a run again replaces its entry. tuning_metric is None for the default parameters,
+    as in save_run_result.
+    """
     results_file = os.path.join(output_dir, "biological_results.json")
     now_iso = datetime.now().isoformat()
 
@@ -230,6 +236,7 @@ def save_biological_evaluation_results(
         "algorithm": algorithm,
         "normalization": preprocessing,
         "with_pca": with_pca,
+        "tuning_metric": tuning_metric,
         "comparison_records": comparison_records,
         "timestamp": now_iso,
     }
@@ -243,6 +250,7 @@ def save_biological_evaluation_results(
             existing.get("algorithm") == algorithm
             and existing.get("normalization") == preprocessing
             and bool(existing.get("with_pca", False)) == with_pca
+            and existing.get("tuning_metric") == tuning_metric
         ):
             runs[idx] = run_entry
             replaced = True
@@ -259,8 +267,9 @@ def save_biological_evaluation_results(
 
     pca_key = get_pca_label(with_pca)
     logger.info(
-        "Biological evaluation saved: %s -> %s -> %s in biological_results.json",
+        "Biological evaluation saved: %s -> %s -> %s -> %s in biological_results.json",
         algorithm,
         preprocessing,
         pca_key,
+        get_params_label(tuning_metric),
     )

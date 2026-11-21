@@ -3,7 +3,6 @@ from typing import Literal, Sequence, cast
 
 import numpy as np
 import pandas as pd
-from sklearn.metrics import confusion_matrix, jaccard_score, precision_score, recall_score
 
 from .types import (
     BiologicalComparisonRecord,
@@ -44,25 +43,19 @@ def compute_run_metrics(
     sample_seed: int,
     run_hvg_count: int,
 ) -> list[BiologicalMetricsRecord]:
-    """Compute raw biological metrics for one cluster of one run. """
+    """Compute raw biological metrics for one gene set (a cluster's markers, or a random set) vs every reference set."""
     selected_cluster_markers = set(cluster_marker_genes)
-
-    universe = sorted(all_genes)
-    selected_cluster_marker_vector = _binary_membership_vector(
-        universe,
-        selected_cluster_markers,
-    )
 
     results: list[BiologicalMetricsRecord] = []
 
     for enrichment_set_name, marker_sets_by_cell_type in enrichment_sets.items():
         for cell_type, reference_marker_genes in marker_sets_by_cell_type.items():
             marker_set = set(reference_marker_genes)
-            y_true = _binary_membership_vector(universe, marker_set)
 
             run_metrics = _compute_membership_metrics(
-                y_true=y_true,
-                y_pred=selected_cluster_marker_vector,
+                reference_genes=marker_set,
+                selected_genes=selected_cluster_markers,
+                all_genes=all_genes,
             )
             run_fold = _compute_fold_enrichment(
                 selected_genes=selected_cluster_markers,
@@ -104,32 +97,19 @@ def attach_tail_statistics(
     observed_records: list[BiologicalMetricsRecord],
     sampled_records: list[BiologicalMetricsRecord],
 ) -> list[BiologicalComparisonRecord]:
-    """Test each observed metric against the null distribution of sampled runs.
+    """Test each observed metric against the null distribution of its own cluster.
 
-    `sampled_records` are the same metrics computed on many KDE-matched
-    random gene sets instead of the real HVGs, they are the "what would this
-    look like by chance" baseline that each observed value is tested against.
-
-    A random/sampled rerun can produce a different number of clusters than
-    the observed run (algorithms like leiden/hdbscan/optics choose their own
-    cluster count, and even a fixed cluster count doesn't give clusters a
-    stable identity across reruns). So "observed cluster 2" cannot be matched
-    to one specific cluster in a given random rerun.
-
-    Instead, for every random rerun we take the *best* (max, for metrics
-    where higher is more meaningful) value across that rerun's own clusters,
-    per reference cell type. This answers: "what is the strongest alignment
-    to this cell type that a random gene subset could produce by chance, in
-    one rerun?". Doing this for all `n_samples` reruns gives exactly one null
-    value per rerun per cell type. For metrics where *lower* is more meaningful 
-    (false-positive rate), we take the rerun's *minimum* instead, for the same 
-    reason in the opposite direction.
+    `sampled_records` hold the same metrics for random gene sets drawn for one cluster
+    (same size as its marker set, expression-matched to it), tagged with that cluster's id.
+    Each observed record (enrichment set, cluster, cell type) is tested against the
+    `n_samples` values of the same (enrichment set, cluster, cell type): right tail for
+    metrics where higher is more meaningful, left tail for FPR.
     """
     null_pools = _build_null_pools(sampled_records)
 
     enriched_records: list[BiologicalComparisonRecord] = []
     for record in observed_records:
-        pool_key = (record["enrichment_set"], record["cell_type"])
+        pool_key = (record["enrichment_set"], record["cluster_id"], record["cell_type"])
         metric_pools = null_pools.get(pool_key, {})
 
         enriched: BiologicalComparisonRecord = dict(record)
@@ -161,69 +141,52 @@ def _as_optional_float(value: object) -> float | None:
     return None if value is None else cast(float, value)
 
 
+NullPoolKey = tuple[EnrichmentSetName, str, str]
+
+
 def _build_null_pools(
     sampled_records: list[BiologicalMetricsRecord],
-) -> dict[tuple[EnrichmentSetName, str], dict[str, list[float | None]]]:
-    """Reduce every sampled run's clusters to one null value per metric.
+) -> dict[NullPoolKey, dict[str, list[float | None]]]:
+    """Collect the random values of every metric per (enrichment set, cluster, cell type).
 
-    Groups sampled-run records by `(enrichment_set, cell_type)`, then within
-    each group by `sample_index` (one random rerun can contribute several
-    cluster records), and reduces each rerun's cluster records to a single
-    representative value per metric, max for `RIGHT_TAIL_METRICS`/
-    `RANDOM_SUMMARY_ONLY_METRICS`, min for `LEFT_TAIL_METRICS`. See
-    `attach_tail_statistics` for why this pooling is needed.
+    One value per random set: each random set is scored once against each reference set.
     """
-    records_by_key_and_sample: dict[
-        tuple[EnrichmentSetName, str], dict[int, dict[str, list[float | None]]]
-    ] = {}
+    null_pools: dict[NullPoolKey, dict[str, list[float | None]]] = {}
     for record in sampled_records:
-        key = (record["enrichment_set"], record["cell_type"])
-        sample_index = record["sample_index"]
-        by_sample = records_by_key_and_sample.setdefault(key, {})
-        metric_values = by_sample.setdefault(
-            sample_index, {name: [] for name in ALL_NULL_TRACKED_METRICS}
-        )
+        key = (record["enrichment_set"], record["cluster_id"], record["cell_type"])
+        pooled = null_pools.setdefault(key, {name: [] for name in ALL_NULL_TRACKED_METRICS})
         for metric_name in ALL_NULL_TRACKED_METRICS:
-            metric_values[metric_name].append(_as_optional_float(record.get(metric_name)))
-
-    null_pools: dict[tuple[EnrichmentSetName, str], dict[str, list[float | None]]] = {}
-    for key, by_sample in records_by_key_and_sample.items():
-        pooled: dict[str, list[float | None]] = {
-            name: [] for name in ALL_NULL_TRACKED_METRICS
-        }
-        for metric_values in by_sample.values():
-            for metric_name in ALL_NULL_TRACKED_METRICS:
-                clean_values = [
-                    value
-                    for value in metric_values[metric_name]
-                    if value is not None and not math.isnan(value)
-                ]
-                if not clean_values:
-                    pooled[metric_name].append(None)
-                elif metric_name in LEFT_TAIL_METRICS:
-                    pooled[metric_name].append(min(clean_values))
-                else:
-                    pooled[metric_name].append(max(clean_values))
-        null_pools[key] = pooled
+            pooled[metric_name].append(_as_optional_float(record.get(metric_name)))
 
     return null_pools
 
 
-def _compute_membership_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> MembershipMetrics:
-    tn, fp, fn, tp = confusion_matrix(y_true, y_pred, labels=[0, 1]).ravel()
-    specificity = float(tn / (tn + fp)) if (tn + fp) > 0 else np.nan
-    fpr = float(1.0 - specificity) if pd.notna(specificity) else np.nan
+def _compute_membership_metrics(
+    reference_genes: set[str],
+    selected_genes: set[str],
+    all_genes: set[str],
+) -> MembershipMetrics:
+    """Confusion counts of `selected_genes` (prediction) vs `reference_genes` (truth) within `all_genes`.
+
+    Ratios with an empty denominator are 0 (as sklearn's zero_division=0), except
+    specificity/FPR, which are None when the universe has no negatives.
+    """
+    tp = len(selected_genes & reference_genes)
+    fp = len(selected_genes - reference_genes)
+    fn = len(reference_genes - selected_genes)
+    tn = len(all_genes - (selected_genes | reference_genes))
+    specificity = tn / (tn + fp) if (tn + fp) > 0 else None
 
     return {
-        "tp": int(tp),
-        "fp": int(fp),
-        "fn": int(fn),
-        "tn": int(tn),
-        "jaccard": None if pd.isna(jaccard_score(y_true, y_pred, zero_division=0)) else float(jaccard_score(y_true, y_pred, zero_division=0)),
-        "precision": None if pd.isna(precision_score(y_true, y_pred, zero_division=0)) else float(precision_score(y_true, y_pred, zero_division=0)),
-        "recall": None if pd.isna(recall_score(y_true, y_pred, zero_division=0)) else float(recall_score(y_true, y_pred, zero_division=0)),
-        "specificity": None if pd.isna(specificity) else float(specificity),
-        "fpr": None if pd.isna(fpr) else float(fpr),
+        "tp": tp,
+        "fp": fp,
+        "fn": fn,
+        "tn": tn,
+        "jaccard": tp / (tp + fp + fn) if (tp + fp + fn) > 0 else 0.0,
+        "precision": tp / (tp + fp) if (tp + fp) > 0 else 0.0,
+        "recall": tp / (tp + fn) if (tp + fn) > 0 else 0.0,
+        "specificity": specificity,
+        "fpr": None if specificity is None else 1.0 - specificity,
     }
 
 
@@ -251,10 +214,6 @@ def _compute_fold_enrichment(
     }
 
 
-def _binary_membership_vector(universe_genes: list[str], selected_genes: set[str]) -> np.ndarray:
-    return np.asarray([1 if gene in selected_genes else 0 for gene in universe_genes], dtype=int)
-
-
 def _prefix_stats(stats: TailStats, metric_name: str) -> dict[str, float | None]:
     return {
         f"{metric_name}_z_score": stats["z_score"],
@@ -274,9 +233,20 @@ def _compute_random_summary(values: Sequence[int | float | None]) -> RandomSumma
     values_array = np.asarray(clean_values)
     return {
         "mean": float(np.mean(values_array)),
-        "std": float(np.std(values_array)),
+        "std": _std(values_array),
         "n": int(len(clean_values)),
     }
+
+
+def _std(values: np.ndarray) -> float:
+    """Population std, exactly 0 when all values are equal.
+
+    np.std of identical floats can return float noise (e.g. 1e-16 for ten copies
+    of 0.9756...), which would turn a degenerate null into a z-score of ~1e15.
+    """
+    if np.ptp(values) == 0:
+        return 0.0
+    return float(np.std(values))
 
 
 def _random_summary(
@@ -314,10 +284,10 @@ def _compute_tail_stats(
         return {"z_score": None, "p_value": None, "ci_lower": None, "ci_upper": None}
 
     random_array = np.asarray(clean_random)
+    random_std = _std(random_array)
     z_score = (
-        (float(observed) - float(np.mean(random_array))) /
-        float(np.std(random_array))
-        if float(np.std(random_array)) != 0
+        (float(observed) - float(np.mean(random_array))) / random_std
+        if random_std != 0
         else np.nan
     )
     if direction == "right":

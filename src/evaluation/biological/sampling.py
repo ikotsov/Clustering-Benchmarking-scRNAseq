@@ -4,58 +4,72 @@ from numpy.linalg import LinAlgError
 from scipy.stats import gaussian_kde
 
 from .constants import DEFAULT_SEED, DEFAULT_STRATIFIED_SAMPLES
-from .types import StratifiedHVGSampleSet
 
 
-def build_stratified_hvg_samples(
+def compute_gene_sampling_features(counts: pd.DataFrame) -> pd.DataFrame:
+    """Describe each gene (column) of a raw counts matrix by its expression level.
+
+    - ``log_expressing_cells``: log(1 + number of cells with a count > 0)
+    - ``log_mean_count``: log(1 + mean raw count over all cells)
+
+    Raw counts, not normalized values, so that "expressed" means a count > 0 for every
+    normalization (a Pearson residual is negative for most zeros). Log scale, so the KDE
+    in `build_matched_gene_samples` is not dominated by a few very highly expressed genes.
+    """
+    features = pd.DataFrame({
+        "log_expressing_cells": np.log1p((counts > 0).sum(axis=0).astype(float)),
+        "log_mean_count": np.log1p(counts.mean(axis=0).astype(float)),
+    }, index=counts.columns)
+    features.index.name = "gene"
+    return features
+
+
+def build_matched_gene_samples(
     gene_sampling_features: pd.DataFrame,
-    hvg_genes: list[str],
+    observed_genes: list[str],
     n_samples: int = DEFAULT_STRATIFIED_SAMPLES,
     seed: int = DEFAULT_SEED,
-) -> StratifiedHVGSampleSet:
-    """Build observed HVGs and stratified random samples."""
-    gene_sampling_probabilities = _estimate_gene_probabilities(
-        gene_sampling_features, hvg_genes)
-    rng = np.random.default_rng(seed)
-    all_genes = gene_sampling_features.index.to_numpy()
-    control_samples: list[list[str]] = []
+) -> list[list[str]]:
+    """Draw random gene sets that are the size of `observed_genes` and expressed like them.
 
-    for _ in range(1, n_samples + 1):
-        # matched random sets (same size, similar feature distribution) used as a null/control reference.
-        sampled_hvg_control_genes = rng.choice(
-            all_genes,
-            size=len(hvg_genes),
-            replace=False,
-            p=gene_sampling_probabilities,
-            shuffle=False,
+    A 2D Gaussian KDE is fitted to the observed genes' features; every gene of the universe
+    (the index of `gene_sampling_features`) gets a sampling probability proportional to the
+    KDE at its features; each sample draws len(observed_genes) genes without replacement.
+    The universe must contain more genes than the observed set, or every sample is the
+    whole universe.
+    """
+    if len(observed_genes) >= len(gene_sampling_features):
+        raise ValueError(
+            f"Cannot draw random sets of {len(observed_genes)} genes from a universe of "
+            f"{len(gene_sampling_features)} genes: every sample would be the whole universe."
         )
-        control_samples.append(sampled_hvg_control_genes.tolist())
+    probabilities = _estimate_gene_probabilities(gene_sampling_features, observed_genes)
+    rng = np.random.default_rng(seed)
+    universe = gene_sampling_features.index.to_numpy()
 
-    return StratifiedHVGSampleSet(
-        observed_hvg_genes=hvg_genes,
-        control_samples=control_samples,
-    )
+    return [
+        rng.choice(universe, size=len(observed_genes), replace=False, p=probabilities).tolist()
+        for _ in range(n_samples)
+    ]
 
 
 def _estimate_gene_probabilities(gene_statistics: pd.DataFrame, observed_genes: list[str]) -> np.ndarray:
     """Estimate KDE-based sampling probability for gene universe."""
-    observed_hvg_features = gene_statistics.loc[observed_genes]
-    all_gene_features = gene_statistics
+    observed_features = gene_statistics.loc[observed_genes]
 
-    # fallback, fair chance for all genes.
-    uniform_distribution = np.full(
-        len(gene_statistics), 1.0 / len(gene_statistics))
+    # fallback, fair chance for all genes (e.g. too few observed genes to fit a 2D KDE).
+    uniform_distribution = np.full(len(gene_statistics), 1.0 / len(gene_statistics))
 
     try:
-        kde = gaussian_kde(observed_hvg_features.T.to_numpy())
-        probabilities = kde.evaluate(all_gene_features.T.to_numpy())
+        kde = gaussian_kde(observed_features.T.to_numpy())
+        probabilities = kde.evaluate(gene_statistics.T.to_numpy())
     except (ValueError, LinAlgError, FloatingPointError):
         return uniform_distribution
 
     probabilities = np.clip(probabilities, a_min=0.0, a_max=None)
     total = probabilities.sum()
 
-    if total <= 0:
+    if not np.isfinite(total) or total <= 0:
         return uniform_distribution
 
     return probabilities / total

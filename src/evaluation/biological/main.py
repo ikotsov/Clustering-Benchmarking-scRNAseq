@@ -1,5 +1,3 @@
-from collections.abc import Callable, Mapping
-
 import pandas as pd
 
 from .constants import DEFAULT_SEED, DEFAULT_STRATIFIED_SAMPLES
@@ -8,29 +6,51 @@ from .markers import (
     build_dataset_biological_enrichment_sets,
 )
 from .metrics import attach_tail_statistics, compute_run_metrics
-from .sampling import build_stratified_hvg_samples
+from .sampling import build_matched_gene_samples, compute_gene_sampling_features
 from .types import BiologicalComparisonRecord, BiologicalMetricsRecord, EnrichmentSetName
 from src.types import Species
 
 
 def evaluate_clustering_biologically(
     expression_data: pd.DataFrame,
-    cell_type_labels: pd.Series[str],
-    clustering_strategy: Callable[..., pd.Series],
-    clustering_kwargs: Mapping[str, object] | None = None,
+    counts: pd.DataFrame,
+    cell_type_labels: pd.Series,
+    predicted_labels: pd.Series,
     enrichment_set_names: list[EnrichmentSetName] | None = None,
     species: Species = "human",
     n_samples: int = DEFAULT_STRATIFIED_SAMPLES,
     seed: int = DEFAULT_SEED,
 ) -> list[BiologicalComparisonRecord]:
-    """Run biological evaluation for one observed run and sampled-HVG reruns."""
+    """Test whether each predicted cluster's marker genes match a cell type's marker genes beyond chance.
 
-    requested_enrichment_sets: list[EnrichmentSetName] = (
-        enrichment_set_names if enrichment_set_names is not None else [
-            "de_markers"]
-    )
-    # Keep deterministic order and avoid duplicate enrichment set requests.
-    requested_enrichment_sets = list(dict.fromkeys(requested_enrichment_sets))
+    1. Reference sets: marker genes of each ground-truth cell type (`enrichment_set_names`).
+    2. Cluster markers: marker genes of each predicted cluster (DE test, cluster vs rest).
+    3. Observed metrics: each cluster's markers vs each reference set (Jaccard, precision, ...).
+    4. Null, per cluster: `n_samples` random gene sets the size of the cluster's marker set,
+       expression-matched to it (KDE on raw-count features), each scored against the same
+       reference sets. The clustering itself is never changed.
+    5. Each observed metric gets a z-score, an empirical p-value and the null's 2.5-97.5% interval.
+
+    Parameters
+    ----------
+    expression_data : pd.DataFrame
+        Cells x genes, normalized (the no-PCA matrix). Its genes are the universe: the DE tests run on
+        them, and the random sets are drawn from them.
+    counts : pd.DataFrame
+        Raw counts, cells x genes; must contain every gene and cell of `expression_data`. Only used to
+        describe the genes' expression level for the matching.
+    cell_type_labels : pd.Series
+        Ground-truth cell type of each cell.
+    predicted_labels : pd.Series
+        Cluster of each cell, from the clustering run being evaluated.
+
+    Returns
+    -------
+    One record per (enrichment set, cluster, cell type), with the observed metrics and their null statistics.
+    Clusters without marker genes have no records.
+    """
+    requested_enrichment_sets: list[EnrichmentSetName] = list(
+        dict.fromkeys(enrichment_set_names or ["de_markers"]))
     reference_enrichment_sets = build_dataset_biological_enrichment_sets(
         expression_data=expression_data,
         cell_type_labels=cell_type_labels,
@@ -38,100 +58,50 @@ def evaluate_clustering_biologically(
         species=species,
     )
 
-    gene_sampling_features = compute_gene_sampling_features(expression_data)
-    hvg_genes = expression_data.columns.astype(str).tolist()
-    sampled_hvg_sets = build_stratified_hvg_samples(
-        gene_sampling_features=gene_sampling_features,
-        hvg_genes=hvg_genes,
-        n_samples=n_samples,
-        seed=seed,
+    universe = expression_data.columns.astype(str).tolist()
+    all_genes = set(universe)
+    gene_sampling_features = compute_gene_sampling_features(
+        counts.loc[expression_data.index, universe])
+
+    predicted_labels = predicted_labels.loc[expression_data.index].astype(str).rename("cluster")
+    cluster_marker_sets = build_cluster_marker_enrichment_set(
+        expression_data=expression_data,
+        predicted_cluster_labels=predicted_labels,
     )
+    cluster_sizes = predicted_labels.value_counts()
 
-    run_definitions: list[tuple[str, int, list[str]]] = [
-        ("observed", 0, hvg_genes)]
-    for sample_index, sampled_genes in enumerate(sampled_hvg_sets.control_samples, start=1):
-        run_definitions.append(("sampled", sample_index, sampled_genes))
-
-    all_genes = {str(gene) for gene in hvg_genes}
-    effective_clustering_kwargs = clustering_kwargs if clustering_kwargs is not None else {}
-
-    # "observed" holds the metrics for the real HVGs; "sampled" holds the
-    # same metrics recomputed on each random control gene set, which together
-    # form the null distribution the observed values are tested against.
     observed_records: list[BiologicalMetricsRecord] = []
     sampled_records: list[BiologicalMetricsRecord] = []
 
-    for sample_type, sample_index, sampled_genes in run_definitions:
-        sampled_expression_data = expression_data.loc[:, sampled_genes]
-        clustering_labels = clustering_strategy(
-            sampled_expression_data,
-            **effective_clustering_kwargs,
-        )
-        predicted_labels = pd.Series(
-            clustering_labels,
-            index=sampled_expression_data.index,
-            name="cluster",
-        ).astype(str)
+    for cluster_id in sorted(cluster_marker_sets):
+        marker_genes = sorted(cluster_marker_sets[cluster_id])
+        if len(marker_genes) == 0:
+            continue
 
-        cluster_marker_sets = build_cluster_marker_enrichment_set(
-            expression_data=sampled_expression_data,
-            predicted_cluster_labels=predicted_labels,
-        )
-        cluster_sizes = predicted_labels.value_counts()
-
-        # for each cluster, compare its marker genes to the reference enrichment sets.
-        for cluster_id, marker_genes in cluster_marker_sets.items():
-            sorted_marker_genes = sorted(marker_genes)
-            cluster_size = int(cluster_sizes.get(cluster_id, 0))
-
-            if len(sorted_marker_genes) == 0:
-                continue
-
-            run_metrics = compute_run_metrics(
-                cluster_marker_genes=sorted_marker_genes,
+        def score(genes: list[str], sample_type: str, sample_index: int) -> list[BiologicalMetricsRecord]:
+            return compute_run_metrics(
+                cluster_marker_genes=genes,
                 enrichment_sets=reference_enrichment_sets,
                 all_genes=all_genes,
                 cluster_id=cluster_id,
-                cluster_size=cluster_size,
+                cluster_size=int(cluster_sizes.get(cluster_id, 0)),
                 sample_type=sample_type,
                 sample_index=sample_index,
-                sample_seed=seed + sample_index,
-                run_hvg_count=len(sampled_genes),
+                sample_seed=seed,
+                run_hvg_count=len(universe),
             )
-            if sample_type == "observed":
-                observed_records.extend(run_metrics)
-            else:
-                sampled_records.extend(run_metrics)
 
-    # Test each observed value against the null distribution built from the
-    # sampled/random reruns. This widens each record from the fixed-shape
-    # BiologicalMetricsRecord to the looser BiologicalComparisonRecord, since
-    # the attached stat fields (e.g. "jaccard_z_score") are named dynamically
-    # per metric rather than being part of a fixed schema.
-    enriched_observed_records = attach_tail_statistics(
-        observed_records, sampled_records)
-    widened_sampled_records: list[BiologicalComparisonRecord] = [
-        dict(record) for record in sampled_records
-    ]
+        observed_records.extend(score(marker_genes, "observed", 0))
 
-    return enriched_observed_records + widened_sampled_records
+        random_marker_sets = build_matched_gene_samples(
+            gene_sampling_features=gene_sampling_features,
+            observed_genes=marker_genes,
+            n_samples=n_samples,
+            seed=seed,
+        )
+        for sample_index, random_genes in enumerate(random_marker_sets, start=1):
+            sampled_records.extend(score(random_genes, "sampled", sample_index))
 
-
-def compute_gene_sampling_features(data: pd.DataFrame) -> pd.DataFrame:
-    """Build gene-level sampling features used to match random HVG controls.
-
-    For each gene (column), this computes:
-    - ``num_expressed_cells``: number of cells with expression > 0
-    - ``mean_expression``: mean expression across all cells
-
-    These features are later used by KDE-based sampling so random control gene
-    sets are size-matched and sampled from genes with similar expression
-    characteristics as the observed HVGs.
-    """
-    stats = pd.DataFrame(index=data.columns)
-    # number of cells where the gene is expressed.
-    stats["num_expressed_cells"] = (data > 0).sum(axis=0).astype(int)
-    # mean expression of the gene across all cells.
-    stats["mean_expression"] = data.mean(axis=0)
-    stats.index.name = "gene"
-    return stats
+    # The random sets are only needed for their statistics, which attach_tail_statistics
+    # writes onto the observed records (random_<metric>_mean/std/n, <metric>_ci_lower/upper).
+    return attach_tail_statistics(observed_records, sampled_records)

@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from typing import Literal, TypedDict
 
 
@@ -6,18 +5,11 @@ EnrichmentSetName = Literal["de_markers", "cell_marker", "sctype"]
 BiologicalComparisonRecord = dict[str, object]
 
 
-@dataclass(frozen=True)
-class StratifiedHVGSampleSet:
-    """Container for observed HVGs and matched random control samples."""
-
-    observed_hvg_genes: list[str]
-    control_samples: list[list[str]]
-
-
 class BiologicalMetricsRecord(TypedDict):
     """The fixed-shape record `compute_run_metrics` produces for one cluster.
 
-    `attach_tail_statistics` widens this into the looser
+    The same record describes a random gene set of the null (sample_type "sampled"), tagged
+    with the cluster it was drawn for. `attach_tail_statistics` widens this into the looser
     `BiologicalComparisonRecord` by merging in dynamically-named
     significance-stat fields (e.g. ``jaccard_z_score``, ``random_fpr_mean``)
     whose keys depend on which metric they belong to.

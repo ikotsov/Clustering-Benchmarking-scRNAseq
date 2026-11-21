@@ -12,7 +12,7 @@ def load_biological_comparison_records(results_json_path: str | Path) -> pd.Data
     """Load and flatten comparison records from biological_results.json.
 
     The returned dataframe contains run-level metadata columns (algorithm,
-    normalization, with_pca, timestamp) merged with each row in
+    normalization, with_pca, tuning_metric, timestamp) merged with each row in
     comparison_records.
     """
     path = Path(results_json_path)
@@ -34,6 +34,7 @@ def load_biological_comparison_records(results_json_path: str | Path) -> pd.Data
             "algorithm": run.get("algorithm"),
             "normalization": run.get("normalization"),
             "with_pca": run.get("with_pca"),
+            "tuning_metric": run.get("tuning_metric"),
             "timestamp": run.get("timestamp"),
         }
         comparison_records = run.get("comparison_records", [])

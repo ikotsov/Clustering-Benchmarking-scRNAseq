@@ -37,10 +37,11 @@ def test_compute_run_metrics_returns_raw_values_without_tail_stats():
     assert "random_jaccard_mean" not in record
 
 
-def _make_record(sample_index: int, jaccard: float, fpr: float) -> dict:
+def _make_record(sample_index: int, jaccard: float, fpr: float, cluster_id: str = "0") -> dict:
     """Build a minimal, fully-populated comparison record for null-pooling tests."""
     return {
         "enrichment_set": "de_markers",
+        "cluster_id": cluster_id,
         "cell_type": "B_cells",
         "sample_index": sample_index,
         "jaccard": jaccard,
@@ -58,23 +59,20 @@ def _make_record(sample_index: int, jaccard: float, fpr: float) -> dict:
     }
 
 
-def test_build_null_pools_takes_max_per_rerun_for_right_tail_metrics_and_min_for_fpr():
-    # Two random reruns, each contributing two clusters (mimicking two
-    # clustering runs that each produced a different number of clusters).
+def test_build_null_pools_keeps_one_value_per_random_set_per_cluster():
     sampled_records = [
-        _make_record(sample_index=1, jaccard=0.05, fpr=0.30),
-        _make_record(sample_index=1, jaccard=0.08, fpr=0.20),
-        _make_record(sample_index=2, jaccard=0.03, fpr=0.25),
-        _make_record(sample_index=2, jaccard=0.10, fpr=0.15),
+        _make_record(sample_index=1, jaccard=0.05, fpr=0.30, cluster_id="0"),
+        _make_record(sample_index=2, jaccard=0.08, fpr=0.20, cluster_id="0"),
+        _make_record(sample_index=1, jaccard=0.03, fpr=0.25, cluster_id="1"),
+        _make_record(sample_index=2, jaccard=0.10, fpr=0.15, cluster_id="1"),
     ]
 
     pools = _build_null_pools(sampled_records)
-    metric_pools = pools[("de_markers", "B_cells")]
 
-    # One null value per rerun (2 reruns), taking each rerun's best cluster.
-    assert metric_pools["jaccard"] == pytest.approx([0.08, 0.10])
-    # ...and each rerun's *lowest* fpr, since low fpr is the meaningful direction.
-    assert metric_pools["fpr"] == pytest.approx([0.20, 0.15])
+    # No pooling across clusters: each cluster is tested against its own random sets.
+    assert pools[("de_markers", "0", "B_cells")]["jaccard"] == pytest.approx([0.05, 0.08])
+    assert pools[("de_markers", "1", "B_cells")]["jaccard"] == pytest.approx([0.03, 0.10])
+    assert pools[("de_markers", "1", "B_cells")]["fpr"] == pytest.approx([0.25, 0.15])
 
 
 def test_attach_tail_statistics_populates_real_stats_from_sampled_runs():
@@ -99,10 +97,10 @@ def test_attach_tail_statistics_populates_real_stats_from_sampled_runs():
         }
     ]
     sampled_records = [
-        _make_record(sample_index=1, jaccard=0.05, fpr=0.30),
         _make_record(sample_index=1, jaccard=0.08, fpr=0.20),
-        _make_record(sample_index=2, jaccard=0.03, fpr=0.25),
         _make_record(sample_index=2, jaccard=0.10, fpr=0.15),
+        # Another cluster's random sets must not enter cluster "0"'s null.
+        _make_record(sample_index=1, jaccard=0.90, fpr=0.01, cluster_id="1"),
     ]
 
     [enriched] = attach_tail_statistics(observed_records, sampled_records)
@@ -120,10 +118,25 @@ def test_attach_tail_statistics_populates_real_stats_from_sampled_runs():
     assert enriched["random_jaccard_mean"] == pytest.approx(np.mean(null_jaccard))
     assert enriched["random_jaccard_n"] == 2
 
-    # fpr is a left-tail metric: observed (0.1) is lower than both pooled
-    # random minimums (0.20, 0.15), so it should look significant (small p).
+    # fpr is a left-tail metric: observed (0.1) is lower than both random
+    # values (0.20, 0.15), so it should look significant (small p).
     assert enriched["random_fpr_mean"] == pytest.approx(np.mean([0.20, 0.15]))
     assert enriched["fpr_p_value"] == pytest.approx(1 / 3)
+
+
+def test_attach_tail_statistics_has_no_z_score_when_the_null_is_constant():
+    # Identical null values whose np.std is float noise (~1e-16), not 0.
+    value = 40 / 41
+    observed = _make_record(sample_index=0, jaccard=0.5, fpr=0.1)
+    observed["cluster_id"] = "0"
+    sampled = [_make_record(sample_index=i, jaccard=value, fpr=0.2) for i in range(1, 11)]
+    assert np.std([value] * 10) != 0  # the float noise this test guards against
+
+    [enriched] = attach_tail_statistics([observed], sampled)
+
+    assert enriched["jaccard_z_score"] is None
+    assert enriched["random_jaccard_std"] == 0.0
+    assert enriched["jaccard_p_value"] == pytest.approx(1.0)
 
 
 def test_attach_tail_statistics_handles_no_sampled_runs():

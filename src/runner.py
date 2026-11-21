@@ -1,6 +1,5 @@
 import logging
 import os
-from collections.abc import Mapping
 from pathlib import Path
 
 import numpy as np
@@ -17,7 +16,6 @@ from src.preprocessing.gene_annotation import load_gene_annotation
 from src.clustering.registry import (
     ALGORITHMS_REQUIRING_N_CLUSTERS,
     ClusteringAlgorithm,
-    ClusteringFunc,
     get_clustering_strategy,
 )
 from src.evaluation import (
@@ -30,7 +28,7 @@ from src.evaluation import (
     save_run_result,
 )
 from src.constants import DATASETS_DIR, PCA_VARIANCE_RATIO, SEED
-from src.paths import get_pca_label, processed_data_path
+from src.paths import GROUND_TRUTH_LABELS, RAW_COUNTS, RUN_LABELS, get_pca_label, processed_data_path, resolve
 from src.profiling import measure_resources
 from src.tuning.objectives import get_params_label
 from src.tuning.types import ObjectiveMetric
@@ -333,37 +331,53 @@ def run_biological_evaluation(
     algo_name: ClusteringAlgorithm,
     norm_method: NormMethod,
     with_pca: bool,
-    ground_truth: pd.Series,
     species: Species,
-    clustering_strategy: ClusteringFunc,
-    clustering_kwargs: Mapping[str, object] | None = None,
+    tuning_metric: ObjectiveMetric | None = None,
     enrichment_set_names: list[EnrichmentSetName] | None = None,
 ):
-    """Run the biological evaluation stage and persist the results."""
-    dataset_dir = os.path.join(DATASETS_DIR, accession)
+    """
+    Biological evaluation of one benchmark run (see evaluate_clustering_biologically): do the marker genes
+    of the run's clusters match the marker genes of the ground-truth cell types more than expression-matched
+    random gene sets do? Expects the run to already exist (use run_experiment first): its saved clusters are
+    evaluated, nothing is clustered again.
 
-    logger.info("Biological evaluation...")
-    biological_input_path = processed_data_path(
-        accession, norm_method, with_pca=False)
-    if not os.path.exists(biological_input_path):
-        raise FileNotFoundError(
-            f"Biological input not found: {biological_input_path}"
-        )
+    Parameters
+    ----------
+    accession, algo_name, norm_method, with_pca, tuning_metric
+        Identify the run (tuning_metric None = the default parameters)
+    species : Species
+        Species of the dataset (for the marker databases)
+    enrichment_set_names : list or None
+        Reference marker sets to compare with; None = ["de_markers"]
+    """
+    params_label = get_params_label(tuning_metric)
+    logger.info("BIOLOGICAL EVALUATION: %s + %s + %s + %s + %s",
+                accession, algo_name.upper(), norm_method, get_pca_label(with_pca).upper(), params_label.upper())
 
-    biological_data = load_csv_data(biological_input_path)
+    # The DE tests need genes, so the no-PCA matrix is used whichever representation the run clustered.
+    expression_path = processed_data_path(accession, norm_method, with_pca=False)
+    run_labels_path = resolve(RUN_LABELS, accession=accession, norm_method=norm_method,
+                              pca=get_pca_label(with_pca), params=params_label, algorithm=algo_name)
+    for path in (expression_path, run_labels_path):
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Expected file not found: {path}")
+
+    expression_data = load_csv_data(expression_path)
+    counts = load_csv_data(resolve(RAW_COUNTS, accession=accession))
+    ground_truth = load_ground_truth_labels(resolve(GROUND_TRUTH_LABELS, accession=accession))
+    predicted_labels = pd.read_csv(run_labels_path, index_col=0).iloc[:, 0]
 
     biological_results = evaluate_clustering_biologically(
-        expression_data=biological_data,
-        cell_type_labels=ground_truth.astype(str),
-        clustering_strategy=clustering_strategy,
-        clustering_kwargs=clustering_kwargs,
+        expression_data=expression_data,
+        counts=counts,
+        cell_type_labels=ground_truth.loc[expression_data.index].astype(str),
+        predicted_labels=predicted_labels,
         enrichment_set_names=enrichment_set_names,
         species=species,
     )
-    logger.info("Biological comparisons retained: %s rows",
-                len(biological_results))
+    logger.info("Biological comparisons: %s records (clusters x cell types)", len(biological_results))
 
-    output_dir = os.path.join(dataset_dir, "outputs")
+    output_dir = os.path.join(DATASETS_DIR, accession, "outputs")
     os.makedirs(output_dir, exist_ok=True)
 
     save_biological_evaluation_results(
@@ -371,6 +385,7 @@ def run_biological_evaluation(
         algorithm=algo_name,
         preprocessing=norm_method,
         with_pca=with_pca,
+        tuning_metric=tuning_metric,
         comparison_records=biological_results,
         output_dir=output_dir,
     )
