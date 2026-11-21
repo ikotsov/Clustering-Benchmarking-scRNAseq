@@ -1,37 +1,38 @@
+from dataclasses import dataclass
 from typing import Literal, TypedDict
 
 
 EnrichmentSetName = Literal["de_markers", "cell_marker", "sctype"]
+# {enrichment set: {cell type: genes}}
+ReferenceSets = dict[EnrichmentSetName, dict[str, set[str]]]
 BiologicalComparisonRecord = dict[str, object]
+
+# Whether a cluster's metrics were tested against random gene sets:
+# "tested", "too_few_markers" (fewer than MIN_MARKER_GENES) or "sampling_failed" (no KDE could be fitted).
+NullStatus = Literal["tested", "too_few_markers", "sampling_failed"]
 
 
 class BiologicalMetricsRecord(TypedDict):
-    """The fixed-shape record `compute_run_metrics` produces for one cluster.
+    """The fixed-shape record `compute_run_metrics` produces for one gene set vs one reference set.
 
-    The same record describes a random gene set of the null (sample_type "sampled"), tagged
-    with the cluster it was drawn for. `attach_tail_statistics` widens this into the looser
-    `BiologicalComparisonRecord` by merging in dynamically-named
-    significance-stat fields (e.g. ``jaccard_z_score``, ``random_fpr_mean``)
-    whose keys depend on which metric they belong to.
+    The gene set is a cluster's marker genes, or one of the random sets drawn for that cluster.
+    `attach_tail_statistics` widens the cluster's records into the looser
+    `BiologicalComparisonRecord` by merging in dynamically-named significance-stat
+    fields (e.g. ``jaccard_z_score``, ``random_fpr_mean``).
     """
 
     enrichment_set: EnrichmentSetName
     cluster_id: str
     cluster_size: int
-    marker_genes: list[str]
     n_marker_genes: int
     cell_type: str
-    sample_type: str
-    sample_index: int
-    sample_seed: int
-    run_hvg_count: int
-    jaccard: float | None
+    jaccard: float
     tp: int
     fp: int
     fn: int
     tn: int
-    precision: float | None
-    recall: float | None
+    precision: float
+    recall: float
     specificity: float | None
     fpr: float | None
     intersection: int
@@ -39,14 +40,24 @@ class BiologicalMetricsRecord(TypedDict):
     fold_enrichment: float | None
 
 
+@dataclass(frozen=True)
+class BiologicalEvaluation:
+    """Result of evaluate_clustering_biologically for one run."""
+
+    # One per (enrichment set, cluster, cell type), with the null statistics
+    records: list[BiologicalComparisonRecord]
+    # One value per column of the results table (bio_*)
+    summary: dict[str, float | int | None]
+
+
 class MembershipMetrics(TypedDict):
     tp: int
     fp: int
     fn: int
     tn: int
-    jaccard: float | None
-    precision: float | None
-    recall: float | None
+    jaccard: float
+    precision: float
+    recall: float
     specificity: float | None
     fpr: float | None
 

@@ -4,6 +4,7 @@ from typing import Literal, Sequence, cast
 import numpy as np
 import pandas as pd
 
+from .constants import SIGNIFICANCE_LEVEL
 from .types import (
     BiologicalComparisonRecord,
     BiologicalMetricsRecord,
@@ -11,6 +12,7 @@ from .types import (
     FoldEnrichmentMetrics,
     MembershipMetrics,
     RandomSummaryStats,
+    ReferenceSets,
     TailStats,
 )
 
@@ -33,17 +35,16 @@ ALL_NULL_TRACKED_METRICS: tuple[str, ...] = (
 
 
 def compute_run_metrics(
-    cluster_marker_genes: list[str],
-    enrichment_sets: dict[EnrichmentSetName, dict[str, set[str]]],
+    cluster_marker_genes: list[str] | set[str],
+    enrichment_sets: ReferenceSets,
     all_genes: set[str],
     cluster_id: str,
     cluster_size: int,
-    sample_type: str,
-    sample_index: int,
-    sample_seed: int,
-    run_hvg_count: int,
 ) -> list[BiologicalMetricsRecord]:
-    """Compute raw biological metrics for one gene set (a cluster's markers, or a random set) vs every reference set."""
+    """Raw metrics of one gene set (a cluster's markers, or a random set drawn for that cluster) vs every reference set.
+
+    One record per (enrichment set, cell type), inside the universe `all_genes`.
+    """
     selected_cluster_markers = set(cluster_marker_genes)
 
     results: list[BiologicalMetricsRecord] = []
@@ -68,13 +69,8 @@ def compute_run_metrics(
                     "enrichment_set": enrichment_set_name,
                     "cluster_id": cluster_id,
                     "cluster_size": cluster_size,
-                    "marker_genes": cluster_marker_genes,
-                    "n_marker_genes": len(cluster_marker_genes),
+                    "n_marker_genes": len(selected_cluster_markers),
                     "cell_type": cell_type,
-                    "sample_type": sample_type,
-                    "sample_index": sample_index,
-                    "sample_seed": sample_seed,
-                    "run_hvg_count": run_hvg_count,
                     "jaccard": run_metrics["jaccard"],
                     "tp": run_metrics["tp"],
                     "fp": run_metrics["fp"],
@@ -132,6 +128,60 @@ def attach_tail_statistics(
         enriched_records.append(enriched)
 
     return enriched_records
+
+
+def summarize_biological_evaluation(
+    records: list[BiologicalComparisonRecord],
+    reference_sets: ReferenceSets,
+    n_clusters: int,
+    n_clusters_without_markers: int,
+    n_clusters_untested: int,
+    significance_level: float = SIGNIFICANCE_LEVEL,
+) -> dict[str, float | int | None]:
+    """One value per results-table column for a run (None when a reference set has no cell types).
+
+    For each reference set and each of its cell types, the best-matching cluster is the one with
+    the highest Jaccard (a cell type no cluster has markers for scores 0). Per reference set:
+
+    - bio_<set>_jaccard / bio_<set>_fold_enrichment: mean over cell types of the best cluster's value
+      (macro average, as in the reference study)
+    - bio_<set>_n_recovered: cell types whose best cluster's Jaccard p-value < significance_level
+    - bio_<set>_n_cell_types: cell types of the reference set
+
+    Plus the cluster counts: bio_n_clusters, bio_n_clusters_without_markers (no DE markers, so no
+    records) and bio_n_clusters_untested (markers, but no null: too few, or no KDE could be fitted).
+    """
+    best: dict[tuple[str, str], BiologicalComparisonRecord] = {}
+    for record in records:
+        key = (str(record["enrichment_set"]), str(record["cell_type"]))
+        if key not in best or cast(float, record["jaccard"]) > cast(float, best[key]["jaccard"]):
+            best[key] = record
+
+    summary: dict[str, float | int | None] = {
+        "bio_n_clusters": n_clusters,
+        "bio_n_clusters_without_markers": n_clusters_without_markers,
+        "bio_n_clusters_untested": n_clusters_untested,
+    }
+    for set_name, cell_types in reference_sets.items():
+        jaccards: list[float] = []
+        fold_enrichments: list[float] = []
+        n_recovered = 0
+        for cell_type in cell_types:
+            record = best.get((set_name, cell_type))
+            if record is None:
+                jaccards.append(0.0)
+                fold_enrichments.append(0.0)
+                continue
+            jaccards.append(cast(float, record["jaccard"]))
+            fold_enrichments.append(_as_optional_float(record["fold_enrichment"]) or 0.0)
+            p_value = _as_optional_float(record.get("jaccard_p_value"))
+            n_recovered += int(p_value is not None and p_value < significance_level)
+
+        summary[f"bio_{set_name}_jaccard"] = float(np.mean(jaccards)) if jaccards else None
+        summary[f"bio_{set_name}_fold_enrichment"] = float(np.mean(fold_enrichments)) if fold_enrichments else None
+        summary[f"bio_{set_name}_n_recovered"] = n_recovered
+        summary[f"bio_{set_name}_n_cell_types"] = len(cell_types)
+    return summary
 
 
 def _as_optional_float(value: object) -> float | None:

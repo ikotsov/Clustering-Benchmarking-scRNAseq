@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from .metrics import _build_null_pools, attach_tail_statistics, compute_run_metrics
+from .metrics import _build_null_pools, attach_tail_statistics, compute_run_metrics, summarize_biological_evaluation
 
 
 def test_compute_run_metrics_returns_raw_values_without_tail_stats():
@@ -13,10 +13,6 @@ def test_compute_run_metrics_returns_raw_values_without_tail_stats():
         all_genes={"G1", "G2", "G3", "G4"},
         cluster_id="0",
         cluster_size=10,
-        sample_type="observed",
-        sample_index=0,
-        sample_seed=3,
-        run_hvg_count=2,
     )[0]
 
     assert record["tp"] == 1
@@ -166,3 +162,27 @@ def test_attach_tail_statistics_handles_no_sampled_runs():
     assert enriched["jaccard_z_score"] is None
     assert enriched["jaccard_p_value"] is None
     assert enriched["random_jaccard_n"] == 0
+
+
+def _summary_record(cluster_id: str, cell_type: str, jaccard: float, p_value: float | None) -> dict:
+    return {"enrichment_set": "de_markers", "cluster_id": cluster_id, "cell_type": cell_type,
+            "jaccard": jaccard, "fold_enrichment": 10 * jaccard, "jaccard_p_value": p_value}
+
+
+def test_summarize_biological_evaluation_uses_each_cell_types_best_cluster():
+    records = [
+        _summary_record("0", "A", jaccard=0.8, p_value=0.01),
+        _summary_record("1", "A", jaccard=0.2, p_value=0.01),   # a weaker piece of A
+        _summary_record("1", "B", jaccard=0.3, p_value=0.50),   # best for B, but not significant
+        _summary_record("2", "B", jaccard=0.1, p_value=None),   # untested cluster
+    ]
+    reference_sets = {"de_markers": {"A": {"g1"}, "B": {"g2"}, "C": {"g3"}}}  # no cluster has markers for C
+
+    summary = summarize_biological_evaluation(
+        records, reference_sets, n_clusters=4, n_clusters_without_markers=1, n_clusters_untested=1)
+
+    assert summary["bio_de_markers_jaccard"] == pytest.approx((0.8 + 0.3 + 0.0) / 3)
+    assert summary["bio_de_markers_fold_enrichment"] == pytest.approx((8 + 3 + 0) / 3)
+    assert summary["bio_de_markers_n_recovered"] == 1
+    assert summary["bio_de_markers_n_cell_types"] == 3
+    assert (summary["bio_n_clusters"], summary["bio_n_clusters_without_markers"], summary["bio_n_clusters_untested"]) == (4, 1, 1)

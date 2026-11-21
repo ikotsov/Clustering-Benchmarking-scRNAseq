@@ -10,9 +10,10 @@ from src.data_loading import (
     load_tuned_params,
     parse_preprocessing_config,
 )
-from src.dataset_config import load_dataset_config, parse_n_clusters, parse_species
+from src.dataset_config import load_dataset_config, parse_marker_databases, parse_n_clusters, parse_species
 from src.preprocessing import apply_pca, apply_umap, preprocess_data
 from src.preprocessing.gene_annotation import load_gene_annotation
+from src.preprocessing.pipeline import run_filtering_pipeline
 from src.clustering.registry import (
     ALGORITHMS_REQUIRING_N_CLUSTERS,
     ClusteringAlgorithm,
@@ -23,17 +24,22 @@ from src.evaluation import (
     evaluate_clustering_biologically,
     evaluate_clustering_externally,
     evaluate_clustering_internally,
-    save_biological_evaluation_results,
     save_null_distribution,
     save_run_result,
 )
 from src.constants import DATASETS_DIR, PCA_VARIANCE_RATIO, SEED
-from src.paths import GROUND_TRUTH_LABELS, RAW_COUNTS, RUN_LABELS, get_pca_label, processed_data_path, resolve
+from src.paths import get_pca_label, processed_data_path
 from src.profiling import measure_resources
 from src.tuning.objectives import get_params_label
 from src.tuning.types import ObjectiveMetric
 from src.types import NormMethod, PathLike, Species
-from src.evaluation.biological.types import EnrichmentSetName
+from src.evaluation.biological import (
+    build_reference_sets,
+    load_gene_marker_index,
+    load_reference_sets,
+    save_biological_evaluation,
+    save_reference_sets,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -326,66 +332,103 @@ def _format_metric(value: float | None) -> str:
     return f"{value:.3f}" if value is not None else "N/A (undefined)"
 
 
-def run_biological_evaluation(
-    accession: str,
-    algo_name: ClusteringAlgorithm,
-    norm_method: NormMethod,
-    with_pca: bool,
-    species: Species,
-    tuning_metric: ObjectiveMetric | None = None,
-    enrichment_set_names: list[EnrichmentSetName] | None = None,
+def _load_filtered_counts(raw_path: PathLike, config_path: PathLike, annotation_path: PathLike):
+    """The raw counts after the cell QC and gene filtering of preprocessing (all genes, not only HVGs)."""
+    config = load_dataset_config(config_path)
+    species = parse_species(config)
+    annotation = load_gene_annotation(species, annotation_path)
+    counts = run_filtering_pipeline(
+        load_csv_data(raw_path), config=parse_preprocessing_config(config), species=species, annotation=annotation)
+    return counts, config, species, annotation
+
+
+def run_reference_sets(
+    *,
+    raw_path: PathLike,
+    config_path: PathLike,
+    annotation_path: PathLike,
+    labels_path: PathLike,
+    output_path: PathLike,
+    marker_index_path: PathLike | None = None,
 ):
     """
-    Biological evaluation of one benchmark run (see evaluate_clustering_biologically): do the marker genes
-    of the run's clusters match the marker genes of the ground-truth cell types more than expression-matched
-    random gene sets do? Expects the run to already exist (use run_experiment first): its saved clusters are
-    evaluated, nothing is clustered again.
+    Builds the reference sets of a dataset (see build_reference_sets) and saves them: the DE markers of each
+    ground-truth cell type, on log-CPM of all filtered genes, plus the marker databases set in the dataset's
+    config.yaml (see parse_marker_databases). They are the same for every run, so they are built once per dataset.
 
     Parameters
     ----------
-    accession, algo_name, norm_method, with_pca, tuning_metric
-        Identify the run (tuning_metric None = the default parameters)
-    species : Species
-        Species of the dataset (for the marker databases)
-    enrichment_set_names : list or None
-        Reference marker sets to compare with; None = ["de_markers"]
+    raw_path, config_path, annotation_path : PathLike
+        Raw counts, dataset config.yaml and gene annotation, filtered as in preprocessing
+    labels_path : PathLike
+        Ground truth labels CSV
+    output_path : PathLike
+        Where to save the reference sets (JSON)
+    marker_index_path : PathLike or None
+        Gene marker index (scripts/generate_gene_marker_index.py); needed only when the config sets marker databases
     """
-    params_label = get_params_label(tuning_metric)
-    logger.info("BIOLOGICAL EVALUATION: %s + %s + %s + %s + %s",
-                accession, algo_name.upper(), norm_method, get_pca_label(with_pca).upper(), params_label.upper())
+    counts, config, species, annotation = _load_filtered_counts(raw_path, config_path, annotation_path)
+    marker_databases = parse_marker_databases(config)
+    logger.info("REFERENCE SETS: %s (%s cells x %s genes), de_markers%s", raw_path, counts.shape[0], counts.shape[1],
+                "".join(f" + {name}" for name in marker_databases))
 
-    # The DE tests need genes, so the no-PCA matrix is used whichever representation the run clustered.
-    expression_path = processed_data_path(accession, norm_method, with_pca=False)
-    run_labels_path = resolve(RUN_LABELS, accession=accession, norm_method=norm_method,
-                              pca=get_pca_label(with_pca), params=params_label, algorithm=algo_name)
-    for path in (expression_path, run_labels_path):
-        if not os.path.exists(path):
-            raise FileNotFoundError(f"Expected file not found: {path}")
+    reference_sets = build_reference_sets(
+        counts=counts,
+        cell_type_labels=load_ground_truth_labels(labels_path),
+        species=species,
+        annotation=annotation,
+        marker_databases=marker_databases,
+        marker_index=load_gene_marker_index(marker_index_path) if marker_databases and marker_index_path else None,
+    )
+    save_reference_sets(output_path, reference_sets)
 
-    expression_data = load_csv_data(expression_path)
-    counts = load_csv_data(resolve(RAW_COUNTS, accession=accession))
-    ground_truth = load_ground_truth_labels(resolve(GROUND_TRUTH_LABELS, accession=accession))
+
+def run_biological_evaluation(
+    *,
+    raw_path: PathLike,
+    config_path: PathLike,
+    annotation_path: PathLike,
+    run_labels_path: PathLike,
+    reference_sets_path: PathLike,
+    output_path: PathLike,
+    n_samples: int,
+    min_marker_genes: int,
+    seed: int = SEED,
+):
+    """
+    Biological evaluation of one benchmark run (see evaluate_clustering_biologically): do the marker genes of the
+    run's clusters match the reference sets' genes more than expression-matched random gene sets do?
+    Expects the run (run_experiment) and the dataset's reference sets (run_reference_sets) to already exist;
+    the run's saved clusters are evaluated, nothing is clustered again.
+
+    Parameters
+    ----------
+    raw_path, config_path, annotation_path : PathLike
+        Raw counts, dataset config.yaml and gene annotation, filtered as in preprocessing
+    run_labels_path : PathLike
+        Predicted cluster of each cell (labels_output_path of run_experiment)
+    reference_sets_path : PathLike
+        The dataset's reference sets (output of run_reference_sets)
+    output_path : PathLike
+        Where to save the evaluation (JSON); its summary becomes the bio_* columns of results.tsv
+    n_samples : int
+        Random gene sets per cluster
+    min_marker_genes : int
+        Clusters with fewer marker genes are scored but not tested
+    seed : int, default=SEED
+        Seed of the random sets, so reruns give the same null distributions
+    """
+    logger.info("BIOLOGICAL EVALUATION: %s (%s random sets per cluster, seed=%s)", run_labels_path, n_samples, seed)
+    counts, _, _, _ = _load_filtered_counts(raw_path, config_path, annotation_path)
     predicted_labels = pd.read_csv(run_labels_path, index_col=0).iloc[:, 0]
 
-    biological_results = evaluate_clustering_biologically(
-        expression_data=expression_data,
+    evaluation = evaluate_clustering_biologically(
         counts=counts,
-        cell_type_labels=ground_truth.loc[expression_data.index].astype(str),
         predicted_labels=predicted_labels,
-        enrichment_set_names=enrichment_set_names,
-        species=species,
+        reference_sets=load_reference_sets(reference_sets_path),
+        n_samples=n_samples,
+        seed=seed,
+        min_marker_genes=min_marker_genes,
     )
-    logger.info("Biological comparisons: %s records (clusters x cell types)", len(biological_results))
-
-    output_dir = os.path.join(DATASETS_DIR, accession, "outputs")
-    os.makedirs(output_dir, exist_ok=True)
-
-    save_biological_evaluation_results(
-        dataset=accession,
-        algorithm=algo_name,
-        preprocessing=norm_method,
-        with_pca=with_pca,
-        tuning_metric=tuning_metric,
-        comparison_records=biological_results,
-        output_dir=output_dir,
-    )
+    logger.info("Summary: %s", ", ".join(f"{name}={value}" for name, value in evaluation.summary.items()))
+    save_biological_evaluation(output_path, evaluation, n_samples=n_samples, seed=seed)

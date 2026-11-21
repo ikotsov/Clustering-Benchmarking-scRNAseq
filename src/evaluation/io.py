@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from src.evaluation.biological.types import BiologicalComparisonRecord
+from src.evaluation.biological.io import load_biological_summary
 from src.evaluation.permutation import load_null_distribution, summarize_null
 from src.paths import get_pca_label
 from src.tuning.objectives import get_params_label
@@ -95,6 +95,7 @@ def aggregate_run_results(
     run_result_paths: Iterable[PathLike],
     results_path: PathLike,
     null_result_paths: Iterable[PathLike] | None = None,
+    biological_result_paths: Iterable[PathLike] | None = None,
 ) -> None:
     """
     Collect the per-run result files (see save_run_result) of a dataset into a results table (TSV)
@@ -107,6 +108,9 @@ def aggregate_run_results(
     With null_result_paths (the null distribution of each run, see save_null_distribution, in the order
     of run_result_paths), each row also gets {metric}_null_mean and {metric}_pvalue (see summarize_null).
 
+    With biological_result_paths (the biological evaluation of each run, see save_biological_evaluation,
+    in the order of run_result_paths), each row also gets the bio_* columns (see summarize_biological_evaluation).
+
     The last columns are the runtime and memory of the clustering call.
     Runs saved before these were recorded get empty values, with a warning to rerun them.
 
@@ -115,10 +119,12 @@ def aggregate_run_results(
     """
     run_result_paths = list(run_result_paths)
     null_paths = None if null_result_paths is None else list(null_result_paths)
-    if null_paths is not None and len(null_paths) != len(run_result_paths):
-        raise ValueError(
-            f"Got {len(null_paths)} null results for {len(run_result_paths)} runs; expected one per run"
-        )
+    biological_paths = None if biological_result_paths is None else list(biological_result_paths)
+    for name, extra_paths in (("null", null_paths), ("biological", biological_paths)):
+        if extra_paths is not None and len(extra_paths) != len(run_result_paths):
+            raise ValueError(
+                f"Got {len(extra_paths)} {name} results for {len(run_result_paths)} runs; expected one per run"
+            )
 
     rows = []
     for i, run_result_path in enumerate(run_result_paths):
@@ -127,6 +133,9 @@ def aggregate_run_results(
         null_summary = (
             summarize_null(run["metrics"], load_null_distribution(
                 null_paths[i])) if null_paths is not None else {}
+        )
+        biological_summary = (
+            load_biological_summary(biological_paths[i]) if biological_paths is not None else {}
         )
         if "clustering_resources" not in run:
             logger.warning(
@@ -138,6 +147,7 @@ def aggregate_run_results(
             "n_features": run.get("n_features"),
             **run["metrics"],
             **null_summary,
+            **biological_summary,
             **{f"clustering_{name}": value for name, value in run.get("clustering_resources", {}).items()},
         })
 
@@ -193,83 +203,3 @@ def _run_columns(run: dict) -> dict[str, str]:
         "pca": get_pca_label(run["with_pca"]),
         "params": get_params_label(run["tuning_metric"]),
     }
-
-
-def save_biological_evaluation_results(
-    dataset: str,
-    algorithm: str,
-    preprocessing: str,
-    with_pca: bool,
-    tuning_metric: ObjectiveMetric | None,
-    comparison_records: list[BiologicalComparisonRecord],
-    output_dir: str,
-) -> None:
-    """Save biological evaluation results into biological_results.json.
-
-    One entry per run, identified by (algorithm, normalization, with_pca, tuning_metric);
-    saving a run again replaces its entry. tuning_metric is None for the default parameters,
-    as in save_run_result.
-    """
-    results_file = os.path.join(output_dir, "biological_results.json")
-    now_iso = datetime.now().isoformat()
-
-    all_results: dict[str, object]
-    if os.path.exists(results_file):
-        with open(results_file, "r") as f:
-            loaded = json.load(f)
-
-        all_results = loaded
-    else:
-        all_results = {
-            "dataset": dataset,
-            "updated_at": now_iso,
-            "runs": [],
-        }
-
-    runs = all_results["runs"]
-    if not isinstance(runs, list):
-        raise ValueError(
-            "Invalid biological_results.json format: 'runs' must be a list."
-        )
-
-    run_entry = {
-        "algorithm": algorithm,
-        "normalization": preprocessing,
-        "with_pca": with_pca,
-        "tuning_metric": tuning_metric,
-        "comparison_records": comparison_records,
-        "timestamp": now_iso,
-    }
-
-    replaced = False
-    for idx, existing in enumerate(runs):
-        if not isinstance(existing, dict):
-            continue
-
-        if (
-            existing.get("algorithm") == algorithm
-            and existing.get("normalization") == preprocessing
-            and bool(existing.get("with_pca", False)) == with_pca
-            and existing.get("tuning_metric") == tuning_metric
-        ):
-            runs[idx] = run_entry
-            replaced = True
-            break
-
-    if not replaced:
-        runs.append(run_entry)
-
-    all_results.setdefault("dataset", dataset)
-    all_results["updated_at"] = now_iso
-
-    with open(results_file, "w") as f:
-        json.dump(all_results, f, allow_nan=False)
-
-    pca_key = get_pca_label(with_pca)
-    logger.info(
-        "Biological evaluation saved: %s -> %s -> %s -> %s in biological_results.json",
-        algorithm,
-        preprocessing,
-        pca_key,
-        get_params_label(tuning_metric),
-    )

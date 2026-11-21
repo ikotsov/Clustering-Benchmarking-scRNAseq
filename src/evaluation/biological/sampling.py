@@ -24,6 +24,10 @@ def compute_gene_sampling_features(counts: pd.DataFrame) -> pd.DataFrame:
     return features
 
 
+class MatchedSamplingError(ValueError):
+    """Raised when no expression-matched random sets can be drawn for a gene set."""
+
+
 def build_matched_gene_samples(
     gene_sampling_features: pd.DataFrame,
     observed_genes: list[str],
@@ -35,18 +39,24 @@ def build_matched_gene_samples(
     A 2D Gaussian KDE is fitted to the observed genes' features; every gene of the universe
     (the index of `gene_sampling_features`) gets a sampling probability proportional to the
     KDE at its features; each sample draws len(observed_genes) genes without replacement.
-    The universe must contain more genes than the observed set, or every sample is the
-    whole universe.
+
+    Raises MatchedSamplingError when the universe is not larger than the observed set (every
+    sample would be the whole universe) or the KDE cannot be fitted (e.g. too few genes, or genes
+    with identical features). There is no uniform fallback: unmatched random sets would make the
+    test too lenient.
     """
     if len(observed_genes) >= len(gene_sampling_features):
-        raise ValueError(
+        raise MatchedSamplingError(
             f"Cannot draw random sets of {len(observed_genes)} genes from a universe of "
             f"{len(gene_sampling_features)} genes: every sample would be the whole universe."
         )
     probabilities = _estimate_gene_probabilities(gene_sampling_features, observed_genes)
+    if np.count_nonzero(probabilities) < len(observed_genes):
+        raise MatchedSamplingError(
+            f"The KDE gives fewer than {len(observed_genes)} genes a non-zero probability")
+
     rng = np.random.default_rng(seed)
     universe = gene_sampling_features.index.to_numpy()
-
     return [
         rng.choice(universe, size=len(observed_genes), replace=False, p=probabilities).tolist()
         for _ in range(n_samples)
@@ -54,22 +64,15 @@ def build_matched_gene_samples(
 
 
 def _estimate_gene_probabilities(gene_statistics: pd.DataFrame, observed_genes: list[str]) -> np.ndarray:
-    """Estimate KDE-based sampling probability for gene universe."""
-    observed_features = gene_statistics.loc[observed_genes]
-
-    # fallback, fair chance for all genes (e.g. too few observed genes to fit a 2D KDE).
-    uniform_distribution = np.full(len(gene_statistics), 1.0 / len(gene_statistics))
-
+    """KDE fitted to the observed genes' features, evaluated at every gene, normalized to sum to 1."""
     try:
-        kde = gaussian_kde(observed_features.T.to_numpy())
+        kde = gaussian_kde(gene_statistics.loc[observed_genes].T.to_numpy())
         probabilities = kde.evaluate(gene_statistics.T.to_numpy())
-    except (ValueError, LinAlgError, FloatingPointError):
-        return uniform_distribution
+    except (ValueError, LinAlgError, FloatingPointError) as error:
+        raise MatchedSamplingError(f"Cannot fit a KDE to {len(observed_genes)} genes: {error}") from error
 
     probabilities = np.clip(probabilities, a_min=0.0, a_max=None)
     total = probabilities.sum()
-
     if not np.isfinite(total) or total <= 0:
-        return uniform_distribution
-
+        raise MatchedSamplingError("The KDE gives every gene a zero probability")
     return probabilities / total

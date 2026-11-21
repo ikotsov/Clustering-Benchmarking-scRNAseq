@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from .sampling import build_matched_gene_samples, compute_gene_sampling_features
+from .sampling import MatchedSamplingError, build_matched_gene_samples, compute_gene_sampling_features
 
 
 def test_compute_gene_sampling_features_uses_log_scaled_raw_counts():
@@ -43,3 +43,12 @@ def test_build_matched_gene_samples_rejects_a_universe_no_larger_than_the_observ
 
     with pytest.raises(ValueError, match="whole universe"):
         build_matched_gene_samples(features, features.index.tolist(), n_samples=2)
+
+
+def test_build_matched_gene_samples_fails_instead_of_sampling_uniformly_when_no_kde_fits():
+    # Observed genes with identical features: the KDE covariance is singular
+    features = _features(50)
+    features.iloc[:5] = 1.0
+
+    with pytest.raises(MatchedSamplingError):
+        build_matched_gene_samples(features, features.index[:5].tolist(), n_samples=2)

@@ -1,67 +1,47 @@
 import json
 from collections.abc import Callable
-from pathlib import Path
-from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from src.paths import DATASET_DIR, resolve
 
-def load_biological_comparison_records(results_json_path: str | Path) -> pd.DataFrame:
-    """Load and flatten comparison records from biological_results.json.
 
-    The returned dataframe contains run-level metadata columns (algorithm,
-    normalization, with_pca, tuning_metric, timestamp) merged with each row in
-    comparison_records.
+def load_biological_records(accession: str) -> pd.DataFrame:
+    """Load the per-cluster records of every biological evaluation of a dataset into one table.
+
+    One row per (run, enrichment set, cluster, cell type), with the run columns of results.tsv
+    (algorithm, normalization, pca, params) taken from each file's path
+    (outputs/runs/{norm_method}/{pca}/{params}/{algorithm}_biological.json).
     """
-    path = Path(results_json_path)
-    with path.open("r") as f:
-        payload = json.load(f)
-
-    runs = payload.get("runs", [])
-    if not isinstance(runs, list):
-        raise ValueError(
-            "Invalid biological results format: 'runs' must be a list.")
-
-    flattened: list[dict[str, Any]] = []
-    for run in runs:
-        if not isinstance(run, dict):
-            continue
-
-        run_metadata = {
-            "dataset": payload.get("dataset"),
-            "algorithm": run.get("algorithm"),
-            "normalization": run.get("normalization"),
-            "with_pca": run.get("with_pca"),
-            "tuning_metric": run.get("tuning_metric"),
-            "timestamp": run.get("timestamp"),
-        }
-        comparison_records = run.get("comparison_records", [])
-        if not isinstance(comparison_records, list):
-            continue
-
-        for record in comparison_records:
-            if not isinstance(record, dict):
-                continue
-
-            flattened.append({**run_metadata, **record})
-
-    return pd.DataFrame(flattened)
+    runs_dir = resolve(DATASET_DIR, accession=accession) / "outputs" / "runs"
+    tables = []
+    for path in sorted(runs_dir.glob("*/*/*/*_biological.json")):
+        normalization, pca, params = path.parts[-4:-1]
+        with path.open() as f:
+            records = json.load(f)["records"]
+        tables.append(pd.DataFrame(records).assign(
+            algorithm=path.name.removesuffix("_biological.json"),
+            normalization=normalization, pca=pca, params=params,
+        ))
+    return pd.concat(tables, ignore_index=True) if tables else pd.DataFrame()
 
 
 def build_algorithm_celltype_heatmap_table(
     records: pd.DataFrame,
     metric: str = "jaccard",
     normalization: str | None = None,
-    with_pca: bool | None = None,
-    aggregate: str = "mean",
-    sample_type: str = "observed",
+    pca: str | None = None,
+    params: str | None = None,
+    enrichment_set: str | None = None,
+    aggregate: str = "max",
 ) -> pd.DataFrame:
     """Build an algorithm x cell_type table for marker-alignment metrics.
 
-    This summarizes biological comparison rows by algorithm and reference
-    cell_type, then pivots to a heatmap-ready matrix.
+    This summarizes biological comparison rows (see load_biological_records) by
+    algorithm and reference cell_type, then pivots to a heatmap-ready matrix.
+    aggregate="max" gives each cell type's best-matching cluster, as in the run summary.
     """
     required_cols = {"algorithm", "cell_type", metric}
     missing = required_cols - set(records.columns)
@@ -72,10 +52,12 @@ def build_algorithm_celltype_heatmap_table(
     data = records.copy()
     if normalization is not None:
         data = data.loc[data["normalization"] == normalization]
-    if with_pca is not None:
-        data = data.loc[data["with_pca"] == with_pca]
-    if "sample_type" in data.columns:
-        data = data.loc[data["sample_type"] == sample_type]
+    if pca is not None:
+        data = data.loc[data["pca"] == pca]
+    if params is not None:
+        data = data.loc[data["params"] == params]
+    if enrichment_set is not None:
+        data = data.loc[data["enrichment_set"] == enrichment_set]
 
     if data.empty:
         return pd.DataFrame()

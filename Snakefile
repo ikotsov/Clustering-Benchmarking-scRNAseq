@@ -2,8 +2,11 @@
 Clustering benchmark workflow:
 
     prepare -> preprocess -> tune -> aggregate_tuning
-                          \\-> benchmark -> permutation_test -> aggregate_runs
+                          \\-> benchmark -> permutation_test ------> aggregate_runs
+                                        \\-> biological_evaluation -/
                           \\-> embed (2D UMAP for plots only)
+    prepare -> reference_sets -> biological_evaluation
+    gene_marker_index -> reference_sets (only for datasets whose config sets marker databases)
 
 Every algorithm is benchmarked with its default parameters; the tuned algorithms are benchmarked
 again with the parameters tuned on the same normalization + PCA representation, once per tuning
@@ -11,6 +14,9 @@ objective metric: external ones score against the ground truth labels, internal 
 as without labels. Tuning and run outputs are both labelled "tuned_<metric>" (see src.tuning.objectives.get_params_label).
 permutation_test scores shuffles of each run's predicted labels, so that results.tsv can compare
 every run with random labels of the same cluster sizes (null means and empirical p-values).
+biological_evaluation tests whether the marker genes of each run's clusters match the reference sets
+(DE markers of the ground-truth cell types, plus any marker databases) more than expression-matched random
+gene sets do; results.tsv gets its summary (bio_* columns).
 
 Run settings live in config/config.yaml, each dataset's source files in config/datasets.yaml,
 and each dataset's analysis parameters in data/datasets/<accession>/config.yaml.
@@ -25,7 +31,7 @@ import yaml
 from typing import get_args
 
 from src import paths
-from src.dataset_config import load_dataset_config, parse_species
+from src.dataset_config import load_dataset_config, parse_marker_databases, parse_species
 from src.tuning.objectives import get_params_label, get_tuning_objective
 from src.tuning.types import ObjectiveMetric
 
@@ -62,6 +68,16 @@ wildcard_constraints:
 
 def dataset_species(wildcards):
     return parse_species(load_dataset_config(paths.DATASET_CONFIG.format(accession=wildcards.accession)))
+
+
+def dataset_annotation(wildcards):
+    return paths.GENE_ANNOTATION.format(species=dataset_species(wildcards))
+
+
+def dataset_marker_index(wildcards):
+    # Only datasets whose config sets marker databases need the gene marker index
+    config_path = paths.DATASET_CONFIG.format(accession=wildcards.accession)
+    return paths.GENE_MARKER_INDEX if parse_marker_databases(load_dataset_config(config_path)) else []
 
 
 def source_args(wildcards):
@@ -116,7 +132,7 @@ rule preprocess:
     input:
         raw=paths.RAW_COUNTS,
         config=paths.DATASET_CONFIG,
-        annotation=lambda wildcards: paths.GENE_ANNOTATION.format(species=dataset_species(wildcards)),
+        annotation=dataset_annotation,
     output:
         pca=expand(paths.PROCESSED_DATA, pca="pca", allow_missing=True),
         no_pca=expand(paths.PROCESSED_DATA, pca="no_pca", allow_missing=True),
@@ -232,6 +248,61 @@ rule permutation_test:
         " --out {output} 2> {log}"
 
 
+rule gene_marker_index:
+    input:
+        paths.GENE_MARKER_SOURCES,
+    output:
+        paths.GENE_MARKER_INDEX,
+    log:
+        "logs/gene_marker_index.log",
+    shell:
+        "python {SCRIPTS}/generate_gene_marker_index.py 2> {log}"
+
+
+rule reference_sets:
+    input:
+        raw=paths.RAW_COUNTS,
+        config=paths.DATASET_CONFIG,
+        annotation=dataset_annotation,
+        labels=paths.GROUND_TRUTH_LABELS,
+        marker_index=dataset_marker_index,
+    output:
+        paths.REFERENCE_SETS,
+    params:
+        marker_index_arg=lambda wildcards, input: f"--marker-index {input.marker_index}" if input.marker_index else "",
+    log:
+        "logs/reference_sets/{accession}.log",
+    benchmark:
+        "benchmarks/reference_sets/{accession}.tsv",
+    shell:
+        "python {SCRIPTS}/reference_sets.py --raw {input.raw} --config {input.config}"
+        " --annotation {input.annotation} --labels {input.labels} {params.marker_index_arg}"
+        " --out {output} 2> {log}"
+
+
+rule biological_evaluation:
+    input:
+        raw=paths.RAW_COUNTS,
+        config=paths.DATASET_CONFIG,
+        annotation=dataset_annotation,
+        run_labels=paths.RUN_LABELS,
+        reference_sets=paths.REFERENCE_SETS,
+    output:
+        paths.RUN_BIOLOGICAL,
+    params:
+        n_samples=config["biological_evaluation"]["n_samples"],
+        min_marker_genes=config["biological_evaluation"]["min_marker_genes"],
+    log:
+        "logs/biological_evaluation/{accession}/{norm_method}/{pca}/{params}/{algorithm}.log",
+    benchmark:
+        "benchmarks/biological_evaluation/{accession}/{norm_method}/{pca}/{params}/{algorithm}.tsv",
+    shell:
+        "python {SCRIPTS}/biological_evaluation.py --raw {input.raw} --config {input.config}"
+        " --annotation {input.annotation} --run-labels {input.run_labels}"
+        " --reference-sets {input.reference_sets} --n-samples {params.n_samples}"
+        " --min-marker-genes {params.min_marker_genes} --out {output} 2> {log}"
+
+
 def expand_runs(template):
     return expand(
         template, params="default", algorithm=ALGORITHMS,
@@ -246,6 +317,7 @@ rule aggregate_runs:
     input:
         runs=expand_runs(paths.RUN_RESULT),
         nulls=expand_runs(paths.RUN_NULL),
+        biologicals=expand_runs(paths.RUN_BIOLOGICAL),
         labels=expand_runs(paths.RUN_LABELS),
     output:
         results=paths.RESULTS,
@@ -257,4 +329,5 @@ rule aggregate_runs:
     shell:
         "python {SCRIPTS}/aggregate_runs.py --dataset {wildcards.accession}"
         " --out {output.results} --out-labels {output.labels} {input.runs}"
-        " --null-results {input.nulls} --run-labels {input.labels} 2> {log}"
+        " --null-results {input.nulls} --biological-results {input.biologicals}"
+        " --run-labels {input.labels} 2> {log}"

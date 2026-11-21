@@ -30,3 +30,9 @@ tuning:
 
 permutation_test:
   n_permutations: 1000
+
+biological_evaluation:
+  # Random gene sets per cluster, expression-matched to its marker genes
+  n_samples: 100
+  # Clusters with fewer marker genes are scored but not tested against random sets
+  min_marker_genes: 10

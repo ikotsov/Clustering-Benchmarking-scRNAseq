@@ -24,11 +24,20 @@ RUN_LABELS = DATASET_DIR + \
     "/outputs/runs/{norm_method}/{pca}/{params}/{algorithm}_labels.csv"
 RUN_NULL = DATASET_DIR + \
     "/outputs/runs/{norm_method}/{pca}/{params}/{algorithm}_null.npz"
+RUN_BIOLOGICAL = DATASET_DIR + \
+    "/outputs/runs/{norm_method}/{pca}/{params}/{algorithm}_biological.json"
+REFERENCE_SETS = DATASET_DIR + "/outputs/reference_sets.json"
 CLUSTERING_PARAMS = DATASET_DIR + "/outputs/clustering_params.json"
 RESULTS = DATASET_DIR + "/outputs/results.tsv"
 RUN_LABELS_TABLE = DATASET_DIR + "/outputs/labels.tsv"
 
 GENE_ANNOTATION = "data/annotations/gene_annotation_{species}.csv"
+GENE_MARKER_SOURCES = [
+    "data/gene_markers/Cell_marker_Human.xlsx",
+    "data/gene_markers/Cell_marker_Mouse.xlsx",
+    "data/gene_markers/ScTypeDB_full.xlsx",
+]
+GENE_MARKER_INDEX = "data/gene_markers/outputs/gene_marker_index.json"
 
 
 def resolve(template: str, **wildcards: object) -> Path:

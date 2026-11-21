@@ -6,7 +6,7 @@ from .permutation import (
     save_null_distribution,
     summarize_null,
 )
-from .io import aggregate_run_labels, aggregate_run_results, save_biological_evaluation_results, save_run_result
+from .io import aggregate_run_labels, aggregate_run_results, save_run_result
 from .biological import evaluate_clustering_biologically
 
 __all__ = [
@@ -19,7 +19,6 @@ __all__ = [
     "save_run_result",
     "aggregate_run_results",
     "aggregate_run_labels",
-    "save_biological_evaluation_results",
     "compute_null_distribution",
     "summarize_null",
     "save_null_distribution",

@@ -34,6 +34,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--null-results", type=Path, nargs="+", default=None,
                         help="Null distribution of each run (.npz), in the order of the run results;"
                              " adds the null means and p-values to the table")
+    parser.add_argument("--biological-results", type=Path, nargs="+", default=None,
+                        help="Biological evaluation of each run (JSON), in the order of the run results;"
+                             " adds the bio_* columns to the table")
     return parser.parse_args(argv)
 
 
@@ -45,6 +48,7 @@ def main(argv: list[str] | None = None) -> None:
         run_result_paths=args.run_results,
         results_path=args.out,
         null_result_paths=args.null_results,
+        biological_result_paths=args.biological_results,
     )
     aggregate_run_labels(
         run_result_paths=args.run_results,
