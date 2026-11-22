@@ -128,9 +128,10 @@ def index_genes_by_symbol(universe: list[str], annotation: pd.DataFrame | None) 
     so human symbols also match mouse ones), and a universe of Ensembl IDs through the annotation's
     gene_id -> gene_name.
     """
-    names: dict[str, str] = {}
+    names = pd.Series(dtype=str)
     if annotation is not None:
-        names = annotation.dropna(subset=["gene_name"]).set_index("gene_id")["gene_name"].to_dict()
+        named = annotation.dropna(subset=["gene_name"]).drop_duplicates("gene_id", keep="last")
+        names = named.set_index("gene_id")["gene_name"]
 
     genes_by_symbol: dict[str, set[str]] = defaultdict(set)
     for gene in universe:
